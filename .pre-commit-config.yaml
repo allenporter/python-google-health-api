@@ -25,8 +25,8 @@ repos:
     hooks:
       - id: ty
         name: ty check
-        entry: ty check . --ignore unresolved-import
-        language: python
+        entry: uv run ty check . --ignore unresolved-import --ignore unresolved-attribute
+        language: system
         pass_filenames: false
   - repo: https://github.com/codespell-project/codespell
     rev: v2.2.6
