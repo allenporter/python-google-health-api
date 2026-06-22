@@ -149,3 +149,7 @@ dmypy.json
 .ty_cache/
 
 .DS_Store
+
+# Secrets and local credentials
+service_account.json
+client_secret*.json
