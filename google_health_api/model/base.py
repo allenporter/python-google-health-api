@@ -63,8 +63,8 @@ class DataSource(DataClassDictMixin):
 class DataPoint(Generic[T]):
     """Generic DataPoint containing typed metadata and payload."""
 
-    name: str
     data: T
+    name: str | None = None
     data_source: DataSource | None = None
 
     @classmethod
@@ -83,7 +83,7 @@ class DataPoint(Generic[T]):
             DataSource.from_dict(data_source_dict) if data_source_dict else None
         )
 
-        return cls(name=raw_dict["name"], data=payload, data_source=data_source)
+        return cls(data=payload, name=raw_dict.get("name"), data_source=data_source)
 
 
 @dataclass
@@ -110,7 +110,7 @@ class Error(DataClassDictMixin):
     status: str | None = None
     code: int | None = None
     message: str | None = None
-    details: list[dict[str, Any]] | None = field(default_factory=list)
+    details: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass

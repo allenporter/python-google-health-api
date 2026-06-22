@@ -4,9 +4,9 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Generic, Self, TypeVar
 
-from .base import DataPoint, ReconciledDataPoint
+from .base import DataClassDictMixin, DataPoint, ReconciledDataPoint
 
-T = TypeVar("T")
+T = TypeVar("T", bound=DataClassDictMixin)
 
 
 @dataclass

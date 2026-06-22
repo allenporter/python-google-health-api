@@ -298,3 +298,54 @@ async def test_delete_and_batch_delete(
     assert requests[1]["method"] == "POST"
     assert requests[1]["url"].endswith("/dataPoints:batchDelete")
     assert requests[1]["body"]["dataPointIds"] == ["id-1", "id-2"]
+
+
+async def test_create_steps_without_name(
+    api: GoogleHealthApi,
+    create_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test creating steps record without a pre-specified name."""
+    create_response.append(FAKE_STEPS_PAYLOAD)
+
+    steps_data = Steps(
+        count=150, start_time="2026-06-22T10:00:00Z", end_time="2026-06-22T10:15:00Z"
+    )
+    new_point = DataPoint(
+        data=steps_data, data_source=DataSource(data_stream_name="test-stream")
+    )
+
+    point = await api.steps.create(new_point)
+    assert point.data.count == 500
+    assert point.name == "users/me/dataTypes/steps/dataPoints/point-1"
+
+    assert len(requests) == 1
+    req = requests[0]
+    assert req["method"] == "POST"
+    assert "name" not in req["body"]
+    assert req["body"]["data"]["steps"]["count"] == 150
+    assert req["body"]["dataSource"]["dataStreamName"] == "test-stream"
+
+
+async def test_list_steps_timezone_conversion(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test listing steps with timezone conversion to UTC."""
+    list_response.append({"dataPoints": [FAKE_STEPS_PAYLOAD]})
+
+    from datetime import timezone as dt_timezone, timedelta
+
+    est = dt_timezone(timedelta(hours=-5))
+    start = datetime(2026, 6, 22, 3, 0, 0, tzinfo=est)  # 08:00:00Z
+    end = datetime(2026, 6, 22, 4, 0, 0, tzinfo=est)  # 09:00:00Z
+
+    await api.steps.list(start_time=start, end_time=end)
+
+    assert len(requests) == 1
+    req = requests[0]
+    assert (
+        req["query"]["filter"]
+        == "steps.start_time > '2026-06-22T08:00:00Z' AND steps.end_time < '2026-06-22T09:00:00Z'"
+    )

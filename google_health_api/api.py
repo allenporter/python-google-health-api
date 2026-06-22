@@ -1,12 +1,13 @@
 """API client implementation for Google Health."""
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Generic, List, TypeVar
 
 from mashumaro import DataClassDictMixin
 
 from .auth import AbstractAuth
+from .client import GoogleHealthSession
 from .model import (
     HEART_RATE,
     STEPS,
@@ -37,11 +38,14 @@ def _build_time_filter(
     filters = []
     snake_field = _camel_to_snake(field_name)
     if start_time:
-        # Format as ISO 8601 UTC string (z-normalized)
-        iso_start = start_time.isoformat().replace("+00:00", "Z")
+        # Convert to UTC and format as ISO 8601 UTC string (z-normalized)
+        utc_start = start_time.astimezone(timezone.utc)
+        iso_start = utc_start.isoformat().replace("+00:00", "Z")
         filters.append(f"{snake_field}.start_time > '{iso_start}'")
     if end_time:
-        iso_end = end_time.isoformat().replace("+00:00", "Z")
+        # Convert to UTC and format as ISO 8601 UTC string (z-normalized)
+        utc_end = end_time.astimezone(timezone.utc)
+        iso_end = utc_end.isoformat().replace("+00:00", "Z")
         filters.append(f"{snake_field}.end_time < '{iso_end}'")
     return " AND ".join(filters) if filters else None
 
@@ -49,9 +53,9 @@ def _build_time_filter(
 class DataPointSubApi(Generic[T]):
     """Generic client providing namespaced operations for a specific DataType."""
 
-    def __init__(self, auth: AbstractAuth, data_type: DataType[T]) -> None:
+    def __init__(self, session: GoogleHealthSession, data_type: DataType[T]) -> None:
         """Initialize the namespaced client."""
-        self._auth = auth
+        self._session = session
         self._data_type = data_type
 
     async def list(
@@ -82,7 +86,7 @@ class DataPointSubApi(Generic[T]):
             if filter_expr:
                 params["filter"] = filter_expr
 
-            resp = await self._auth.get(
+            resp = await self._session.get(
                 f"v4/users/{user}/dataTypes/{self._data_type.key}/dataPoints",
                 params=params,
             )
@@ -127,7 +131,7 @@ class DataPointSubApi(Generic[T]):
             if filter_expr:
                 params["filter"] = filter_expr
 
-            resp = await self._auth.get(
+            resp = await self._session.get(
                 f"v4/users/{user}/dataTypes/{self._data_type.key}/dataPoints:reconcile",
                 params=params,
             )
@@ -151,7 +155,7 @@ class DataPointSubApi(Generic[T]):
             data_point_id: The identifier of the data point.
             user: User ID or literal 'me'.
         """
-        resp = await self._auth.get(
+        resp = await self._session.get(
             f"v4/users/{user}/dataTypes/{self._data_type.key}/dataPoints/{data_point_id}"
         )
         raw_json = await resp.json()
@@ -164,14 +168,15 @@ class DataPointSubApi(Generic[T]):
             data_point: The DataPoint object containing metadata and data.
             user: User ID or literal 'me'.
         """
-        payload = {
-            "name": data_point.name,
+        payload: dict[str, Any] = {
             "data": {self._data_type.field_name: data_point.data.to_dict()},
         }
+        if data_point.name:
+            payload["name"] = data_point.name
         if data_point.data_source:
             payload["dataSource"] = data_point.data_source.to_dict()
 
-        resp = await self._auth.post(
+        resp = await self._session.post(
             f"v4/users/{user}/dataTypes/{self._data_type.key}/dataPoints",
             json=payload,
         )
@@ -188,14 +193,15 @@ class DataPointSubApi(Generic[T]):
             data_point: The DataPoint object containing updated values.
             user: User ID or literal 'me'.
         """
-        payload = {
-            "name": data_point.name,
+        payload: dict[str, Any] = {
             "data": {self._data_type.field_name: data_point.data.to_dict()},
         }
+        if data_point.name:
+            payload["name"] = data_point.name
         if data_point.data_source:
             payload["dataSource"] = data_point.data_source.to_dict()
 
-        resp = await self._auth.patch(
+        resp = await self._session.patch(
             f"v4/users/{user}/dataTypes/{self._data_type.key}/dataPoints/{data_point_id}",
             json=payload,
         )
@@ -209,7 +215,7 @@ class DataPointSubApi(Generic[T]):
             data_point_id: The identifier of the data point to delete.
             user: User ID or literal 'me'.
         """
-        await self._auth.delete(
+        await self._session.delete(
             f"v4/users/{user}/dataTypes/{self._data_type.key}/dataPoints/{data_point_id}"
         )
 
@@ -221,7 +227,7 @@ class DataPointSubApi(Generic[T]):
             user: User ID or literal 'me'.
         """
         payload = {"dataPointIds": data_point_ids}
-        await self._auth.post(
+        await self._session.post(
             f"v4/users/{user}/dataTypes/{self._data_type.key}/dataPoints:batchDelete",
             json=payload,
         )
@@ -235,6 +241,6 @@ class GoogleHealthApi:
 
     def __init__(self, auth: AbstractAuth) -> None:
         """Initialize the client."""
-        self._auth = auth
-        self.steps = DataPointSubApi(auth, STEPS)
-        self.heart_rate = DataPointSubApi(auth, HEART_RATE)
+        self._session = GoogleHealthSession(auth, auth._websession, auth._host)
+        self.steps = DataPointSubApi(self._session, STEPS)
+        self.heart_rate = DataPointSubApi(self._session, HEART_RATE)
