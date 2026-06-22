@@ -85,9 +85,31 @@ Run mock tests:
 ./script/test
 ```
 
-Verify with a live sandbox account (requires set up of the `GOOGLE_HEALTH_ACCESS_TOKEN` environment variable):
+Verify with a live account using the browser-based OAuth 2.0 Installed App Flow:
+
+1. Create an OAuth client ID for a "Desktop application" in the Google Cloud Console.
+2. Download the JSON key file, rename it to `client_secret.json`, and place it in the project root.
+3. Authenticate and query via the command-line interface tool:
+   ```bash
+   # Log in via your web browser (stores credentials in token.json)
+   uv run python examples/google_health_cli.py login
+
+   # List step data points
+   uv run python examples/google_health_cli.py steps list --days 7 --limit 5
+
+   # List heart rate data points
+   uv run python examples/google_health_cli.py heart-rate list --days 7 --limit 5
+   ```
+
+Or run the standalone browser web flow example:
 
 ```bash
-export GOOGLE_HEALTH_ACCESS_TOKEN="your-oauth-token"
-python examples/sandbox_verify.py
+uv run python examples/web_flow_verify.py
+```
+
+To run tests and linter locally:
+
+```bash
+./script/test
+./script/lint
 ```
