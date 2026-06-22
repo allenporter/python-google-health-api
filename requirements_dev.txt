@@ -1,9 +1,9 @@
 -e .
-coverage==7.6.8
-ty==0.0.18
+coverage==7.14.2
+ty==0.0.51
 pdoc==15.0.4
 pip==24.3.1
 pre-commit==4.0.1
-pytest-cov==6.0.0
-pytest==8.4.1
-ruff==0.8.1
+pytest-cov==7.1.0
+pytest==9.1.1
+ruff==0.15.18
