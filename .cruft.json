@@ -1,0 +1,17 @@
+{
+  "template": "https://github.com/allenporter/cookiecutter-python",
+  "commit": "d4d7489f399216b5c4e5c5f734455fe67bd54f5e",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "full_name": "Allen Porter",
+      "email": "allen.porter@gmail.com",
+      "github_username": "allenporter",
+      "project_name": "google_health_api",
+      "description": "Project short description.",
+      "version": "0.0.1",
+      "_template": "https://github.com/allenporter/cookiecutter-python"
+    }
+  },
+  "directory": null
+}

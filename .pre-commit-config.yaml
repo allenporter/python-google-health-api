@@ -1,0 +1,43 @@
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.4
+    hooks:
+      - id: ruff-check
+        types_or:
+          - python
+          - pyi
+        args:
+          - --fix
+          - --exit-non-zero-on-fix
+      - id: ruff-format
+        types_or:
+          - python
+          - pyi
+  - repo: local
+    hooks:
+      - id: ty
+        name: ty check
+        entry: ty check . --ignore unresolved-import
+        language: python
+        pass_filenames: false
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.6
+    hooks:
+      - id: codespell
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.37.1
+    hooks:
+      - id: yamllint
+        exclude: '^tests/tool/testdata/.*\.yaml$'
+        args:
+          - --strict
+          - -c
+          - ".yaml-lint.yaml"
