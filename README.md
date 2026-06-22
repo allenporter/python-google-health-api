@@ -99,6 +99,15 @@ Verify with a live account using the browser-based OAuth 2.0 Installed App Flow:
 
    # List heart rate data points
    uv run python examples/google_health_cli.py heart-rate list --days 7 --limit 5
+
+   # Retrieve user profile details
+   uv run python examples/google_health_cli.py profile get
+
+   # Retrieve settings preferences
+   uv run python examples/google_health_cli.py settings get
+
+   # List paired devices
+   uv run python examples/google_health_cli.py devices list --limit 5
    ```
 
 Or run the standalone browser web flow example:

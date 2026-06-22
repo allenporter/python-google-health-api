@@ -14,11 +14,18 @@ from .model import (
     DataPoint,
     DataType,
     HeartRate,
+    Identity,
+    IrnProfile,
+    ListPairedDevicesResult,
     ListDataPointResult,
     ListReconciledDataPointsResult,
+    PairedDevice,
+    Profile,
     ReconciledDataPoint,
+    Settings,
     Steps,
     _ListDataPointsModel,
+    _ListPairedDevicesModel,
     _ListReconciledDataPointsModel,
 )
 
@@ -233,14 +240,148 @@ class DataPointSubApi(Generic[T]):
         )
 
 
+class PairedDevicesSubApi:
+    """Client providing namespaced operations for PairedDevices."""
+
+    def __init__(self, session: GoogleHealthSession) -> None:
+        """Initialize the namespaced client."""
+        self._session = session
+
+    async def list(
+        self,
+        page_size: int = 100,
+        page_token: str | None = None,
+        user: str = "me",
+    ) -> ListPairedDevicesResult:
+        """List paired devices of the user.
+
+        Args:
+            page_size: Maximum number of devices to return.
+            page_token: Page token to retrieve next set of records.
+            user: User ID or literal 'me'.
+        """
+
+        async def fetch_page(token: str | None) -> _ListPairedDevicesModel:
+            params: dict[str, Any] = {"pageSize": page_size}
+            if token:
+                params["pageToken"] = token
+
+            resp = await self._session.get(
+                f"v4/users/{user}/pairedDevices",
+                params=params,
+            )
+            raw_json = await resp.json()
+            return _ListPairedDevicesModel.from_dict(raw_json)
+
+        first_page = await fetch_page(page_token)
+        return ListPairedDevicesResult(first_page, fetch_page)
+
+    async def get(self, device_id: str, user: str = "me") -> PairedDevice:
+        """Retrieve a specific paired device.
+
+        Args:
+            device_id: The identifier of the paired device.
+            user: User ID or literal 'me'.
+        """
+        resp = await self._session.get(f"v4/users/{user}/pairedDevices/{device_id}")
+        raw_json = await resp.json()
+        return PairedDevice.from_dict(raw_json)
+
+
 class GoogleHealthApi:
     """The Google Health API client."""
 
     steps: DataPointSubApi[Steps]
     heart_rate: DataPointSubApi[HeartRate]
+    paired_devices: PairedDevicesSubApi
 
     def __init__(self, auth: AbstractAuth) -> None:
         """Initialize the client."""
         self._session = GoogleHealthSession(auth, auth._websession, auth._host)
         self.steps = DataPointSubApi(self._session, STEPS)
         self.heart_rate = DataPointSubApi(self._session, HEART_RATE)
+        self.paired_devices = PairedDevicesSubApi(self._session)
+
+    async def get_profile(self, user: str = "me") -> Profile:
+        """Retrieve the user's profile details.
+
+        Args:
+            user: User ID or literal 'me'.
+        """
+        resp = await self._session.get(f"v4/users/{user}/profile")
+        raw_json = await resp.json()
+        return Profile.from_dict(raw_json)
+
+    async def update_profile(
+        self, profile: Profile, update_mask: str | None = None, user: str = "me"
+    ) -> Profile:
+        """Update the user's profile details.
+
+        Args:
+            profile: The updated Profile object.
+            update_mask: Optional comma-separated list of fields to update.
+            user: User ID or literal 'me'.
+        """
+        params = {}
+        if update_mask:
+            params["updateMask"] = update_mask
+
+        resp = await self._session.patch(
+            f"v4/users/{user}/profile",
+            json=profile.to_dict(),
+            params=params,
+        )
+        raw_json = await resp.json()
+        return Profile.from_dict(raw_json)
+
+    async def get_identity(self, user: str = "me") -> Identity:
+        """Retrieve the user's identity mapping.
+
+        Args:
+            user: User ID or literal 'me'.
+        """
+        resp = await self._session.get(f"v4/users/{user}/identity")
+        raw_json = await resp.json()
+        return Identity.from_dict(raw_json)
+
+    async def get_settings(self, user: str = "me") -> Settings:
+        """Retrieve the user's settings.
+
+        Args:
+            user: User ID or literal 'me'.
+        """
+        resp = await self._session.get(f"v4/users/{user}/settings")
+        raw_json = await resp.json()
+        return Settings.from_dict(raw_json)
+
+    async def update_settings(
+        self, settings: Settings, update_mask: str | None = None, user: str = "me"
+    ) -> Settings:
+        """Update the user's settings.
+
+        Args:
+            settings: The updated Settings object.
+            update_mask: Optional comma-separated list of fields to update.
+            user: User ID or literal 'me'.
+        """
+        params = {}
+        if update_mask:
+            params["updateMask"] = update_mask
+
+        resp = await self._session.patch(
+            f"v4/users/{user}/settings",
+            json=settings.to_dict(),
+            params=params,
+        )
+        raw_json = await resp.json()
+        return Settings.from_dict(raw_json)
+
+    async def get_irn_profile(self, user: str = "me") -> IrnProfile:
+        """Retrieve the user's Irregular Rhythm Notifications (IRN) profile details.
+
+        Args:
+            user: User ID or literal 'me'.
+        """
+        resp = await self._session.get(f"v4/users/{user}/irnProfile")
+        raw_json = await resp.json()
+        return IrnProfile.from_dict(raw_json)
