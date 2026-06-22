@@ -12,7 +12,10 @@ readme = "README.md"
 authors = [{ name = "Allen Porter", email = "allen.porter@gmail.com" }]
 requires-python = ">=3.14"
 classifiers = []
-dependencies = []
+dependencies = [
+  "aiohttp>=3.7.3",
+  "mashumaro>=3.12",
+]
 
 [project.urls]
 Source = "https://github.com/allenporter/python-google-health-api"
