@@ -7,7 +7,7 @@ pre-commit==4.6.0
 pytest-cov==7.1.0
 pytest==9.1.1
 pytest-aiohttp==1.1.1
-ruff==0.15.18
+ruff==0.15.19
 google-auth==2.55.0
 requests==2.34.2
 google-auth-oauthlib==1.4.0
