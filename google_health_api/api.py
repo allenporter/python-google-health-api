@@ -19,14 +19,22 @@ from .model import (
     ListPairedDevicesResult,
     ListDataPointResult,
     ListReconciledDataPointsResult,
+    ListSubscribersResult,
+    ListSubscriptionsResult,
+    Operation,
     PairedDevice,
     Profile,
     ReconciledDataPoint,
     Settings,
     Steps,
+    Subscriber,
+    SubscriberConfig,
+    Subscription,
     _ListDataPointsModel,
     _ListPairedDevicesModel,
     _ListReconciledDataPointsModel,
+    _ListSubscribersModel,
+    _ListSubscriptionsModel,
 )
 
 T = TypeVar("T", bound=DataClassDictMixin)
@@ -288,12 +296,261 @@ class PairedDevicesSubApi:
         return PairedDevice.from_dict(raw_json)
 
 
+def _normalize_project(project: str) -> str:
+    """Normalize a project string to projects/{project} resource name format."""
+    if not project.startswith("projects/"):
+        return f"projects/{project}"
+    return project
+
+
+def _normalize_user(user: str) -> str:
+    """Normalize a user string to users/{user} resource name format."""
+    if not user.startswith("users/"):
+        return f"users/{user}"
+    return user
+
+
+class SubscriptionsSubApi:
+    """Client providing namespaced operations for subscriptions."""
+
+    def __init__(self, session: GoogleHealthSession) -> None:
+        """Initialize the subscriptions client."""
+        self._session = session
+
+    async def create(
+        self,
+        parent_subscriber: str,
+        user: str,
+        data_types: List[str] | None = None,
+        subscription_id: str | None = None,
+    ) -> Subscription:
+        """Create a user subscription under a parent subscriber.
+
+        Args:
+            parent_subscriber: The parent subscriber resource name, e.g. "projects/my-project/subscribers/my-sub".
+            user: The user ID or "users/me".
+            data_types: List of data types to subscribe to (e.g. ["steps", "heart-rate"]).
+            subscription_id: Optional user-provided ID for the subscription.
+        """
+        parent_path = _normalize_project(parent_subscriber)
+        payload: dict[str, Any] = {
+            "user": _normalize_user(user),
+        }
+        if data_types is not None:
+            payload["dataTypes"] = data_types
+
+        params = {}
+        if subscription_id:
+            params["subscriptionId"] = subscription_id
+
+        resp = await self._session.post(
+            f"v4/{parent_path}/subscriptions",
+            json=payload,
+            params=params,
+        )
+        raw_json = await resp.json()
+        return Subscription.from_dict(raw_json)
+
+    async def patch(
+        self,
+        name: str,
+        subscription: Subscription,
+        update_mask: str | None = None,
+    ) -> Subscription:
+        """Update a subscription's data types.
+
+        Args:
+            name: The full resource name of the subscription, e.g. "projects/my-project/subscribers/my-sub/subscriptions/my-subscription".
+            subscription: The updated Subscription object.
+            update_mask: Optional field mask specifying which fields to update.
+        """
+        params = {}
+        if update_mask:
+            params["updateMask"] = update_mask
+
+        resp = await self._session.patch(
+            f"v4/{name}",
+            json=subscription.to_dict(),
+            params=params,
+        )
+        raw_json = await resp.json()
+        return Subscription.from_dict(raw_json)
+
+    async def list(
+        self,
+        parent_subscriber: str,
+        filter: str | None = None,
+        page_size: int = 50,
+        page_token: str | None = None,
+    ) -> ListSubscriptionsResult:
+        """List subscriptions for a given parent subscriber.
+
+        Args:
+            parent_subscriber: The parent subscriber resource name, e.g. "projects/my-project/subscribers/my-sub".
+            filter: Optional AIP-160 filter expression.
+            page_size: Maximum number of subscriptions to return per page.
+            page_token: Token to retrieve the next page of results.
+        """
+        parent_path = _normalize_project(parent_subscriber)
+
+        async def fetch_page(token: str | None) -> _ListSubscriptionsModel:
+            params: dict[str, Any] = {"pageSize": page_size}
+            if filter:
+                params["filter"] = filter
+            if token:
+                params["pageToken"] = token
+
+            resp = await self._session.get(
+                f"v4/{parent_path}/subscriptions",
+                params=params,
+            )
+            raw_json = await resp.json()
+            return _ListSubscriptionsModel.from_dict(raw_json)
+
+        first_page = await fetch_page(page_token)
+        return ListSubscriptionsResult(first_page, fetch_page)
+
+    async def delete(self, name: str) -> None:
+        """Delete a user subscription.
+
+        Args:
+            name: The full resource name of the subscription.
+        """
+        await self._session.delete(f"v4/{name}")
+
+
+class SubscribersSubApi:
+    """Client providing namespaced operations for subscribers."""
+
+    subscriptions: SubscriptionsSubApi
+
+    def __init__(self, session: GoogleHealthSession) -> None:
+        """Initialize the subscribers client."""
+        self._session = session
+        self.subscriptions = SubscriptionsSubApi(session)
+
+    async def create(
+        self,
+        project: str,
+        endpoint_uri: str,
+        endpoint_authorization_secret: str,
+        subscriber_configs: List[SubscriberConfig] | None = None,
+        subscriber_id: str | None = None,
+    ) -> Operation:
+        """Create a new subscriber endpoint.
+
+        Args:
+            project: Google Cloud project ID or "projects/my-project".
+            endpoint_uri: The HTTPS URI where update notifications will be sent.
+            endpoint_authorization_secret: The authorization secret for webhook notifications.
+            subscriber_configs: Optional list of subscriber configurations.
+            subscriber_id: Optional user-provided ID for the subscriber.
+        """
+        parent_path = _normalize_project(project)
+        payload: dict[str, Any] = {
+            "endpointUri": endpoint_uri,
+            "endpointAuthorization": {
+                "secret": endpoint_authorization_secret,
+            },
+        }
+        if subscriber_configs is not None:
+            payload["subscriberConfigs"] = [
+                config.to_dict() for config in subscriber_configs
+            ]
+
+        params = {}
+        if subscriber_id:
+            params["subscriberId"] = subscriber_id
+
+        resp = await self._session.post(
+            f"v4/{parent_path}/subscribers",
+            json=payload,
+            params=params,
+        )
+        raw_json = await resp.json()
+        return Operation.from_dict(raw_json)
+
+    async def patch(
+        self,
+        name: str,
+        subscriber: Subscriber,
+        update_mask: str | None = None,
+    ) -> Operation:
+        """Update a subscriber endpoint configuration.
+
+        Args:
+            name: Full subscriber resource name, e.g. "projects/my-project/subscribers/my-sub".
+            subscriber: The updated Subscriber object.
+            update_mask: Optional field mask specifying which fields to update.
+        """
+        params = {}
+        if update_mask:
+            params["updateMask"] = update_mask
+
+        resp = await self._session.patch(
+            f"v4/{name}",
+            json=subscriber.to_dict(),
+            params=params,
+        )
+        raw_json = await resp.json()
+        return Operation.from_dict(raw_json)
+
+    async def list(
+        self,
+        project: str,
+        page_size: int = 50,
+        page_token: str | None = None,
+    ) -> ListSubscribersResult:
+        """List subscribers under a project.
+
+        Args:
+            project: Google Cloud project ID or "projects/my-project".
+            page_size: Maximum number of subscribers to return per page.
+            page_token: Token to retrieve the next page of results.
+        """
+        parent_path = _normalize_project(project)
+
+        async def fetch_page(token: str | None) -> _ListSubscribersModel:
+            params: dict[str, Any] = {"pageSize": page_size}
+            if token:
+                params["pageToken"] = token
+
+            resp = await self._session.get(
+                f"v4/{parent_path}/subscribers",
+                params=params,
+            )
+            raw_json = await resp.json()
+            return _ListSubscribersModel.from_dict(raw_json)
+
+        first_page = await fetch_page(page_token)
+        return ListSubscribersResult(first_page, fetch_page)
+
+    async def delete(self, name: str, force: bool = False) -> Operation:
+        """Delete a subscriber registration.
+
+        Args:
+            name: Full subscriber resource name.
+            force: If true, delete any child subscriptions as well.
+        """
+        params = {}
+        if force:
+            params["force"] = "true"
+
+        resp = await self._session.delete(
+            f"v4/{name}",
+            params=params,
+        )
+        raw_json = await resp.json()
+        return Operation.from_dict(raw_json)
+
+
 class GoogleHealthApi:
     """The Google Health API client."""
 
     steps: DataPointSubApi[Steps]
     heart_rate: DataPointSubApi[HeartRate]
     paired_devices: PairedDevicesSubApi
+    subscribers: SubscribersSubApi
 
     def __init__(self, auth: AbstractAuth) -> None:
         """Initialize the client."""
@@ -301,6 +558,7 @@ class GoogleHealthApi:
         self.steps = DataPointSubApi(self._session, STEPS)
         self.heart_rate = DataPointSubApi(self._session, HEART_RATE)
         self.paired_devices = PairedDevicesSubApi(self._session)
+        self.subscribers = SubscribersSubApi(self._session)
 
     async def get_profile(self, user: str = "me") -> Profile:
         """Retrieve the user's profile details.

@@ -67,7 +67,7 @@ def cmd_login(args) -> None:
         print("\nTo log in:")
         print("1. Go to the Google Cloud Console.")
         print(
-            "2. Create an OAuth 2.0 Client ID with application type 'Desktop application'."
+            "2. Create an OAuth 2.0 Client ID (type 'Desktop application' or 'Web application')."
         )
         print(
             "3. Download the JSON credentials file, rename it to 'client_secret.json',"
@@ -75,15 +75,61 @@ def cmd_login(args) -> None:
         print("   and place it in the root folder of this project.")
         sys.exit(1)
 
-    from google_auth_oauthlib.flow import InstalledAppFlow
+    import json
 
-    print("Initializing InstalledAppFlow...")
-    flow = InstalledAppFlow.from_client_secrets_file(
-        CLIENT_SECRET_FILE,
-        scopes=SCOPES,
-    )
-    print("\nOpening web browser for authentication. Please approve consent...")
-    credentials = flow.run_local_server(port=0)
+    with open(CLIENT_SECRET_FILE, "r") as f:
+        client_secrets_data = json.load(f)
+
+    is_web = "web" in client_secrets_data
+
+    if is_web:
+        from google_auth_oauthlib.flow import Flow
+
+        redirect_uris = client_secrets_data["web"].get("redirect_uris", [])
+        redirect_uri = redirect_uris[0] if redirect_uris else "http://localhost:8080/"
+
+        print("Initializing Flow for Web Application...")
+        flow = Flow.from_client_secrets_file(
+            CLIENT_SECRET_FILE,
+            scopes=SCOPES,
+            redirect_uri=redirect_uri,
+        )
+        authorization_url, _ = flow.authorization_url(
+            access_type="offline",
+            include_granted_scopes="true",
+        )
+        print("\nWeb-based authentication flow:")
+        print("1. Open the following URL in your browser to authorize:")
+        print(f"   {authorization_url}")
+        print("\n2. Sign in, authorize, and submit.")
+        print(
+            f"3. Copy the URL of the redirected page (e.g. page matching redirect URI {redirect_uri})"
+        )
+        print("   from the browser's address bar and paste it below.")
+
+        redirect_response = input("\nRedirected URL (or authorization code): ").strip()
+
+        if not redirect_response:
+            print("ERROR: Redirected URL cannot be empty.")
+            sys.exit(1)
+
+        if "code=" in redirect_response or redirect_response.startswith("http"):
+            flow.fetch_token(authorization_response=redirect_response)
+        else:
+            flow.fetch_token(code=redirect_response)
+
+        credentials = flow.credentials
+    else:
+        from google_auth_oauthlib.flow import InstalledAppFlow
+
+        print("Initializing InstalledAppFlow for Desktop Application...")
+        flow = InstalledAppFlow.from_client_secrets_file(
+            CLIENT_SECRET_FILE,
+            scopes=SCOPES,
+        )
+        print("\nOpening web browser for authentication. Please approve consent...")
+        credentials = flow.run_local_server(port=0)
+
     save_credentials(credentials)
     print("Successfully logged in and saved credentials to token.json!")
 

@@ -10,8 +10,19 @@ from .pagination import (
     _ListDataPointsModel,
     _ListReconciledDataPointsModel,
 )
+from .operation import Operation, Status
 from .profile import Date, Identity, IrnProfile, Profile
 from .settings import Settings
+from .subscription import (
+    EndpointAuthorization,
+    ListSubscribersResult,
+    ListSubscriptionsResult,
+    Subscriber,
+    SubscriberConfig,
+    Subscription,
+    _ListSubscribersModel,
+    _ListSubscriptionsModel,
+)
 
 __all__ = [
     "DataType",
@@ -34,4 +45,14 @@ __all__ = [
     "PairedDevice",
     "ListPairedDevicesResult",
     "_ListPairedDevicesModel",
+    "Subscriber",
+    "SubscriberConfig",
+    "EndpointAuthorization",
+    "Subscription",
+    "ListSubscribersResult",
+    "ListSubscriptionsResult",
+    "_ListSubscribersModel",
+    "_ListSubscriptionsModel",
+    "Operation",
+    "Status",
 ]
