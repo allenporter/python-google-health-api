@@ -20,6 +20,7 @@ Example usage:
 import re
 from datetime import date, datetime, timezone, timedelta, tzinfo
 from typing import Any, Generic, List, TypeVar
+from zoneinfo import ZoneInfo
 
 from mashumaro import DataClassDictMixin
 
@@ -354,8 +355,6 @@ class DataPointSubApi(Generic[T]):
             time_zone = raw_json.get("timeZone", "UTC")
 
         if isinstance(time_zone, str):
-            from zoneinfo import ZoneInfo
-
             resolved_tz = ZoneInfo(time_zone)
         else:
             resolved_tz = time_zone
@@ -386,8 +385,6 @@ class DataPointSubApi(Generic[T]):
             time_zone = raw_json.get("timeZone", "UTC")
 
         if isinstance(time_zone, str):
-            from zoneinfo import ZoneInfo
-
             resolved_tz = ZoneInfo(time_zone)
         else:
             resolved_tz = time_zone

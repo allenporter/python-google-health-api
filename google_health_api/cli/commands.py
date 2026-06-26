@@ -5,8 +5,9 @@ import contextvars
 import json
 import os
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 from typing import Any, NoReturn
+from zoneinfo import ZoneInfo
 import aiohttp
 
 from google_health_api.api import GoogleHealthApi
@@ -410,8 +411,6 @@ async def handle_datatype_cmd(
             print_json(serialize_response(result, field_name), pretty)
 
     elif sub == "rollup":
-        from datetime import date
-
         if args.start_date:
             start_date = date.fromisoformat(args.start_date)
             end_date = (
@@ -424,8 +423,6 @@ async def handle_datatype_cmd(
             if not timezone_str:
                 settings = await api.get_settings()
                 timezone_str = settings.time_zone or "UTC"
-
-            from zoneinfo import ZoneInfo
 
             resolved_tz = ZoneInfo(timezone_str)
             now_local = datetime.now(resolved_tz)
@@ -477,8 +474,6 @@ async def handle_datatype_cmd(
         check_dry_run(
             args.dry_run, "POST" if sub == "create" else "PATCH", path, payload
         )
-
-        from google_health_api.model.base import DataPoint
 
         dp = DataPoint.from_api_dict(sub_api._data_type, payload)
         if sub == "create":
