@@ -6,6 +6,7 @@ Requires the GOOGLE_HEALTH_ACCESS_TOKEN environment variable to be set.
 import asyncio
 import os
 import sys
+import uuid
 from datetime import datetime, timezone, timedelta
 import aiohttp
 
@@ -13,7 +14,7 @@ from google_health_api.api import GoogleHealthApi
 from google_health_api.auth import AbstractAuth
 from google_health_api.model import DataPoint, DataSource
 from google_health_api.model.activity import ObservationTimeInterval, Steps
-from google_health_api.exceptions import HealthApiException
+from google_health_api.exceptions import GoogleHealthApiError
 
 
 class EnvAuth(AbstractAuth):
@@ -36,11 +37,41 @@ class EnvAuth(AbstractAuth):
         return self._token
 
 
+async def verify_profile(api: GoogleHealthApi) -> None:
+    """Verify profile retrieval."""
+    print("\n=== PROFILE VERIFICATION ===")
+    profile = await api.get_profile()
+    print("User Profile details:")
+    print(f"  Resource Name: {profile.name}")
+    print(f"  Age: {profile.age}")
+    if profile.membership_start_date:
+        d = profile.membership_start_date
+        print(f"  Membership Start Date: {d.year}-{d.month:02d}-{d.day:02d}")
+
+
+async def verify_settings(api: GoogleHealthApi) -> None:
+    """Verify settings retrieval."""
+    print("\n=== SETTINGS VERIFICATION ===")
+    settings = await api.get_settings()
+    print("User Settings:")
+    print(f"  Resource Name: {settings.name}")
+    print(f"  Timezone: {settings.time_zone} (UTC offset: {settings.utc_offset})")
+    print(f"  Distance Unit: {settings.distance_unit}")
+
+
+async def verify_devices(api: GoogleHealthApi) -> None:
+    """Verify paired devices retrieval."""
+    print("\n=== PAIRED DEVICES VERIFICATION ===")
+    result = await api.paired_devices.list(page_size=5)
+    print(f"Paired devices found: {len(result.paired_devices)}")
+    for device in result.paired_devices:
+        print(f"  - {device.device_version} ({device.device_type})")
+        print(f"    Name: {device.name}")
+
+
 async def verify_steps(api: GoogleHealthApi) -> None:
     """Verify listing and creating/deleting step count records."""
-    print("\n=== STEP COUNT VERIFICATION ===")
-
-    # 1. List Steps
+    print("\n=== STEPS VERIFICATION ===")
     print("1. Listing steps for the past 7 days...")
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=7)
@@ -73,11 +104,6 @@ async def verify_steps(api: GoogleHealthApi) -> None:
         interval=ObservationTimeInterval(start_time=now_str, end_time=future_str),
     )
 
-    # The API naming convention for new data points requires it to be under the user's namespace:
-    # "users/me/dataTypes/steps/dataPoints/<unique-id>"
-    # We can omit the ID or pass a placeholder. If we generate a name, let's keep it under the DataType:
-    import uuid
-
     point_id = f"sandbox-test-{uuid.uuid4()}"
     new_dp = DataPoint(
         name=f"users/me/dataTypes/steps/dataPoints/{point_id}",
@@ -100,11 +126,8 @@ async def verify_steps(api: GoogleHealthApi) -> None:
         await api.steps.delete(point_id)
         print("   Deleted successfully.")
 
-    except HealthApiException as ex:
-        print(f"   Write operations failed: {ex}")
-        print(
-            "   This might occur if your OAuth token lacks write scopes (e.g. only has read-only scopes)."
-        )
+    except GoogleHealthApiError as ex:
+        print(f"   Write operations skipped/failed: {ex}")
 
 
 async def verify_heart_rate(api: GoogleHealthApi) -> None:
@@ -129,6 +152,9 @@ async def main() -> None:
         api = GoogleHealthApi(auth)
 
         try:
+            await verify_profile(api)
+            await verify_settings(api)
+            await verify_devices(api)
             await verify_steps(api)
             await verify_heart_rate(api)
             print("\nVerification completed successfully!")
