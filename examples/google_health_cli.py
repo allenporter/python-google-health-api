@@ -114,6 +114,8 @@ def cmd_login(args) -> None:
             print("ERROR: Redirected URL cannot be empty.")
             sys.exit(1)
 
+        os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
         if "code=" in redirect_response or redirect_response.startswith("http"):
             flow.fetch_token(authorization_response=redirect_response)
         else:
