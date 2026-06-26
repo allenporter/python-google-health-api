@@ -26,6 +26,46 @@ def cmd_schema(args) -> None:
         print_json(list_schemas)
 
 
+def add_standard_datapoint_commands(
+    subparsers, command_name: str, help_name: str
+) -> None:
+    """Helper to add standard list/get/create/patch/delete subparsers for a data type."""
+    parser = subparsers.add_parser(command_name, help=f"Manage {help_name} data")
+    sub_subparsers = parser.add_subparsers(dest="subcommand", required=True)
+
+    lst = sub_subparsers.add_parser("list", help=f"List {help_name} data points")
+    lst.add_argument(
+        "--days", type=int, default=1, help="Number of days of history to fetch"
+    )
+    lst.add_argument(
+        "--limit", type=int, default=10, help="Maximum number of records to fetch"
+    )
+    lst.add_argument(
+        "--page-token",
+        type=str,
+        default=None,
+        help="Token for the next page of results",
+    )
+    lst.add_argument(
+        "--all",
+        action="store_true",
+        help="Auto-paginate and print all entries in NDJSON format",
+    )
+
+    gt = sub_subparsers.add_parser("get", help=f"Get a {help_name} data point")
+    gt.add_argument("data_point_id", type=str, help="The data point identifier")
+
+    sub_subparsers.add_parser("create", help=f"Create a new {help_name} data point")
+
+    ptch = sub_subparsers.add_parser(
+        "patch", help=f"Update/patch an existing {help_name} data point"
+    )
+    ptch.add_argument("data_point_id", type=str, help="The data point identifier")
+
+    dl = sub_subparsers.add_parser("delete", help=f"Delete a {help_name} data point")
+    dl.add_argument("data_point_id", type=str, help="The data point identifier")
+
+
 def main() -> None:
     """CLI parser setup and subcommand routing."""
     parser = argparse.ArgumentParser(
@@ -79,85 +119,16 @@ def main() -> None:
         help="The specific command to introspect (e.g. steps.create)",
     )
 
-    # steps commands
-    steps_parser = subparsers.add_parser("steps", help="Manage steps data")
-    steps_subparsers = steps_parser.add_subparsers(dest="subcommand", required=True)
-
-    steps_list = steps_subparsers.add_parser("list", help="List steps data points")
-    steps_list.add_argument(
-        "--days", type=int, default=1, help="Number of days of history to fetch"
+    # Register standard data type commands
+    add_standard_datapoint_commands(subparsers, "steps", "step count")
+    add_standard_datapoint_commands(subparsers, "heart-rate", "heart rate")
+    add_standard_datapoint_commands(subparsers, "sleep", "sleep")
+    add_standard_datapoint_commands(subparsers, "distance", "distance")
+    add_standard_datapoint_commands(
+        subparsers, "basal-energy-burned", "basal energy burned"
     )
-    steps_list.add_argument(
-        "--limit", type=int, default=10, help="Maximum number of records to fetch"
-    )
-    steps_list.add_argument(
-        "--page-token",
-        type=str,
-        default=None,
-        help="Token for the next page of results",
-    )
-    steps_list.add_argument(
-        "--all",
-        action="store_true",
-        help="Auto-paginate and print all entries in NDJSON format",
-    )
-
-    steps_get = steps_subparsers.add_parser("get", help="Get a step count data point")
-    steps_get.add_argument("data_point_id", type=str, help="The data point identifier")
-
-    steps_subparsers.add_parser("create", help="Create a new step count data point")
-
-    steps_patch = steps_subparsers.add_parser(
-        "patch", help="Update/patch an existing step count data point"
-    )
-    steps_patch.add_argument(
-        "data_point_id", type=str, help="The data point identifier"
-    )
-
-    steps_delete = steps_subparsers.add_parser(
-        "delete", help="Delete a step count data point"
-    )
-    steps_delete.add_argument(
-        "data_point_id", type=str, help="The data point identifier"
-    )
-
-    # heart-rate commands
-    hr_parser = subparsers.add_parser("heart-rate", help="Manage heart rate data")
-    hr_subparsers = hr_parser.add_subparsers(dest="subcommand", required=True)
-
-    hr_list = hr_subparsers.add_parser("list", help="List heart rate data points")
-    hr_list.add_argument(
-        "--days", type=int, default=1, help="Number of days of history to fetch"
-    )
-    hr_list.add_argument(
-        "--limit", type=int, default=10, help="Maximum number of records to fetch"
-    )
-    hr_list.add_argument(
-        "--page-token",
-        type=str,
-        default=None,
-        help="Token for the next page of results",
-    )
-    hr_list.add_argument(
-        "--all",
-        action="store_true",
-        help="Auto-paginate and print all entries in NDJSON format",
-    )
-
-    hr_get = hr_subparsers.add_parser("get", help="Get a heart rate data point")
-    hr_get.add_argument("data_point_id", type=str, help="The data point identifier")
-
-    hr_subparsers.add_parser("create", help="Create a new heart rate data point")
-
-    hr_patch = hr_subparsers.add_parser(
-        "patch", help="Update/patch an existing heart rate data point"
-    )
-    hr_patch.add_argument("data_point_id", type=str, help="The data point identifier")
-
-    hr_delete = hr_subparsers.add_parser(
-        "delete", help="Delete a heart rate data point"
-    )
-    hr_delete.add_argument("data_point_id", type=str, help="The data point identifier")
+    add_standard_datapoint_commands(subparsers, "vo2-max", "VO2 max")
+    add_standard_datapoint_commands(subparsers, "weight", "weight")
 
     # profile commands
     profile_parser = subparsers.add_parser(

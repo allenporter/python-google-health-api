@@ -194,3 +194,42 @@ def test_cli_raw_json_input(mock_load, mock_setup, capsys) -> None:
     assert res_json["name"] == "users/me/dataTypes/steps/dataPoints/point-1"
     assert res_json["steps"]["count"] == 800
     mock_steps_subapi.create.assert_called_once()
+
+
+@patch("google_health_api.cli.commands.setup_client")
+@patch("google_health_api.cli.commands.load_credentials_or_env")
+def test_cli_new_datapoints(mock_load, mock_setup, capsys) -> None:
+    """Test that the new datapoint commands are correctly routed in the CLI."""
+    mock_load.return_value = ("env", "fake-token")
+
+    mock_api = MagicMock()
+    mock_setup.return_value = mock_api
+
+    # Mock sleep subapi
+    mock_sleep_subapi = AsyncMock()
+    mock_api.sleep = mock_sleep_subapi
+    mock_sleep_subapi._data_type = MagicMock()
+    mock_sleep_subapi._data_type.field_name = "sleep"
+
+    # Setup mock return value for list sleep
+    mock_sleep_res = MagicMock()
+    mock_sleep_res.to_dict.return_value = {
+        "dataPoints": [],
+        "nextPageToken": None,
+    }
+    mock_sleep_subapi.list.return_value = mock_sleep_res
+
+    with patch.object(
+        sys,
+        "argv",
+        [
+            "google-health-cli",
+            "sleep",
+            "list",
+            "--days",
+            "5",
+        ],
+    ):
+        main()
+
+    mock_sleep_subapi.list.assert_called_once()

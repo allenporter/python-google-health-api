@@ -339,8 +339,16 @@ def get_params_payload(args) -> dict[str, Any]:
     return {}
 
 
-async def handle_steps_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
-    """Handle steps subcommands."""
+async def handle_datatype_cmd(
+    args,
+    api: GoogleHealthApi,
+    sub_api,
+    field_name: str,
+    key: str,
+    display_name: str,
+    pretty: bool,
+) -> None:
+    """Handle generic data type subcommands."""
     sub = args.subcommand
     if sub == "list":
         days = args.days
@@ -362,21 +370,21 @@ async def handle_steps_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
         pageSize = params.get("pageSize", limit)
         pageToken = params.get("pageToken", page_token)
 
-        result = await api.steps.list(
+        result = await sub_api.list(
             start_time=start_time,
             end_time=end_time,
             page_size=pageSize,
             page_token=pageToken,
         )
         if args.all:
-            await execute_all_pages(args, result, "steps", pretty)
+            await execute_all_pages(args, result, field_name, pretty)
         else:
-            print_json(serialize_response(result, "steps"), pretty)
+            print_json(serialize_response(result, field_name), pretty)
 
     elif sub == "get":
         validate_resource_name(args.data_point_id)
-        result = await api.steps.get(data_point_id=args.data_point_id)
-        print_json(serialize_datapoint(result, "steps"), pretty)
+        result = await sub_api.get(data_point_id=args.data_point_id)
+        print_json(serialize_datapoint(result, field_name), pretty)
 
     elif sub in ("create", "patch"):
         payload = get_json_payload(args)
@@ -387,7 +395,7 @@ async def handle_steps_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
         assert payload is not None
 
         # Dry run validation
-        path = "v4/users/me/dataTypes/steps/dataPoints"
+        path = f"v4/users/me/dataTypes/{key}/dataPoints"
         if sub == "patch":
             validate_resource_name(args.data_point_id)
             path += f"/{args.data_point_id}"
@@ -397,110 +405,81 @@ async def handle_steps_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
 
         from google_health_api.model.base import DataPoint
 
-        # Deserialize payload steps
-        dp = DataPoint.from_api_dict(api.steps._data_type, payload)
+        dp = DataPoint.from_api_dict(sub_api._data_type, payload)
         if sub == "create":
-            result = await api.steps.create(dp)
+            result = await sub_api.create(dp)
         else:
-            result = await api.steps.patch(args.data_point_id, dp)
-        print_json(serialize_datapoint(result, "steps"), pretty)
+            result = await sub_api.patch(args.data_point_id, dp)
+        print_json(serialize_datapoint(result, field_name), pretty)
 
     elif sub == "delete":
         validate_resource_name(args.data_point_id)
         check_dry_run(
             args.dry_run,
             "DELETE",
-            f"v4/users/me/dataTypes/steps/dataPoints/{args.data_point_id}",
+            f"v4/users/me/dataTypes/{key}/dataPoints/{args.data_point_id}",
         )
-        await api.steps.delete(args.data_point_id)
+        await sub_api.delete(args.data_point_id)
         print_json(
             {
                 "status": "SUCCESS",
-                "message": f"Deleted steps point {args.data_point_id}",
+                "message": f"Deleted {display_name} point {args.data_point_id}",
             },
             pretty,
         )
+
+
+async def handle_steps_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle steps subcommands."""
+    await handle_datatype_cmd(args, api, api.steps, "steps", "steps", "steps", pretty)
 
 
 async def handle_heart_rate_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
     """Handle heart rate subcommands."""
-    sub = args.subcommand
-    if sub == "list":
-        days = args.days
-        limit = args.limit
-        page_token = args.page_token
-        start_time = None
-        end_time = None
+    await handle_datatype_cmd(
+        args, api, api.heart_rate, "heartRate", "heart-rate", "heart rate", pretty
+    )
 
-        params = get_params_payload(args)
-        if "startTime" in params:
-            start_time = datetime.fromisoformat(params["startTime"])
-        else:
-            end_time = datetime.now(timezone.utc)
-            start_time = end_time - timedelta(days=days)
 
-        if "endTime" in params:
-            end_time = datetime.fromisoformat(params["endTime"])
+async def handle_sleep_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle sleep subcommands."""
+    await handle_datatype_cmd(args, api, api.sleep, "sleep", "sleep", "sleep", pretty)
 
-        pageSize = params.get("pageSize", limit)
-        pageToken = params.get("pageToken", page_token)
 
-        result = await api.heart_rate.list(
-            start_time=start_time,
-            end_time=end_time,
-            page_size=pageSize,
-            page_token=pageToken,
-        )
-        if args.all:
-            await execute_all_pages(args, result, "heartRate", pretty)
-        else:
-            print_json(serialize_response(result, "heartRate"), pretty)
+async def handle_distance_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle distance subcommands."""
+    await handle_datatype_cmd(
+        args, api, api.distance, "distance", "distance", "distance", pretty
+    )
 
-    elif sub == "get":
-        validate_resource_name(args.data_point_id)
-        result = await api.heart_rate.get(data_point_id=args.data_point_id)
-        print_json(serialize_datapoint(result, "heartRate"), pretty)
 
-    elif sub in ("create", "patch"):
-        payload = get_json_payload(args)
-        if payload is None:
-            print_error_json(
-                "Please provide raw JSON input using --json.", status="INVALID_ARGUMENT"
-            )
-        assert payload is not None
+async def handle_basal_energy_burned_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle basal energy burned subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.basal_energy_burned,
+        "basalEnergyBurned",
+        "basal-energy-burned",
+        "basal energy burned",
+        pretty,
+    )
 
-        path = "v4/users/me/dataTypes/heart-rate/dataPoints"
-        if sub == "patch":
-            validate_resource_name(args.data_point_id)
-            path += f"/{args.data_point_id}"
-        check_dry_run(
-            args.dry_run, "POST" if sub == "create" else "PATCH", path, payload
-        )
 
-        from google_health_api.model.base import DataPoint
+async def handle_vo2_max_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle VO2 max subcommands."""
+    await handle_datatype_cmd(
+        args, api, api.vo2_max, "vo2Max", "vo2-max", "VO2 max", pretty
+    )
 
-        dp = DataPoint.from_api_dict(api.heart_rate._data_type, payload)
-        if sub == "create":
-            result = await api.heart_rate.create(dp)
-        else:
-            result = await api.heart_rate.patch(args.data_point_id, dp)
-        print_json(serialize_datapoint(result, "heartRate"), pretty)
 
-    elif sub == "delete":
-        validate_resource_name(args.data_point_id)
-        check_dry_run(
-            args.dry_run,
-            "DELETE",
-            f"v4/users/me/dataTypes/heart-rate/dataPoints/{args.data_point_id}",
-        )
-        await api.heart_rate.delete(args.data_point_id)
-        print_json(
-            {
-                "status": "SUCCESS",
-                "message": f"Deleted heart rate point {args.data_point_id}",
-            },
-            pretty,
-        )
+async def handle_weight_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle weight subcommands."""
+    await handle_datatype_cmd(
+        args, api, api.weight, "weight", "weight", "weight", pretty
+    )
 
 
 async def handle_profile_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
@@ -808,6 +787,16 @@ async def async_run_cmd(args) -> None:
                 await handle_steps_cmd(args, api, pretty)
             elif cmd == "heart-rate":
                 await handle_heart_rate_cmd(args, api, pretty)
+            elif cmd == "sleep":
+                await handle_sleep_cmd(args, api, pretty)
+            elif cmd == "distance":
+                await handle_distance_cmd(args, api, pretty)
+            elif cmd == "basal-energy-burned":
+                await handle_basal_energy_burned_cmd(args, api, pretty)
+            elif cmd == "vo2-max":
+                await handle_vo2_max_cmd(args, api, pretty)
+            elif cmd == "weight":
+                await handle_weight_cmd(args, api, pretty)
             elif cmd == "profile":
                 await handle_profile_cmd(args, api, pretty)
             elif cmd == "settings":
