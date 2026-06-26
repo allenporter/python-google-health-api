@@ -33,6 +33,7 @@ SCOPES = [
     HealthApiScope.MEASUREMENTS_READ,
     HealthApiScope.PROFILE_READ,
     HealthApiScope.SETTINGS_READ,
+    HealthApiScope.SLEEP_READ,
 ]
 
 fields_var = contextvars.ContextVar("fields", default=None)
