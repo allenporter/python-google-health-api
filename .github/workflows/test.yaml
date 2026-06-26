@@ -34,7 +34,7 @@ jobs:
       - name: Test with pytest
         run: |
           pytest --cov=google_health_api --cov-report=term-missing
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           env_vars: OS,PYTHON
