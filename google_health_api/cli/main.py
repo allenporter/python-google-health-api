@@ -1,0 +1,391 @@
+"""Main CLI parser entrypoint for Google Health API CLI."""
+
+import argparse
+import asyncio
+import sys
+
+from .commands import cmd_login, async_run_cmd, print_json
+from .schema import get_command_schemas
+
+
+def cmd_schema(args) -> None:
+    """Handle schema introspection command."""
+    schemas = get_command_schemas()
+    if args.command_name:
+        if args.command_name in schemas:
+            print_json(schemas[args.command_name])
+        else:
+            print(
+                f"Unknown command for schema lookup: {args.command_name}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    else:
+        # Print list of available commands
+        list_schemas = {k: v.get("description", "") for k, v in schemas.items()}
+        print_json(list_schemas)
+
+
+def main() -> None:
+    """CLI parser setup and subcommand routing."""
+    parser = argparse.ArgumentParser(
+        description="Google Health API CLI tool revamped with Agent DX principles."
+    )
+    # Global flags
+    parser.add_argument(
+        "--output",
+        choices=["json", "pretty"],
+        default="pretty",
+        help="Specify the output formatting (default: pretty).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Perform validation locally without sending the request to the API.",
+    )
+    parser.add_argument(
+        "--fields",
+        type=str,
+        default=None,
+        help="A comma-separated list of fields to return (fields mask).",
+    )
+    parser.add_argument(
+        "--json",
+        type=str,
+        default=None,
+        help="Raw JSON payload for writing/updating operations.",
+    )
+    parser.add_argument(
+        "--params",
+        type=str,
+        default=None,
+        help="Raw JSON parameter mapping to bypass argument parsing for queries.",
+    )
+
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # login command
+    subparsers.add_parser("login", help="Log in via browser and save credentials")
+
+    # schema command
+    schema_parser = subparsers.add_parser(
+        "schema", help="Output request/response schema structures for operations"
+    )
+    schema_parser.add_argument(
+        "command_name",
+        type=str,
+        nargs="?",
+        default=None,
+        help="The specific command to introspect (e.g. steps.create)",
+    )
+
+    # steps commands
+    steps_parser = subparsers.add_parser("steps", help="Manage steps data")
+    steps_subparsers = steps_parser.add_subparsers(dest="subcommand", required=True)
+
+    steps_list = steps_subparsers.add_parser("list", help="List steps data points")
+    steps_list.add_argument(
+        "--days", type=int, default=1, help="Number of days of history to fetch"
+    )
+    steps_list.add_argument(
+        "--limit", type=int, default=10, help="Maximum number of records to fetch"
+    )
+    steps_list.add_argument(
+        "--page-token",
+        type=str,
+        default=None,
+        help="Token for the next page of results",
+    )
+    steps_list.add_argument(
+        "--all",
+        action="store_true",
+        help="Auto-paginate and print all entries in NDJSON format",
+    )
+
+    steps_get = steps_subparsers.add_parser("get", help="Get a step count data point")
+    steps_get.add_argument("data_point_id", type=str, help="The data point identifier")
+
+    steps_subparsers.add_parser("create", help="Create a new step count data point")
+
+    steps_patch = steps_subparsers.add_parser(
+        "patch", help="Update/patch an existing step count data point"
+    )
+    steps_patch.add_argument(
+        "data_point_id", type=str, help="The data point identifier"
+    )
+
+    steps_delete = steps_subparsers.add_parser(
+        "delete", help="Delete a step count data point"
+    )
+    steps_delete.add_argument(
+        "data_point_id", type=str, help="The data point identifier"
+    )
+
+    # heart-rate commands
+    hr_parser = subparsers.add_parser("heart-rate", help="Manage heart rate data")
+    hr_subparsers = hr_parser.add_subparsers(dest="subcommand", required=True)
+
+    hr_list = hr_subparsers.add_parser("list", help="List heart rate data points")
+    hr_list.add_argument(
+        "--days", type=int, default=1, help="Number of days of history to fetch"
+    )
+    hr_list.add_argument(
+        "--limit", type=int, default=10, help="Maximum number of records to fetch"
+    )
+    hr_list.add_argument(
+        "--page-token",
+        type=str,
+        default=None,
+        help="Token for the next page of results",
+    )
+    hr_list.add_argument(
+        "--all",
+        action="store_true",
+        help="Auto-paginate and print all entries in NDJSON format",
+    )
+
+    hr_get = hr_subparsers.add_parser("get", help="Get a heart rate data point")
+    hr_get.add_argument("data_point_id", type=str, help="The data point identifier")
+
+    hr_subparsers.add_parser("create", help="Create a new heart rate data point")
+
+    hr_patch = hr_subparsers.add_parser(
+        "patch", help="Update/patch an existing heart rate data point"
+    )
+    hr_patch.add_argument("data_point_id", type=str, help="The data point identifier")
+
+    hr_delete = hr_subparsers.add_parser(
+        "delete", help="Delete a heart rate data point"
+    )
+    hr_delete.add_argument("data_point_id", type=str, help="The data point identifier")
+
+    # profile commands
+    profile_parser = subparsers.add_parser(
+        "profile", help="Manage user profile details"
+    )
+    profile_subparsers = profile_parser.add_subparsers(dest="subcommand", required=True)
+    profile_subparsers.add_parser("get", help="Get user profile details")
+    profile_update = profile_subparsers.add_parser(
+        "update", help="Update user profile details"
+    )
+    profile_update.add_argument(
+        "--update-mask",
+        type=str,
+        default=None,
+        help="Comma-separated fields update mask",
+    )
+
+    # settings commands
+    settings_parser = subparsers.add_parser("settings", help="Manage user settings")
+    settings_subparsers = settings_parser.add_subparsers(
+        dest="subcommand", required=True
+    )
+    settings_subparsers.add_parser("get", help="Get user settings")
+    settings_update = settings_subparsers.add_parser(
+        "update", help="Update user settings"
+    )
+    settings_update.add_argument(
+        "--update-mask",
+        type=str,
+        default=None,
+        help="Comma-separated fields update mask",
+    )
+
+    # paired devices commands
+    devices_parser = subparsers.add_parser("devices", help="Manage paired devices")
+    devices_subparsers = devices_parser.add_subparsers(dest="subcommand", required=True)
+    devices_list = devices_subparsers.add_parser("list", help="List paired devices")
+    devices_list.add_argument(
+        "--limit", type=int, default=10, help="Maximum number of devices to return"
+    )
+    devices_list.add_argument(
+        "--page-token",
+        type=str,
+        default=None,
+        help="Token for the next page of results",
+    )
+    devices_list.add_argument(
+        "--all",
+        action="store_true",
+        help="Auto-paginate and print all devices in NDJSON format",
+    )
+    devices_get = devices_subparsers.add_parser(
+        "get", help="Get a specific paired device"
+    )
+    devices_get.add_argument("device_id", type=str, help="The paired device ID")
+
+    # identity commands
+    identity_parser = subparsers.add_parser("identity", help="Manage identity mapping")
+    identity_subparsers = identity_parser.add_subparsers(
+        dest="subcommand", required=True
+    )
+    identity_subparsers.add_parser("get", help="Get identity mapping details")
+
+    # irn commands
+    irn_parser = subparsers.add_parser("irn", help="Manage IRN profile")
+    irn_subparsers = irn_parser.add_subparsers(dest="subcommand", required=True)
+    irn_subparsers.add_parser("get", help="Get IRN profile details")
+
+    # subscribers commands
+    subscribers_parser = subparsers.add_parser("subscribers", help="Manage subscribers")
+    subscribers_subparsers = subscribers_parser.add_subparsers(
+        dest="subcommand", required=True
+    )
+
+    subscribers_list = subscribers_subparsers.add_parser(
+        "list", help="List subscribers under a project"
+    )
+    subscribers_list.add_argument(
+        "--project",
+        type=str,
+        default="me",
+        help="Google Cloud project ID (default: me)",
+    )
+    subscribers_list.add_argument(
+        "--limit", type=int, default=10, help="Maximum number of subscribers to return"
+    )
+    subscribers_list.add_argument(
+        "--page-token",
+        type=str,
+        default=None,
+        help="Token for the next page of results",
+    )
+    subscribers_list.add_argument(
+        "--all",
+        action="store_true",
+        help="Auto-paginate and print all subscribers in NDJSON format",
+    )
+
+    subscribers_create = subscribers_subparsers.add_parser(
+        "create", help="Create a subscriber endpoint"
+    )
+    subscribers_create.add_argument(
+        "--project", type=str, default="me", help="Google Cloud project ID"
+    )
+    subscribers_create.add_argument(
+        "--endpoint-uri", type=str, help="Webhook notifications destination URL"
+    )
+    subscribers_create.add_argument(
+        "--endpoint-secret", type=str, help="Endpoint webhook authorization secret"
+    )
+    subscribers_create.add_argument(
+        "--subscriber-id", type=str, help="Optional user-provided subscriber ID"
+    )
+
+    subscribers_patch = subscribers_subparsers.add_parser(
+        "patch", help="Update a subscriber endpoint config"
+    )
+    subscribers_patch.add_argument(
+        "name", type=str, help="The subscriber resource name"
+    )
+    subscribers_patch.add_argument(
+        "--update-mask",
+        type=str,
+        default=None,
+        help="Comma-separated fields update mask",
+    )
+
+    subscribers_delete = subscribers_subparsers.add_parser(
+        "delete", help="Delete a subscriber registration"
+    )
+    subscribers_delete.add_argument(
+        "name", type=str, help="The subscriber resource name"
+    )
+    subscribers_delete.add_argument(
+        "--force",
+        action="store_true",
+        help="Force deletion of child subscriptions as well",
+    )
+
+    # subscriptions commands
+    subscriptions_parser = subparsers.add_parser(
+        "subscriptions", help="Manage subscriptions"
+    )
+    subscriptions_subparsers = subscriptions_parser.add_subparsers(
+        dest="subcommand", required=True
+    )
+
+    subscriptions_list = subscriptions_subparsers.add_parser(
+        "list", help="List subscriptions"
+    )
+    subscriptions_list.add_argument(
+        "--parent-subscriber",
+        type=str,
+        required=True,
+        help="Full subscriber resource name parent",
+    )
+    subscriptions_list.add_argument(
+        "--filter", type=str, default=None, help="AIP-160 compatible filter expression"
+    )
+    subscriptions_list.add_argument(
+        "--limit",
+        type=int,
+        default=10,
+        help="Maximum number of subscriptions to return",
+    )
+    subscriptions_list.add_argument(
+        "--page-token",
+        type=str,
+        default=None,
+        help="Token for the next page of results",
+    )
+    subscriptions_list.add_argument(
+        "--all",
+        action="store_true",
+        help="Auto-paginate and print all subscriptions in NDJSON format",
+    )
+
+    subscriptions_create = subscriptions_subparsers.add_parser(
+        "create", help="Create a user subscription"
+    )
+    subscriptions_create.add_argument(
+        "--parent-subscriber",
+        type=str,
+        required=True,
+        help="Parent subscriber resource name",
+    )
+    subscriptions_create.add_argument(
+        "--user", type=str, help="The target user path (e.g. users/me)"
+    )
+    subscriptions_create.add_argument(
+        "--data-types",
+        type=str,
+        nargs="+",
+        help="Data types list (e.g. steps heart-rate)",
+    )
+    subscriptions_create.add_argument(
+        "--subscription-id", type=str, help="Optional user-provided subscription ID"
+    )
+
+    subscriptions_patch = subscriptions_subparsers.add_parser(
+        "patch", help="Update a subscription's data types"
+    )
+    subscriptions_patch.add_argument(
+        "name", type=str, help="The subscription resource name"
+    )
+    subscriptions_patch.add_argument(
+        "--update-mask",
+        type=str,
+        default=None,
+        help="Comma-separated fields update mask",
+    )
+
+    subscriptions_delete = subscriptions_subparsers.add_parser(
+        "delete", help="Delete a user subscription"
+    )
+    subscriptions_delete.add_argument(
+        "name", type=str, help="The subscription resource name"
+    )
+
+    args = parser.parse_args()
+
+    if args.command == "login":
+        cmd_login(args)
+    elif args.command == "schema":
+        cmd_schema(args)
+    else:
+        asyncio.run(async_run_cmd(args))
+
+
+if __name__ == "__main__":
+    main()

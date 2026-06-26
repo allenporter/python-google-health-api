@@ -20,5 +20,8 @@ dependencies = [
 [project.urls]
 Source = "https://github.com/allenporter/python-google-health-api"
 
+[project.scripts]
+google-health-cli = "google_health_api.cli.main:main"
+
 [tool.setuptools.packages.find]
 include = ["google_health_api*"]
