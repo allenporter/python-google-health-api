@@ -50,9 +50,20 @@ def load_credentials():
     """Load credentials from local token file."""
     if not os.path.exists(TOKEN_FILE):
         return None
+    import json
     from google.oauth2.credentials import Credentials
 
-    return Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+    with open(TOKEN_FILE, "r") as f:
+        data = json.load(f)
+
+    return Credentials(
+        token=data.get("token"),
+        refresh_token=data.get("refresh_token"),
+        token_uri=data.get("token_uri"),
+        client_id=data.get("client_id"),
+        client_secret=data.get("client_secret"),
+        scopes=SCOPES,
+    )
 
 
 def save_credentials(credentials):
@@ -97,6 +108,7 @@ def cmd_login(args) -> None:
         )
         authorization_url, _ = flow.authorization_url(
             access_type="offline",
+            prompt="consent",
             include_granted_scopes="true",
         )
         print("\nWeb-based authentication flow:")
