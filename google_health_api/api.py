@@ -183,7 +183,7 @@ class DataPointSubApi(Generic[T]):
             user: User ID or literal 'me'.
         """
         payload: dict[str, Any] = {
-            "data": {self._data_type.field_name: data_point.data.to_dict()},
+            self._data_type.field_name: data_point.data.to_dict(),
         }
         if data_point.name:
             payload["name"] = data_point.name
@@ -208,7 +208,7 @@ class DataPointSubApi(Generic[T]):
             user: User ID or literal 'me'.
         """
         payload: dict[str, Any] = {
-            "data": {self._data_type.field_name: data_point.data.to_dict()},
+            self._data_type.field_name: data_point.data.to_dict(),
         }
         if data_point.name:
             payload["name"] = data_point.name

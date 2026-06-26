@@ -12,7 +12,7 @@ import aiohttp
 from google_health_api.api import GoogleHealthApi
 from google_health_api.auth import AbstractAuth
 from google_health_api.model import DataPoint, DataSource
-from google_health_api.model.activity import Steps
+from google_health_api.model.activity import ObservationTimeInterval, Steps
 from google_health_api.exceptions import HealthApiException
 
 
@@ -68,7 +68,10 @@ async def verify_steps(api: GoogleHealthApi) -> None:
         .replace("+00:00", "Z")
     )
 
-    steps_payload = Steps(count=120, start_time=now_str, end_time=future_str)
+    steps_payload = Steps(
+        count=120,
+        interval=ObservationTimeInterval(start_time=now_str, end_time=future_str),
+    )
 
     # The API naming convention for new data points requires it to be under the user's namespace:
     # "users/me/dataTypes/steps/dataPoints/<unique-id>"

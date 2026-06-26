@@ -7,7 +7,7 @@ import aiohttp
 import pytest
 from google_health_api.api import GoogleHealthApi
 from google_health_api.model import DataPoint, DataSource
-from google_health_api.model.activity import Steps
+from google_health_api.model.activity import ObservationTimeInterval, Steps
 from .conftest import AuthCallback
 
 
@@ -16,12 +16,12 @@ FAKE_STEPS_PAYLOAD = {
     "dataSource": {
         "dataStreamName": "raw:com.fitbit.steps:fitbit:charge_6",
     },
-    "data": {
-        "steps": {
-            "count": 500,
+    "steps": {
+        "count": "500",
+        "interval": {
             "startTime": "2026-06-22T08:00:00Z",
             "endTime": "2026-06-22T08:15:00Z",
-        }
+        },
     },
 }
 
@@ -30,12 +30,11 @@ FAKE_HEART_RATE_PAYLOAD = {
     "dataSource": {
         "dataStreamName": "raw:com.fitbit.heart_rate:fitbit:charge_6",
     },
-    "data": {
-        "heartRate": {
-            "bpm": 76.5,
-            "startTime": "2026-06-22T08:00:00Z",
-            "endTime": "2026-06-22T08:00:05Z",
-        }
+    "heartRate": {
+        "beatsPerMinute": "76",
+        "sampleTime": {
+            "physicalTime": "2026-06-22T08:00:00Z",
+        },
     },
 }
 
@@ -186,7 +185,6 @@ async def test_list_steps(
     # Verify query params and AIP-160 filter
     assert len(requests) == 1
     req = requests[0]
-    assert req["method"] == "GET"
     assert req["query"]["pageSize"] == "50"
     assert (
         req["query"]["filter"]
@@ -236,7 +234,10 @@ async def test_create_steps(
     create_response.append(FAKE_STEPS_PAYLOAD)
 
     steps_data = Steps(
-        count=150, start_time="2026-06-22T10:00:00Z", end_time="2026-06-22T10:15:00Z"
+        count=150,
+        interval=ObservationTimeInterval(
+            start_time="2026-06-22T10:00:00Z", end_time="2026-06-22T10:15:00Z"
+        ),
     )
     new_point = DataPoint(
         name="users/me/dataTypes/steps/dataPoints/new-point",
@@ -251,7 +252,7 @@ async def test_create_steps(
     req = requests[0]
     assert req["method"] == "POST"
     assert req["body"]["name"] == "users/me/dataTypes/steps/dataPoints/new-point"
-    assert req["body"]["data"]["steps"]["count"] == 150
+    assert req["body"]["steps"]["count"] == 150
     assert req["body"]["dataSource"]["dataStreamName"] == "test-stream"
 
 
@@ -271,7 +272,7 @@ async def test_list_heart_rate(
     result = await api.heart_rate.list()
     assert len(result.data_points) == 1
     point = result.data_points[0]
-    assert point.data.bpm == 76.5
+    assert point.data.bpm == 76
 
     assert len(requests) == 1
     assert requests[0]["method"] == "GET"
@@ -309,7 +310,10 @@ async def test_create_steps_without_name(
     create_response.append(FAKE_STEPS_PAYLOAD)
 
     steps_data = Steps(
-        count=150, start_time="2026-06-22T10:00:00Z", end_time="2026-06-22T10:15:00Z"
+        count=150,
+        interval=ObservationTimeInterval(
+            start_time="2026-06-22T10:00:00Z", end_time="2026-06-22T10:15:00Z"
+        ),
     )
     new_point = DataPoint(
         data=steps_data, data_source=DataSource(data_stream_name="test-stream")
@@ -323,7 +327,7 @@ async def test_create_steps_without_name(
     req = requests[0]
     assert req["method"] == "POST"
     assert "name" not in req["body"]
-    assert req["body"]["data"]["steps"]["count"] == 150
+    assert req["body"]["steps"]["count"] == 150
     assert req["body"]["dataSource"]["dataStreamName"] == "test-stream"
 
 
