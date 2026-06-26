@@ -108,6 +108,17 @@ def load_credentials_or_env():
     with open(TOKEN_FILE, "r") as f:
         data = json.load(f)
 
+    expiry_str = data.get("expiry")
+    expiry = None
+    if expiry_str:
+        if expiry_str.endswith("Z"):
+            expiry = datetime.fromisoformat(expiry_str[:-1])
+        else:
+            dt = datetime.fromisoformat(expiry_str)
+            if dt.tzinfo is not None:
+                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+            expiry = dt
+
     creds = Credentials(
         token=data.get("token"),
         refresh_token=data.get("refresh_token"),
@@ -115,6 +126,7 @@ def load_credentials_or_env():
         client_id=data.get("client_id"),
         client_secret=data.get("client_secret"),
         scopes=SCOPES,
+        expiry=expiry,
     )
     return ("file", creds)
 
@@ -283,6 +295,11 @@ async def setup_client(session: aiohttp.ClientSession) -> GoogleHealthApi:
     # Update nested api classes with the new session
     api.steps._session = api._session
     api.heart_rate._session = api._session
+    api.sleep._session = api._session
+    api.distance._session = api._session
+    api.basal_energy_burned._session = api._session
+    api.vo2_max._session = api._session
+    api.weight._session = api._session
     api.paired_devices._session = api._session
     api.subscribers._session = api._session
     api.subscribers.subscriptions._session = api._session
