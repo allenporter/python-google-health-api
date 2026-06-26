@@ -7,6 +7,7 @@ import aiohttp
 
 from google_health_api.api import GoogleHealthApi
 from google_health_api.auth import AbstractAuth
+from google_health_api.const import HealthApiScope
 from google_health_api.exceptions import HealthApiException
 
 
@@ -27,10 +28,10 @@ class ServiceAccountAuth(AbstractAuth):
 
         if scopes is None:
             scopes = [
-                "https://www.googleapis.com/auth/health.steps.read",
-                "https://www.googleapis.com/auth/health.steps.write",
-                "https://www.googleapis.com/auth/health.heart-rate.read",
-                "https://www.googleapis.com/auth/health.heart-rate.write",
+                HealthApiScope.ACTIVITY_READ,
+                HealthApiScope.ACTIVITY_WRITE,
+                HealthApiScope.MEASUREMENTS_READ,
+                HealthApiScope.MEASUREMENTS_WRITE,
             ]
 
         self._credentials = service_account.Credentials.from_service_account_file(

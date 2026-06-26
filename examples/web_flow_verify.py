@@ -10,6 +10,7 @@ import aiohttp
 
 from google_health_api.api import GoogleHealthApi
 from google_health_api.auth import AbstractAuth
+from google_health_api.const import HealthApiScope
 from google_health_api.exceptions import HealthApiException
 
 
@@ -51,8 +52,8 @@ async def main() -> None:
 
     # Scopes needed for read access to Steps and Heart Rate
     scopes = [
-        "https://www.googleapis.com/auth/health.steps.read",
-        "https://www.googleapis.com/auth/health.heart-rate.read",
+        HealthApiScope.ACTIVITY_READ,
+        HealthApiScope.MEASUREMENTS_READ,
     ]
 
     try:
