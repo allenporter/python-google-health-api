@@ -184,4 +184,4 @@ class Sleep(DataClassDictMixin):
         serialize_by_alias = True
 
 
-SLEEP = DataType("sleep", "sleep", Sleep, "sleep.interval.start_time")
+SLEEP = DataType("sleep", "sleep", Sleep, "sleep.interval.end_time")

@@ -408,7 +408,7 @@ async def test_sleep_crud(
     assert len(requests) == 1
     assert (
         requests[0]["query"]["filter"]
-        == 'sleep.interval.start_time >= "2026-06-22T22:00:00Z" AND sleep.interval.start_time < "2026-06-23T06:00:00Z"'
+        == 'sleep.interval.end_time >= "2026-06-22T22:00:00Z" AND sleep.interval.end_time < "2026-06-23T06:00:00Z"'
     )
 
     # 2. Get
