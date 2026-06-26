@@ -1,16 +1,49 @@
 """Data models for Google Health API."""
 
 from .activity import (
+    ACTIVE_ENERGY_BURNED,
     BASAL_ENERGY_BURNED,
     DISTANCE,
+    FLOORS,
+    STEPS,
+    TOTAL_CALORIES,
+    ActiveEnergyBurned,
+    ActiveEnergyBurnedRollupValue,
     BasalEnergyBurned,
     Distance,
-    STEPS,
+    DistanceRollupValue,
+    Floors,
+    FloorsRollupValue,
     Steps,
+    StepsRollupValue,
+    TotalCaloriesRollupValue,
 )
-from .base import DataPoint, DataSource, DataType, ReconciledDataPoint
+from .base import (
+    DailyRollupDataPoint,
+    DataPoint,
+    DataSource,
+    DataType,
+    ReconciledDataPoint,
+)
 from .device import ListPairedDevicesResult, PairedDevice, _ListPairedDevicesModel
-from .health_metric import HEART_RATE, VO2_MAX, WEIGHT, HeartRate, VO2Max, Weight
+from .health_metric import (
+    DAILY_RESTING_HEART_RATE,
+    HEART_RATE,
+    VO2_MAX,
+    WEIGHT,
+    DailyRestingHeartRate,
+    DailyRestingHeartRateMetadata,
+    HeartRate,
+    VO2Max,
+    Weight,
+)
+from .hydration import (
+    HYDRATION_LOG,
+    HydrationLog,
+    HydrationLogRollupValue,
+    VolumeQuantity,
+    VolumeQuantityRollup,
+)
 from .pagination import (
     ListDataPointResult,
     ListReconciledDataPointsResult,
@@ -23,6 +56,8 @@ from .settings import Settings
 from .sleep import (
     SLEEP,
     CivilDateTime,
+    CivilTimeInterval,
+    DailyRollUpDataPointsRequest,
     OutOfBedSegment,
     SessionTimeInterval,
     Sleep,
@@ -49,6 +84,7 @@ __all__ = [
     "DataPoint",
     "ReconciledDataPoint",
     "DataSource",
+    "DailyRollupDataPoint",
     # --- Activity Models ---
     "Steps",
     "STEPS",
@@ -56,6 +92,16 @@ __all__ = [
     "DISTANCE",
     "BasalEnergyBurned",
     "BASAL_ENERGY_BURNED",
+    "ActiveEnergyBurned",
+    "ACTIVE_ENERGY_BURNED",
+    "TOTAL_CALORIES",
+    "StepsRollupValue",
+    "DistanceRollupValue",
+    "ActiveEnergyBurnedRollupValue",
+    "TotalCaloriesRollupValue",
+    "Floors",
+    "FLOORS",
+    "FloorsRollupValue",
     # --- Health Metric Models ---
     "HeartRate",
     "HEART_RATE",
@@ -63,11 +109,22 @@ __all__ = [
     "VO2_MAX",
     "Weight",
     "WEIGHT",
+    "DailyRestingHeartRate",
+    "DAILY_RESTING_HEART_RATE",
+    "DailyRestingHeartRateMetadata",
     # --- Sleep Models ---
     "Sleep",
     "SLEEP",
+    # --- Hydration Models ---
+    "HydrationLog",
+    "HYDRATION_LOG",
+    "HydrationLogRollupValue",
+    "VolumeQuantity",
+    "VolumeQuantityRollup",
     "SessionTimeInterval",
     "CivilDateTime",
+    "CivilTimeInterval",
+    "DailyRollUpDataPointsRequest",
     "TimeOfDay",
     "SleepStage",
     "OutOfBedSegment",

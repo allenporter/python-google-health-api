@@ -46,9 +46,6 @@ class Steps(DataClassDictMixin):
         serialize_by_alias = True
 
 
-STEPS = DataType("steps", "steps", Steps, "steps.interval.start_time")
-
-
 @dataclass
 class Distance(DataClassDictMixin):
     """Distance traveled over an interval of time."""
@@ -68,9 +65,6 @@ class Distance(DataClassDictMixin):
 
     class Config(BaseConfig):
         serialize_by_alias = True
-
-
-DISTANCE = DataType("distance", "distance", Distance, "distance.interval.start_time")
 
 
 @dataclass
@@ -94,9 +88,156 @@ class BasalEnergyBurned(DataClassDictMixin):
         serialize_by_alias = True
 
 
+@dataclass
+class StepsRollupValue(DataClassDictMixin):
+    """Represents the result of the rollup of the steps data type."""
+
+    count_sum: int = field(metadata=field_options(alias="countSum"))
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+@dataclass
+class DistanceRollupValue(DataClassDictMixin):
+    """Result of the rollup of the user's distance."""
+
+    millimeters_sum: int = field(metadata=field_options(alias="millimetersSum"))
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+@dataclass
+class ActiveEnergyBurnedRollupValue(DataClassDictMixin):
+    """Represents the result of the rollup of active energy burned."""
+
+    kcal_sum: float = field(metadata=field_options(alias="kcalSum"))
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+@dataclass
+class TotalCaloriesRollupValue(DataClassDictMixin):
+    """Represents the result of the rollup of the user's total calories."""
+
+    kcal_sum: float = field(metadata=field_options(alias="kcalSum"))
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+@dataclass
+class ActiveEnergyBurned(DataClassDictMixin):
+    """Energy burned as part of an activity, excluding the basal energy burn."""
+
+    kcal: float
+    interval: ObservationTimeInterval
+
+    @property
+    def start_time(self) -> str:
+        """Return the start time of the interval."""
+        return self.interval.start_time
+
+    @property
+    def end_time(self) -> str:
+        """Return the end time of the interval."""
+        return self.interval.end_time
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+@dataclass
+class FloorsRollupValue(DataClassDictMixin):
+    """Represents the rollup of floors count."""
+
+    count_sum: int = field(metadata=field_options(alias="countSum"))
+
+    @property
+    def floors_sum(self) -> int:
+        """Return sum of floors (compatibility helper)."""
+        return self.count_sum
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+@dataclass
+class Floors(DataClassDictMixin):
+    """Gained elevation measured in floors over a time interval."""
+
+    count: int
+    interval: ObservationTimeInterval
+
+    @property
+    def floors(self) -> int:
+        """Return floors count (compatibility helper)."""
+        return self.count
+
+    @property
+    def start_time(self) -> str:
+        """Return the start time of the interval."""
+        return self.interval.start_time
+
+    @property
+    def end_time(self) -> str:
+        """Return the end time of the interval."""
+        return self.interval.end_time
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+STEPS = DataType(
+    "steps",
+    "steps",
+    Steps,
+    "steps.interval.start_time",
+    StepsRollupValue,
+)
+
+
+DISTANCE = DataType(
+    "distance",
+    "distance",
+    Distance,
+    "distance.interval.start_time",
+    DistanceRollupValue,
+)
+
+
 BASAL_ENERGY_BURNED = DataType(
     "basal-energy-burned",
     "basalEnergyBurned",
     BasalEnergyBurned,
     "basal_energy_burned.interval.start_time",
+)
+
+
+ACTIVE_ENERGY_BURNED = DataType(
+    "active-energy-burned",
+    "activeEnergyBurned",
+    ActiveEnergyBurned,
+    "active_energy_burned.interval.start_time",
+    ActiveEnergyBurnedRollupValue,
+)
+
+
+TOTAL_CALORIES = DataType(
+    "total-calories",
+    "totalCalories",
+    None,  # Rollup only data type
+    "",
+    TotalCaloriesRollupValue,
+)
+
+
+FLOORS = DataType(
+    "floors",
+    "floors",
+    Floors,
+    "floors.interval.start_time",
+    FloorsRollupValue,
 )

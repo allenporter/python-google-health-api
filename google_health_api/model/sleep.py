@@ -28,6 +28,50 @@ class CivilDateTime(DataClassDictMixin):
     date: Date | None = None
     time: TimeOfDay | None = None
 
+    def __post_init__(self) -> None:
+        """Clear time if it contains only nulls."""
+        if self.time and (
+            self.time.hours is None
+            and self.time.minutes is None
+            and self.time.seconds is None
+            and self.time.nanos is None
+        ):
+            self.time = None
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+        omit_none = True
+
+
+@dataclass
+class CivilTimeInterval(DataClassDictMixin):
+    """Counterpart of google.type.Interval, but using CivilDateTime."""
+
+    start: CivilDateTime
+    end: CivilDateTime
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+@dataclass
+class DailyRollUpDataPointsRequest(DataClassDictMixin):
+    """Request to roll up data points by civil time intervals."""
+
+    range: CivilTimeInterval
+    window_size_days: int | None = field(
+        metadata=field_options(alias="windowSizeDays"), default=None
+    )
+    page_size: int | None = field(
+        metadata=field_options(alias="pageSize"), default=None
+    )
+    data_source_family: str | None = field(
+        metadata=field_options(alias="dataSourceFamily"), default=None
+    )
+    page_token: str | None = field(
+        metadata=field_options(alias="pageToken"), default=None
+    )
+
     class Config(BaseConfig):
         serialize_by_alias = True
 

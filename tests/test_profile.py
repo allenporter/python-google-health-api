@@ -328,6 +328,7 @@ async def test_get_paired_device(
 
     device = await api.paired_devices.get("device-123")
     assert device.name == "users/me/pairedDevices/device-123"
+    assert device.device_id == "device-123"
     assert device.device_version == "Charge 6"
 
     assert len(requests) == 1

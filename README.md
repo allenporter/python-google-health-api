@@ -19,8 +19,13 @@ Currently supported data types:
 * **Sleep** (`api.sleep`)
 * **Distance** (`api.distance`)
 * **Basal Energy Burned** (`api.basal_energy_burned`)
+* **Active Energy Burned** (`api.active_energy_burned`)
+* **Total Calories** (`api.total_calories`)
 * **VO2 Max** (`api.vo2_max`)
 * **Weight** (`api.weight`)
+* **Floors** (`api.floors`)
+* **Hydration Log (Water)** (`api.hydration_log`)
+* **Daily Resting Heart Rate** (`api.daily_resting_heart_rate`)
 
 
 ## Installation
@@ -141,17 +146,3 @@ The package installs a real binary executable `google-health-cli` designed with 
   export GOOGLE_HEALTH_CLI_TOKEN="YOUR_OAUTH_TOKEN"
   google-health-cli profile get
   ```
-
-## Development and Testing
-
-Verify code quality and type safety:
-
-```bash
-./script/lint
-```
-
-Run mock tests:
-
-```bash
-./script/test
-```

@@ -18,7 +18,7 @@ Example usage:
 """
 
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone, timedelta, tzinfo
 from typing import Any, Generic, List, TypeVar
 
 from mashumaro import DataClassDictMixin
@@ -26,18 +26,32 @@ from mashumaro import DataClassDictMixin
 from .auth import AbstractAuth
 from .client import GoogleHealthSession
 from .model import (
+    ACTIVE_ENERGY_BURNED,
     BASAL_ENERGY_BURNED,
+    DAILY_RESTING_HEART_RATE,
     DISTANCE,
+    FLOORS,
     HEART_RATE,
+    HYDRATION_LOG,
     SLEEP,
     STEPS,
+    TOTAL_CALORIES,
     VO2_MAX,
     WEIGHT,
+    ActiveEnergyBurned,
     BasalEnergyBurned,
+    CivilDateTime,
+    CivilTimeInterval,
+    DailyRollUpDataPointsRequest,
+    DailyRollupDataPoint,
+    DailyRestingHeartRate,
     DataPoint,
     DataType,
+    Date,
     Distance,
+    Floors,
     HeartRate,
+    HydrationLog,
     Identity,
     IrnProfile,
     ListPairedDevicesResult,
@@ -276,6 +290,118 @@ class DataPointSubApi(Generic[T]):
             f"v4/users/{user}/dataTypes/{self._data_type.key}/dataPoints:batchDelete",
             json=payload,
         )
+
+    async def daily_rollup(
+        self,
+        start_date: date,
+        end_date: date,
+        window_size_days: int = 1,
+        user: str = "me",
+    ) -> List[DailyRollupDataPoint[Any]]:
+        """Fetch daily rollup values for this data type.
+
+        Args:
+            start_date: Start date of rollup (inclusive).
+            end_date: End date of rollup (exclusive).
+            window_size_days: Size of aggregation window.
+            user: User ID or 'me'.
+        """
+        rollup_cls = self._data_type.rollup_cls
+        if not rollup_cls:
+            raise TypeError(
+                f"DataType {self._data_type.key} does not support daily rollups."
+            )
+
+        start_dt = CivilDateTime(
+            date=Date(year=start_date.year, month=start_date.month, day=start_date.day)
+        )
+        end_dt = CivilDateTime(
+            date=Date(year=end_date.year, month=end_date.month, day=end_date.day)
+        )
+        interval = CivilTimeInterval(start=start_dt, end=end_dt)
+        request_obj = DailyRollUpDataPointsRequest(
+            range=interval,
+            window_size_days=window_size_days,
+        )
+
+        resp = await self._session.post(
+            f"v4/users/{user}/dataTypes/{self._data_type.key}/dataPoints:dailyRollUp",
+            json=request_obj.to_dict(),
+        )
+        raw_json = await resp.json()
+        rollup_points = [
+            DailyRollupDataPoint.from_api_dict(
+                rollup_cls,
+                self._data_type.field_name,
+                item,
+            )
+            for item in raw_json.get("rollupDataPoints", [])
+        ]
+        return rollup_points
+
+    async def today(
+        self,
+        time_zone: tzinfo | str | None = None,
+        user: str = "me",
+    ) -> DailyRollupDataPoint[Any] | None:
+        """Fetch today's rollup value for this data type.
+
+        If time_zone is not provided, it will fetch the user's timezone from settings.
+        """
+        if not time_zone:
+            resp = await self._session.get(f"v4/users/{user}/settings")
+            raw_json = await resp.json()
+            time_zone = raw_json.get("timeZone", "UTC")
+
+        if isinstance(time_zone, str):
+            from zoneinfo import ZoneInfo
+
+            resolved_tz = ZoneInfo(time_zone)
+        else:
+            resolved_tz = time_zone
+
+        now_local = datetime.now(resolved_tz)
+        current_date = now_local.date()
+        next_date = current_date + timedelta(days=1)
+
+        rollups = await self.daily_rollup(
+            start_date=current_date,
+            end_date=next_date,
+            user=user,
+        )
+        return rollups[0] if rollups else None
+
+    async def yesterday(
+        self,
+        time_zone: tzinfo | str | None = None,
+        user: str = "me",
+    ) -> DailyRollupDataPoint[Any] | None:
+        """Fetch yesterday's rollup value for this data type.
+
+        If time_zone is not provided, it will fetch the user's timezone from settings.
+        """
+        if not time_zone:
+            resp = await self._session.get(f"v4/users/{user}/settings")
+            raw_json = await resp.json()
+            time_zone = raw_json.get("timeZone", "UTC")
+
+        if isinstance(time_zone, str):
+            from zoneinfo import ZoneInfo
+
+            resolved_tz = ZoneInfo(time_zone)
+        else:
+            resolved_tz = time_zone
+
+        now_local = datetime.now(resolved_tz)
+        current_date = now_local.date()
+        yesterday_date = current_date - timedelta(days=1)
+
+        rollups = await self.daily_rollup(
+            start_date=yesterday_date,
+            end_date=current_date,
+            user=user,
+        )
+        return rollups[0] if rollups else None
 
 
 class PairedDevicesSubApi:
@@ -614,6 +740,21 @@ class GoogleHealthApi:
     weight: DataPointSubApi[Weight]
     """Namespaced client for Body weight data (`Weight` model)."""
 
+    active_energy_burned: DataPointSubApi[ActiveEnergyBurned]
+    """Namespaced client for Active energy burned data (`ActiveEnergyBurned` model)."""
+
+    total_calories: DataPointSubApi[Any]
+    """Namespaced client for Total calories rollup data."""
+
+    floors: DataPointSubApi[Floors]
+    """Namespaced client for Floors elevation data (`Floors` model)."""
+
+    hydration_log: DataPointSubApi[HydrationLog]
+    """Namespaced client for Hydration log data (`HydrationLog` model)."""
+
+    daily_resting_heart_rate: DataPointSubApi[DailyRestingHeartRate]
+    """Namespaced client for Daily resting heart rate data (`DailyRestingHeartRate` model)."""
+
     paired_devices: PairedDevicesSubApi
     """Namespaced client for managing user's paired devices."""
 
@@ -630,6 +771,13 @@ class GoogleHealthApi:
         self.basal_energy_burned = DataPointSubApi(self._session, BASAL_ENERGY_BURNED)
         self.vo2_max = DataPointSubApi(self._session, VO2_MAX)
         self.weight = DataPointSubApi(self._session, WEIGHT)
+        self.active_energy_burned = DataPointSubApi(self._session, ACTIVE_ENERGY_BURNED)
+        self.total_calories = DataPointSubApi(self._session, TOTAL_CALORIES)
+        self.floors = DataPointSubApi(self._session, FLOORS)
+        self.hydration_log = DataPointSubApi(self._session, HYDRATION_LOG)
+        self.daily_resting_heart_rate = DataPointSubApi(
+            self._session, DAILY_RESTING_HEART_RATE
+        )
         self.paired_devices = PairedDevicesSubApi(self._session)
         self.subscribers = SubscribersSubApi(self._session)
 

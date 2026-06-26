@@ -306,6 +306,11 @@ async def setup_client(session: aiohttp.ClientSession) -> GoogleHealthApi:
     api.basal_energy_burned._session = api._session
     api.vo2_max._session = api._session
     api.weight._session = api._session
+    api.active_energy_burned._session = api._session
+    api.total_calories._session = api._session
+    api.floors._session = api._session
+    api.hydration_log._session = api._session
+    api.daily_resting_heart_rate._session = api._session
     api.paired_devices._session = api._session
     api.subscribers._session = api._session
     api.subscribers.subscriptions._session = api._session
@@ -404,6 +409,53 @@ async def handle_datatype_cmd(
         else:
             print_json(serialize_response(result, field_name), pretty)
 
+    elif sub == "rollup":
+        from datetime import date
+
+        if args.start_date:
+            start_date = date.fromisoformat(args.start_date)
+            end_date = (
+                date.fromisoformat(args.end_date)
+                if args.end_date
+                else start_date + timedelta(days=1)
+            )
+        else:
+            timezone_str = args.timezone
+            if not timezone_str:
+                settings = await api.get_settings()
+                timezone_str = settings.time_zone or "UTC"
+
+            from zoneinfo import ZoneInfo
+
+            resolved_tz = ZoneInfo(timezone_str)
+            now_local = datetime.now(resolved_tz)
+            today = now_local.date()
+            end_date = today + timedelta(days=1)
+            start_date = end_date - timedelta(days=args.days)
+
+        result = await sub_api.daily_rollup(
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        serialized = {
+            "rollupDataPoints": [
+                {
+                    "civilStartTime": point.civil_start_time.to_dict()
+                    if point.civil_start_time
+                    else None,
+                    "civilEndTime": point.civil_end_time.to_dict()
+                    if point.civil_end_time
+                    else None,
+                    field_name: point.data.to_dict()
+                    if hasattr(point.data, "to_dict")
+                    else point.data,
+                }
+                for point in result
+            ]
+        }
+        print_json(serialized, pretty)
+
     elif sub == "get":
         validate_resource_name(args.data_point_id)
         result = await sub_api.get(data_point_id=args.data_point_id)
@@ -491,6 +543,34 @@ async def handle_basal_energy_burned_cmd(
     )
 
 
+async def handle_active_energy_burned_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle active energy burned subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.active_energy_burned,
+        "activeEnergyBurned",
+        "active-energy-burned",
+        "active energy burned",
+        pretty,
+    )
+
+
+async def handle_total_calories_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle total calories subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.total_calories,
+        "totalCalories",
+        "total-calories",
+        "total calories",
+        pretty,
+    )
+
+
 async def handle_vo2_max_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
     """Handle VO2 max subcommands."""
     await handle_datatype_cmd(
@@ -502,6 +582,41 @@ async def handle_weight_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
     """Handle weight subcommands."""
     await handle_datatype_cmd(
         args, api, api.weight, "weight", "weight", "weight", pretty
+    )
+
+
+async def handle_floors_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle floors subcommands."""
+    await handle_datatype_cmd(
+        args, api, api.floors, "floors", "floors", "floors", pretty
+    )
+
+
+async def handle_hydration_log_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle hydration log subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.hydration_log,
+        "hydrationLog",
+        "hydration-log",
+        "hydration log",
+        pretty,
+    )
+
+
+async def handle_daily_resting_heart_rate_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle daily resting heart rate subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.daily_resting_heart_rate,
+        "dailyRestingHeartRate",
+        "daily-resting-heart-rate",
+        "daily resting heart rate",
+        pretty,
     )
 
 
@@ -820,6 +935,16 @@ async def async_run_cmd(args) -> None:
                 await handle_vo2_max_cmd(args, api, pretty)
             elif cmd == "weight":
                 await handle_weight_cmd(args, api, pretty)
+            elif cmd == "active-energy-burned":
+                await handle_active_energy_burned_cmd(args, api, pretty)
+            elif cmd == "total-calories":
+                await handle_total_calories_cmd(args, api, pretty)
+            elif cmd == "floors":
+                await handle_floors_cmd(args, api, pretty)
+            elif cmd == "hydration-log":
+                await handle_hydration_log_cmd(args, api, pretty)
+            elif cmd == "daily-resting-heart-rate":
+                await handle_daily_resting_heart_rate_cmd(args, api, pretty)
             elif cmd == "profile":
                 await handle_profile_cmd(args, api, pretty)
             elif cmd == "settings":

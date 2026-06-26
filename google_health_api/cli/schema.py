@@ -18,9 +18,13 @@ from google_health_api.model import (
     DataSource,
     Sleep,
     Distance,
+    ActiveEnergyBurned,
     BasalEnergyBurned,
     VO2Max,
     Weight,
+    Floors,
+    HydrationLog,
+    DailyRestingHeartRate,
 )
 
 
@@ -218,6 +222,20 @@ def get_command_schemas() -> dict[str, dict[str, Any]]:
         ),
         ("vo2-max", "vo2Max", VO2Max, "VO2 max"),
         ("weight", "weight", Weight, "weight"),
+        (
+            "active-energy-burned",
+            "activeEnergyBurned",
+            ActiveEnergyBurned,
+            "active energy burned",
+        ),
+        ("floors", "floors", Floors, "floors"),
+        ("hydration-log", "hydrationLog", HydrationLog, "hydration log"),
+        (
+            "daily-resting-heart-rate",
+            "dailyRestingHeartRate",
+            DailyRestingHeartRate,
+            "daily resting heart rate",
+        ),
     ]:
         schemas.update(get_datatype_schemas(cmd_name, field_name, payload_cls, desc))
 

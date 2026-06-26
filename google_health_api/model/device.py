@@ -33,6 +33,11 @@ class PairedDevice(DataClassDictMixin):
         metadata=field_options(alias="deviceVersion"), default=None
     )
 
+    @property
+    def device_id(self) -> str:
+        """Return the device ID parsed from the resource name."""
+        return self.name.split("/")[-1]
+
     class Config(BaseConfig):
         serialize_by_alias = True
 

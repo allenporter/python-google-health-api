@@ -1,20 +1,29 @@
 """Tests for Google Health library API."""
 
 from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 import aiohttp
 import pytest
 from google_health_api.api import GoogleHealthApi
 from google_health_api.model import DataPoint, DataSource
+from google_health_api.model import Date
 from google_health_api.model.activity import (
     ObservationTimeInterval,
     Steps,
     Distance,
     BasalEnergyBurned,
+    Floors,
 )
-from google_health_api.model.health_metric import VO2Max, Weight, ObservationSampleTime
+from google_health_api.model.health_metric import (
+    VO2Max,
+    Weight,
+    ObservationSampleTime,
+    DailyRestingHeartRate,
+    DailyRestingHeartRateMetadata,
+)
 from google_health_api.model.sleep import Sleep, SessionTimeInterval, SleepStage
+from google_health_api.model.hydration import HydrationLog, VolumeQuantity
 from .conftest import AuthCallback
 
 
@@ -127,6 +136,17 @@ async def mock_api(
         requests.append({"method": "POST", "url": str(request.url), "body": body})
         return aiohttp.web.Response(status=200)
 
+    async def daily_rollup_handler(
+        request: aiohttp.web.Request,
+    ) -> aiohttp.web.Response:
+        body = await request.json()
+        requests.append({"method": "POST", "url": str(request.url), "body": body})
+        return aiohttp.web.json_response(list_response.pop(0))
+
+    async def settings_handler(request: aiohttp.web.Request) -> aiohttp.web.Response:
+        requests.append({"method": "GET", "url": str(request.url)})
+        return aiohttp.web.json_response(get_response.pop(0))
+
     auth = await auth_cb(
         [
             ("GET", "v4/users/{user}/dataTypes/{dataType}/dataPoints", list_handler),
@@ -155,6 +175,16 @@ async def mock_api(
                 "POST",
                 "v4/users/{user}/dataTypes/{dataType}/dataPoints:batchDelete",
                 batch_delete_handler,
+            ),
+            (
+                "POST",
+                "v4/users/{user}/dataTypes/{dataType}/dataPoints:dailyRollUp",
+                daily_rollup_handler,
+            ),
+            (
+                "GET",
+                "v4/users/{user}/settings",
+                settings_handler,
             ),
         ]
     )
@@ -286,6 +316,125 @@ async def test_list_heart_rate(
     assert len(requests) == 1
     assert requests[0]["method"] == "GET"
     assert "heart-rate" in requests[0]["url"]
+
+
+# ==========================================
+# Daily Rollup Tests
+# ==========================================
+
+
+async def test_steps_daily_rollup(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test retrieving steps daily rollup."""
+    list_response.append(
+        {
+            "rollupDataPoints": [
+                {
+                    "civilStartTime": {"date": {"year": 2026, "month": 6, "day": 22}},
+                    "civilEndTime": {"date": {"year": 2026, "month": 6, "day": 23}},
+                    "steps": {"countSum": "5000"},
+                }
+            ]
+        }
+    )
+
+    result = await api.steps.daily_rollup(
+        start_date=date(2026, 6, 22),
+        end_date=date(2026, 6, 23),
+    )
+    assert len(result) == 1
+    point = result[0]
+    assert point.data.count_sum == 5000
+    assert point.civil_start_time.date.year == 2026
+    assert point.civil_start_time.date.month == 6
+    assert point.civil_start_time.date.day == 22
+
+    assert len(requests) == 1
+    assert requests[0]["method"] == "POST"
+    assert "steps/dataPoints:dailyRollUp" in requests[0]["url"]
+    assert requests[0]["body"]["range"]["start"]["date"]["day"] == 22
+    assert requests[0]["body"]["range"]["end"]["date"]["day"] == 23
+
+
+async def test_heart_rate_daily_rollup_raises(
+    api: GoogleHealthApi,
+) -> None:
+    """Test daily rollup raises error for unsupported type."""
+    with pytest.raises(TypeError):
+        await api.heart_rate.daily_rollup(
+            start_date=date(2026, 6, 22),
+            end_date=date(2026, 6, 23),
+        )
+
+
+async def test_steps_today(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    get_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test steps today helper."""
+    # Mock settings response for timezone lookup
+    get_response.append(
+        {
+            "name": "users/me/settings",
+            "timeZone": "America/New_York",
+        }
+    )
+    list_response.append(
+        {
+            "rollupDataPoints": [
+                {
+                    "civilStartTime": {"date": {"year": 2026, "month": 6, "day": 22}},
+                    "civilEndTime": {"date": {"year": 2026, "month": 6, "day": 23}},
+                    "steps": {"countSum": "8000"},
+                }
+            ]
+        }
+    )
+
+    result = await api.steps.today()
+    assert result is not None
+    assert result.data.count_sum == 8000
+
+    # Verification: 2 requests (settings GET then rollup POST)
+    assert len(requests) == 2
+    assert requests[0]["method"] == "GET"
+    assert "users/me/settings" in requests[0]["url"]
+    assert requests[1]["method"] == "POST"
+    assert "steps/dataPoints:dailyRollUp" in requests[1]["url"]
+
+
+async def test_steps_yesterday(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test steps yesterday helper."""
+    list_response.append(
+        {
+            "rollupDataPoints": [
+                {
+                    "civilStartTime": {"date": {"year": 2026, "month": 6, "day": 21}},
+                    "civilEndTime": {"date": {"year": 2026, "month": 6, "day": 22}},
+                    "steps": {"countSum": "7500"},
+                }
+            ]
+        }
+    )
+
+    # Call yesterday helper with explicit timezone to skip settings lookup
+    result = await api.steps.yesterday(time_zone="America/New_York")
+    assert result is not None
+    assert result.data.count_sum == 7500
+
+    # Verification: 1 request (direct rollup POST)
+    assert len(requests) == 1
+    assert requests[0]["method"] == "POST"
+    assert "steps/dataPoints:dailyRollUp" in requests[0]["url"]
 
 
 # ==========================================
@@ -575,3 +724,101 @@ async def test_vo2_max_and_weight(
     )
     await api.weight.create(DataPoint(data=new_w))
     assert requests[-1]["body"]["weight"]["weightGrams"] == 75000.0
+
+
+# ==========================================
+# Floors, HydrationLog, and Resting Heart Rate Tests
+# ==========================================
+
+
+async def test_floors_hydration_and_resting_hr(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    create_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test Floors, HydrationLog, and DailyRestingHeartRate clients."""
+
+    # Floors
+    fake_floors_payload = {
+        "name": "users/me/dataTypes/floors/dataPoints/fl-1",
+        "floors": {
+            "count": "3",
+            "interval": {
+                "startTime": "2026-06-22T08:00:00Z",
+                "endTime": "2026-06-22T08:15:00Z",
+            },
+        },
+    }
+    list_response.append({"dataPoints": [fake_floors_payload]})
+    result_fl = await api.floors.list()
+    assert len(result_fl.data_points) == 1
+    assert result_fl.data_points[0].data.count == 3
+    assert result_fl.data_points[0].data.floors == 3
+
+    create_response.append(fake_floors_payload)
+    new_fl = Floors(
+        count=3,
+        interval=ObservationTimeInterval(
+            start_time="2026-06-22T08:00:00Z",
+            end_time="2026-06-22T08:15:00Z",
+        ),
+    )
+    await api.floors.create(DataPoint(data=new_fl))
+    assert requests[-1]["body"]["floors"]["count"] == 3
+
+    # HydrationLog
+    fake_hydration_payload = {
+        "name": "users/me/dataTypes/hydration-log/dataPoints/hy-1",
+        "hydrationLog": {
+            "amountConsumed": {"milliliters": 250.0, "userProvidedUnit": "MILLILITER"},
+            "interval": {
+                "startTime": "2026-06-22T08:00:00Z",
+                "endTime": "2026-06-22T08:05:00Z",
+            },
+        },
+    }
+    list_response.append({"dataPoints": [fake_hydration_payload]})
+    result_hy = await api.hydration_log.list()
+    assert len(result_hy.data_points) == 1
+    assert result_hy.data_points[0].data.amount_consumed.milliliters == 250.0
+
+    create_response.append(fake_hydration_payload)
+    new_hy = HydrationLog(
+        amount_consumed=VolumeQuantity(
+            milliliters=250.0, user_provided_unit="MILLILITER"
+        ),
+        interval=SessionTimeInterval(
+            start_time="2026-06-22T08:00:00Z",
+            end_time="2026-06-22T08:05:00Z",
+        ),
+    )
+    await api.hydration_log.create(DataPoint(data=new_hy))
+    assert (
+        requests[-1]["body"]["hydrationLog"]["amountConsumed"]["milliliters"] == 250.0
+    )
+
+    # DailyRestingHeartRate
+    fake_resting_payload = {
+        "name": "users/me/dataTypes/daily-resting-heart-rate/dataPoints/hr-1",
+        "dailyRestingHeartRate": {
+            "beatsPerMinute": 62,
+            "date": {"year": 2026, "month": 6, "day": 22},
+            "dailyRestingHeartRateMetadata": {"calculationMethod": "WITH_SLEEP"},
+        },
+    }
+    list_response.append({"dataPoints": [fake_resting_payload]})
+    result_resting = await api.daily_resting_heart_rate.list()
+    assert len(result_resting.data_points) == 1
+    assert result_resting.data_points[0].data.beats_per_minute == 62
+
+    create_response.append(fake_resting_payload)
+    new_resting = DailyRestingHeartRate(
+        beats_per_minute=62,
+        date=Date(year=2026, month=6, day=22),
+        daily_resting_heart_rate_metadata=DailyRestingHeartRateMetadata(
+            calculation_method="WITH_SLEEP"
+        ),
+    )
+    await api.daily_resting_heart_rate.create(DataPoint(data=new_resting))
+    assert requests[-1]["body"]["dailyRestingHeartRate"]["beatsPerMinute"] == 62

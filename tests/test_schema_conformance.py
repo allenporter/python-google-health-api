@@ -9,6 +9,7 @@ from typing import Any, get_args, get_origin, Union
 from google_health_api.model.activity import ObservationTimeInterval, Steps
 from google_health_api.model.base import (
     Application,
+    DailyRollupDataPoint,
     DataPoint,
     DataSource,
     Device,
@@ -32,6 +33,8 @@ from google_health_api.model.sleep import (
     Sleep,
     SessionTimeInterval,
     CivilDateTime,
+    CivilTimeInterval,
+    DailyRollUpDataPointsRequest,
     TimeOfDay,
     SleepStage,
     OutOfBedSegment,
@@ -39,8 +42,29 @@ from google_health_api.model.sleep import (
     StageSummary,
     SleepMetadata,
 )
-from google_health_api.model.activity import Distance, BasalEnergyBurned
-from google_health_api.model.health_metric import VO2Max, Weight
+from google_health_api.model.activity import (
+    Distance,
+    BasalEnergyBurned,
+    ActiveEnergyBurned,
+    StepsRollupValue,
+    DistanceRollupValue,
+    ActiveEnergyBurnedRollupValue,
+    TotalCaloriesRollupValue,
+    Floors,
+    FloorsRollupValue,
+)
+from google_health_api.model.health_metric import (
+    VO2Max,
+    Weight,
+    DailyRestingHeartRate,
+    DailyRestingHeartRateMetadata,
+)
+from google_health_api.model.hydration import (
+    HydrationLog,
+    HydrationLogRollupValue,
+    VolumeQuantity,
+    VolumeQuantityRollup,
+)
 
 # Mapping of Python classes to their corresponding schema names in the discovery document.
 CLASS_TO_SCHEMA = {
@@ -77,6 +101,22 @@ CLASS_TO_SCHEMA = {
     BasalEnergyBurned: "BasalEnergyBurned",
     VO2Max: "VO2Max",
     Weight: "Weight",
+    ActiveEnergyBurned: "ActiveEnergyBurned",
+    StepsRollupValue: "StepsRollupValue",
+    DistanceRollupValue: "DistanceRollupValue",
+    ActiveEnergyBurnedRollupValue: "ActiveEnergyBurnedRollupValue",
+    TotalCaloriesRollupValue: "TotalCaloriesRollupValue",
+    DailyRollupDataPoint: "DailyRollupDataPoint",
+    CivilTimeInterval: "CivilTimeInterval",
+    DailyRollUpDataPointsRequest: "DailyRollUpDataPointsRequest",
+    Floors: "Floors",
+    FloorsRollupValue: "FloorsRollupValue",
+    VolumeQuantity: "VolumeQuantity",
+    VolumeQuantityRollup: "VolumeQuantityRollup",
+    HydrationLog: "HydrationLog",
+    HydrationLogRollupValue: "HydrationLogRollupValue",
+    DailyRestingHeartRate: "DailyRestingHeartRate",
+    DailyRestingHeartRateMetadata: "DailyRestingHeartRateMetadata",
 }
 
 
@@ -128,6 +168,8 @@ def test_schema_conformance() -> None:
             if cls is DataPoint and field.name == "data":
                 continue
             if cls is ReconciledDataPoint and field.name == "data_point":
+                continue
+            if cls is DailyRollupDataPoint and field.name == "data":
                 continue
 
             alias = get_field_alias(field)

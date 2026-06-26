@@ -17,14 +17,16 @@ class DataType(Generic[T]):
         self,
         key: str,
         field_name: str,
-        payload_cls: type[T],
+        payload_cls: type[T] | None,
         time_field_path: str,
+        rollup_cls: type[Any] | None = None,
     ) -> None:
         """Initialize the DataType registry token."""
         self.key = key  # kebab-case for endpoint (e.g. "heart-rate")
         self.field_name = field_name  # camelCase for JSON data block (e.g. "heartRate")
         self.payload_cls = payload_cls  # Python class to deserialize into
         self.time_field_path = time_field_path
+        self.rollup_cls = rollup_cls
 
 
 @dataclass
@@ -133,3 +135,43 @@ class ErrorResponse(DataClassJSONMixin):
     """A response message that contains an error message."""
 
     error: Error | None = None
+
+
+R = TypeVar("R", bound=DataClassDictMixin)
+
+
+@dataclass
+class DailyRollupDataPoint(Generic[R]):
+    """Generic DailyRollupDataPoint representing consolidated rollup data points."""
+
+    data: R
+    civil_start_time: Any
+    civil_end_time: Any
+
+    @classmethod
+    def from_api_dict(
+        cls, rollup_cls: type[R], field_name: str, raw_dict: dict[str, Any]
+    ) -> "DailyRollupDataPoint[R]":
+        """Deserialize a raw API dictionary into a type-safe DailyRollupDataPoint."""
+        payload_dict = raw_dict.get(field_name)
+        if payload_dict is None:
+            raise ValueError(f"Missing expected rollup data field: {field_name}")
+
+        payload = rollup_cls.from_dict(payload_dict)
+
+        # Import here to avoid circular dependencies
+        from .sleep import CivilDateTime
+
+        civil_start_dict = raw_dict.get("civilStartTime")
+        civil_end_dict = raw_dict.get("civilEndTime")
+
+        civil_start = (
+            CivilDateTime.from_dict(civil_start_dict) if civil_start_dict else None
+        )
+        civil_end = CivilDateTime.from_dict(civil_end_dict) if civil_end_dict else None
+
+        return cls(
+            data=payload,
+            civil_start_time=civil_start,
+            civil_end_time=civil_end,
+        )
