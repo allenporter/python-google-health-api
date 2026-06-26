@@ -154,3 +154,4 @@ dmypy.json
 service_account.json
 client_secret*.json
 token.json
+docs/
