@@ -323,9 +323,95 @@ def cmd_settings(args) -> None:
     asyncio.run(run_settings_get(args))
 
 
+async def run_devices_get(args) -> None:
+    """Retrieve and display details of a paired device."""
+    creds = load_credentials()
+    if not creds:
+        print(
+            "ERROR: Not logged in. Please run `python examples/google_health_cli.py login` first."
+        )
+        sys.exit(1)
+
+    async with aiohttp.ClientSession() as session:
+        auth = CredentialsAuth(session, creds)
+        api = GoogleHealthApi(auth)
+
+        try:
+            device = await api.paired_devices.get(device_id=args.device_id)
+            print(f"Paired Device Details (ID: {args.device_id}):")
+            print(f"  Name: {device.name}")
+            print(f"  Version: {device.device_version} ({device.device_type})")
+            print(f"  Mac Address: {device.mac_address}")
+            print(f"  Battery: {device.battery_level}% ({device.battery_status})")
+            print(f"  Last Sync Time: {device.last_sync_time}")
+            print(f"  Features: {', '.join(device.features)}")
+        except HealthApiException as err:
+            print(f"Failed to fetch paired device: {err}")
+
+
+async def run_identity_get(args) -> None:
+    """Retrieve and display identity mapping details."""
+    creds = load_credentials()
+    if not creds:
+        print(
+            "ERROR: Not logged in. Please run `python examples/google_health_cli.py login` first."
+        )
+        sys.exit(1)
+
+    async with aiohttp.ClientSession() as session:
+        auth = CredentialsAuth(session, creds)
+        api = GoogleHealthApi(auth)
+
+        try:
+            identity = await api.get_identity()
+            print("User Identity details:")
+            print(f"  Name: {identity.name}")
+            print(f"  Health User ID: {identity.health_user_id}")
+            print(f"  Legacy User ID: {identity.legacy_user_id}")
+        except HealthApiException as err:
+            print(f"Failed to fetch identity: {err}")
+
+
+async def run_irn_get(args) -> None:
+    """Retrieve and display IRN profile details."""
+    creds = load_credentials()
+    if not creds:
+        print(
+            "ERROR: Not logged in. Please run `python examples/google_health_cli.py login` first."
+        )
+        sys.exit(1)
+
+    async with aiohttp.ClientSession() as session:
+        auth = CredentialsAuth(session, creds)
+        api = GoogleHealthApi(auth)
+
+        try:
+            irn = await api.get_irn_profile()
+            print("Irregular Rhythm Notification (IRN) Profile:")
+            print(f"  Name: {irn.name}")
+            print(f"  Onboarding Status: {irn.onboarding_status}")
+            print(f"  Enrollment Status: {irn.enrollment_status}")
+            print(f"  Update Time: {irn.update_time}")
+        except HealthApiException as err:
+            print(f"Failed to fetch IRN profile: {err}")
+
+
 def cmd_devices(args) -> None:
     """Handle paired devices subcommand."""
-    asyncio.run(run_devices_list(args))
+    if args.subcommand == "list":
+        asyncio.run(run_devices_list(args))
+    elif args.subcommand == "get":
+        asyncio.run(run_devices_get(args))
+
+
+def cmd_identity(args) -> None:
+    """Handle identity subcommand."""
+    asyncio.run(run_identity_get(args))
+
+
+def cmd_irn(args) -> None:
+    """Handle IRN subcommand."""
+    asyncio.run(run_irn_get(args))
 
 
 def main() -> None:
@@ -388,6 +474,31 @@ def main() -> None:
         "--limit", type=int, default=10, help="Maximum number of devices to fetch"
     )
     devices_list_parser.set_defaults(func=cmd_devices)
+    devices_get_parser = devices_subparsers.add_parser(
+        "get", help="Get details of a paired device"
+    )
+    devices_get_parser.add_argument("device_id", type=str, help="The paired device ID")
+    devices_get_parser.set_defaults(func=cmd_devices)
+
+    # identity get command
+    identity_parser = subparsers.add_parser(
+        "identity", help="Manage user identity mapping"
+    )
+    identity_subparsers = identity_parser.add_subparsers(
+        dest="subcommand", required=True
+    )
+    identity_get_parser = identity_subparsers.add_parser(
+        "get", help="Get identity mapping details"
+    )
+    identity_get_parser.set_defaults(func=cmd_identity)
+
+    # irn get command
+    irn_parser = subparsers.add_parser("irn", help="Manage IRN profile")
+    irn_subparsers = irn_parser.add_subparsers(dest="subcommand", required=True)
+    irn_get_parser = irn_subparsers.add_parser(
+        "get", help="Get Irregular Rhythm Notification profile details"
+    )
+    irn_get_parser.set_defaults(func=cmd_irn)
 
     args = parser.parse_args()
 
