@@ -109,7 +109,6 @@ def cmd_login(args) -> None:
         authorization_url, _ = flow.authorization_url(
             access_type="offline",
             prompt="consent",
-            include_granted_scopes="true",
         )
         print("\nWeb-based authentication flow:")
         print("1. Open the following URL in your browser to authorize:")
