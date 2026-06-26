@@ -92,33 +92,60 @@ Verify with a live account using the browser-based OAuth 2.0 Installed App Flow:
 3. Authenticate and query via the command-line interface tool:
    ```bash
    # Log in via your web browser (stores credentials in token.json)
-   uv run python examples/google_health_cli.py login
+   google-health-cli login
 
    # List step data points
-   uv run python examples/google_health_cli.py steps list --days 7 --limit 5
+   google-health-cli steps list --days 7 --limit 5
 
    # List heart rate data points
-   uv run python examples/google_health_cli.py heart-rate list --days 7 --limit 5
+   google-health-cli heart-rate list --days 7 --limit 5
 
    # Retrieve user profile details
-   uv run python examples/google_health_cli.py profile get
-
-   # Retrieve settings preferences
-   uv run python examples/google_health_cli.py settings get
-
-   # List paired devices
-   uv run python examples/google_health_cli.py devices list --limit 5
+   google-health-cli profile get
    ```
 
-Or run the standalone browser web flow example:
+## Command-Line Interface (CLI)
+
+The package installs a real binary executable `google-health-cli` designed with **Agent DX** (AI Agent Developer Experience) and **Human DX** principles.
+
+### Key Capabilities
+* **Dynamic Schema Introspection**: Let agents query request/response layouts at runtime.
+  ```bash
+  google-health-cli schema
+  google-health-cli schema steps.list
+  ```
+* **Raw JSON Payloads**: Pass structured queries or write payloads directly to bypass flat CLI argument limits.
+  ```bash
+  # Query filtering via --params
+  google-health-cli --params '{"pageSize": 5, "startTime": "2026-06-26T00:00:00Z"}' steps list
+
+  # Mutation via --json
+  google-health-cli --json '{"steps": {"count": 100, ...}}' steps create
+  ```
+* **Context Token Discipline**: Use fields/masking filters to prevent bloating agent reasoning limits.
+  ```bash
+  google-health-cli --fields "dataPoints(steps(count,interval))" steps list
+  ```
+* **Safety Rails & Dry-Runs**: Validate mutating requests locally before hitting the API.
+  ```bash
+  google-health-cli --dry-run --json '{"steps": {"count": 100, ...}}' steps create
+  ```
+* **Headless Integration**: Autodetects environment variables for credentials in headless agent contexts.
+  ```bash
+  export GOOGLE_HEALTH_CLI_TOKEN="YOUR_OAUTH_TOKEN"
+  google-health-cli profile get
+  ```
+
+## Development and Testing
+
+Verify code quality and type safety:
 
 ```bash
-uv run python examples/web_flow_verify.py
+./script/lint
 ```
 
-To run tests and linter locally:
+Run mock tests:
 
 ```bash
 ./script/test
-./script/lint
 ```
