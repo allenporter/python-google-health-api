@@ -115,6 +115,7 @@ def cmd_login(args) -> None:
             sys.exit(1)
 
         os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+        os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
         if "code=" in redirect_response or redirect_response.startswith("http"):
             flow.fetch_token(authorization_response=redirect_response)
