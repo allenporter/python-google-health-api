@@ -16,6 +16,12 @@ It exposes Google Health data types as clean, type-annotated properties on the c
 Currently supported data types:
 * **Steps** (`api.steps`)
 * **Heart Rate** (`api.heart_rate`)
+* **Sleep** (`api.sleep`)
+* **Distance** (`api.distance`)
+* **Basal Energy Burned** (`api.basal_energy_burned`)
+* **VO2 Max** (`api.vo2_max`)
+* **Weight** (`api.weight`)
+
 
 ## Installation
 
