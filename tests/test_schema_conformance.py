@@ -65,6 +65,17 @@ from google_health_api.model.hydration import (
     VolumeQuantity,
     VolumeQuantityRollup,
 )
+from google_health_api.model.nutrition import (
+    NutritionLog,
+    NutritionLogRollupValue,
+    WeightQuantity,
+    EnergyQuantity,
+    Serving,
+    NutrientQuantity,
+    WeightQuantityRollup,
+    EnergyQuantityRollup,
+    NutrientQuantityRollup,
+)
 
 # Mapping of Python classes to their corresponding schema names in the discovery document.
 CLASS_TO_SCHEMA = {
@@ -117,6 +128,15 @@ CLASS_TO_SCHEMA = {
     HydrationLogRollupValue: "HydrationLogRollupValue",
     DailyRestingHeartRate: "DailyRestingHeartRate",
     DailyRestingHeartRateMetadata: "DailyRestingHeartRateMetadata",
+    WeightQuantity: "WeightQuantity",
+    EnergyQuantity: "EnergyQuantity",
+    Serving: "Serving",
+    NutrientQuantity: "NutrientQuantity",
+    NutritionLog: "NutritionLog",
+    WeightQuantityRollup: "WeightQuantityRollup",
+    EnergyQuantityRollup: "EnergyQuantityRollup",
+    NutrientQuantityRollup: "NutrientQuantityRollup",
+    NutritionLogRollupValue: "NutritionLogRollupValue",
 }
 
 

@@ -80,6 +80,6 @@ HYDRATION_LOG = DataType(
     "hydration-log",
     "hydrationLog",
     HydrationLog,
-    "hydration_log.interval.start_time",
+    "hydration_log.interval.civil_start_time",
     HydrationLogRollupValue,
 )

@@ -34,6 +34,7 @@ from .model import (
     FLOORS,
     HEART_RATE,
     HYDRATION_LOG,
+    NUTRITION_LOG,
     SLEEP,
     STEPS,
     TOTAL_CALORIES,
@@ -53,6 +54,7 @@ from .model import (
     Floors,
     HeartRate,
     HydrationLog,
+    NutritionLog,
     Identity,
     IrnProfile,
     ListPairedDevicesResult,
@@ -93,15 +95,23 @@ def _build_time_filter(
 ) -> str | None:
     """Build an AIP-160 compatible time filter expression."""
     filters = []
+    is_civil = "civil" in time_field_path
+
     if start_time:
-        # Convert to UTC and format as ISO 8601 UTC string (z-normalized)
-        utc_start = start_time.astimezone(timezone.utc)
-        iso_start = utc_start.isoformat().replace("+00:00", "Z")
+        if is_civil:
+            iso_start = start_time.strftime("%Y-%m-%dT%H:%M:%S")
+        else:
+            # Convert to UTC and format as ISO 8601 UTC string (z-normalized)
+            utc_start = start_time.astimezone(timezone.utc)
+            iso_start = utc_start.isoformat().replace("+00:00", "Z")
         filters.append(f'{time_field_path} >= "{iso_start}"')
     if end_time:
-        # Convert to UTC and format as ISO 8601 UTC string (z-normalized)
-        utc_end = end_time.astimezone(timezone.utc)
-        iso_end = utc_end.isoformat().replace("+00:00", "Z")
+        if is_civil:
+            iso_end = end_time.strftime("%Y-%m-%dT%H:%M:%S")
+        else:
+            # Convert to UTC and format as ISO 8601 UTC string (z-normalized)
+            utc_end = end_time.astimezone(timezone.utc)
+            iso_end = utc_end.isoformat().replace("+00:00", "Z")
         filters.append(f'{time_field_path} < "{iso_end}"')
     return " AND ".join(filters) if filters else None
 
@@ -241,6 +251,8 @@ class DataPointSubApi(Generic[T]):
             json=payload,
         )
         raw_json = await resp.json()
+        if "response" in raw_json:
+            raw_json = raw_json["response"]
         return DataPoint.from_api_dict(self._data_type, raw_json)
 
     async def patch(
@@ -266,6 +278,8 @@ class DataPointSubApi(Generic[T]):
             json=payload,
         )
         raw_json = await resp.json()
+        if "response" in raw_json:
+            raw_json = raw_json["response"]
         return DataPoint.from_api_dict(self._data_type, raw_json)
 
     async def delete(self, data_point_id: str, user: str = "me") -> None:
@@ -275,9 +289,7 @@ class DataPointSubApi(Generic[T]):
             data_point_id: The identifier of the data point to delete.
             user: User ID or literal 'me'.
         """
-        await self._session.delete(
-            f"v4/users/{user}/dataTypes/{self._data_type.key}/dataPoints/{data_point_id}"
-        )
+        await self.batch_delete([data_point_id], user=user)
 
     async def batch_delete(self, data_point_ids: List[str], user: str = "me") -> None:
         """Batch delete multiple data points in a single request.
@@ -286,7 +298,16 @@ class DataPointSubApi(Generic[T]):
             data_point_ids: List of data point IDs to delete.
             user: User ID or literal 'me'.
         """
-        payload = {"dataPointIds": data_point_ids}
+        names = []
+        for dp_id in data_point_ids:
+            if "/" in dp_id:
+                names.append(dp_id)
+            else:
+                names.append(
+                    f"users/{user}/dataTypes/{self._data_type.key}/dataPoints/{dp_id}"
+                )
+
+        payload = {"names": names}
         await self._session.post(
             f"v4/users/{user}/dataTypes/{self._data_type.key}/dataPoints:batchDelete",
             json=payload,
@@ -753,6 +774,9 @@ class GoogleHealthApi:
     hydration_log: RollupDataPointSubApi[HydrationLog]
     """Namespaced client for Hydration log data (`HydrationLog` model)."""
 
+    nutrition_log: RollupDataPointSubApi[NutritionLog]
+    """Namespaced client for Nutrition log data (`NutritionLog` model)."""
+
     daily_resting_heart_rate: DataPointSubApi[DailyRestingHeartRate]
     """Namespaced client for Daily resting heart rate data (`DailyRestingHeartRate` model)."""
 
@@ -780,6 +804,7 @@ class GoogleHealthApi:
         self.total_calories = RollupDataPointSubApi(self._session, TOTAL_CALORIES)
         self.floors = RollupDataPointSubApi(self._session, FLOORS)
         self.hydration_log = RollupDataPointSubApi(self._session, HYDRATION_LOG)
+        self.nutrition_log = RollupDataPointSubApi(self._session, NUTRITION_LOG)
         self.daily_resting_heart_rate = DataPointSubApi(
             self._session, DAILY_RESTING_HEART_RATE
         )

@@ -179,6 +179,9 @@ def main() -> None:
         subparsers, "hydration-log", "hydration log", supports_rollup=True
     )
     add_standard_datapoint_commands(
+        subparsers, "nutrition-log", "nutrition log", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
         subparsers,
         "daily-resting-heart-rate",
         "daily resting heart rate",

@@ -44,6 +44,18 @@ from .hydration import (
     VolumeQuantity,
     VolumeQuantityRollup,
 )
+from .nutrition import (
+    NUTRITION_LOG,
+    NutritionLog,
+    NutritionLogRollupValue,
+    WeightQuantity,
+    EnergyQuantity,
+    Serving,
+    NutrientQuantity,
+    WeightQuantityRollup,
+    EnergyQuantityRollup,
+    NutrientQuantityRollup,
+)
 from .pagination import (
     ListDataPointResult,
     ListReconciledDataPointsResult,
@@ -121,6 +133,17 @@ __all__ = [
     "HydrationLogRollupValue",
     "VolumeQuantity",
     "VolumeQuantityRollup",
+    # --- Nutrition Models ---
+    "NutritionLog",
+    "NUTRITION_LOG",
+    "NutritionLogRollupValue",
+    "WeightQuantity",
+    "EnergyQuantity",
+    "Serving",
+    "NutrientQuantity",
+    "WeightQuantityRollup",
+    "EnergyQuantityRollup",
+    "NutrientQuantityRollup",
     "SessionTimeInterval",
     "CivilDateTime",
     "CivilTimeInterval",

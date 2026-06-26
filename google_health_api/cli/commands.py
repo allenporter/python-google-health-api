@@ -31,11 +31,17 @@ TOKEN_FILE = "token.json"
 CLIENT_SECRET_FILE = "client_secret.json"
 SCOPES = [
     HealthApiScope.ACTIVITY_READ,
+    HealthApiScope.ACTIVITY_WRITE,
     HealthApiScope.MEASUREMENTS_READ,
+    HealthApiScope.MEASUREMENTS_WRITE,
     HealthApiScope.PROFILE_READ,
+    HealthApiScope.PROFILE_WRITE,
     HealthApiScope.SETTINGS_READ,
+    HealthApiScope.SETTINGS_WRITE,
     HealthApiScope.SLEEP_READ,
+    HealthApiScope.SLEEP_WRITE,
     HealthApiScope.NUTRITION_READ,
+    HealthApiScope.NUTRITION_WRITE,
     HealthApiScope.LOCATION_READ,
     HealthApiScope.ECG_READ,
     HealthApiScope.IRN_READ,
@@ -492,8 +498,9 @@ async def handle_datatype_cmd(
         validate_resource_name(args.data_point_id)
         check_dry_run(
             args.dry_run,
-            "DELETE",
-            f"v4/users/me/dataTypes/{key}/dataPoints/{args.data_point_id}",
+            "POST",
+            f"v4/users/me/dataTypes/{key}/dataPoints:batchDelete",
+            {"names": [f"users/me/dataTypes/{key}/dataPoints/{args.data_point_id}"]},
         )
         await sub_api.delete(args.data_point_id)
         print_json(
@@ -602,6 +609,19 @@ async def handle_hydration_log_cmd(args, api: GoogleHealthApi, pretty: bool) -> 
         "hydrationLog",
         "hydration-log",
         "hydration log",
+        pretty,
+    )
+
+
+async def handle_nutrition_log_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle nutrition log subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.nutrition_log,
+        "nutritionLog",
+        "nutrition-log",
+        "nutrition log",
         pretty,
     )
 
@@ -944,6 +964,8 @@ async def async_run_cmd(args) -> None:
                 await handle_floors_cmd(args, api, pretty)
             elif cmd == "hydration-log":
                 await handle_hydration_log_cmd(args, api, pretty)
+            elif cmd == "nutrition-log":
+                await handle_nutrition_log_cmd(args, api, pretty)
             elif cmd == "daily-resting-heart-rate":
                 await handle_daily_resting_heart_rate_cmd(args, api, pretty)
             elif cmd == "profile":

@@ -24,6 +24,7 @@ from google_health_api.model import (
     Weight,
     Floors,
     HydrationLog,
+    NutritionLog,
     DailyRestingHeartRate,
 )
 
@@ -276,6 +277,7 @@ def get_command_schemas() -> dict[str, dict[str, Any]]:
         ),
         ("floors", "floors", Floors, "floors", True),
         ("hydration-log", "hydrationLog", HydrationLog, "hydration log", True),
+        ("nutrition-log", "nutritionLog", NutritionLog, "nutrition log", True),
         (
             "daily-resting-heart-rate",
             "dailyRestingHeartRate",

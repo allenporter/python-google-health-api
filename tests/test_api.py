@@ -124,9 +124,7 @@ async def mock_api(
         requests.append({"method": "PATCH", "url": str(request.url), "body": body})
         return aiohttp.web.json_response(patch_response.pop(0))
 
-    async def delete_handler(request: aiohttp.web.Request) -> aiohttp.web.Response:
-        requests.append({"method": "DELETE", "url": str(request.url)})
-        return aiohttp.web.Response(status=204)
+    # Removed delete_handler since single delete endpoint is not supported by API.
 
     async def batch_delete_handler(
         request: aiohttp.web.Request,
@@ -166,11 +164,7 @@ async def mock_api(
                 "v4/users/{user}/dataTypes/{dataType}/dataPoints/{dataPointId}",
                 patch_handler,
             ),
-            (
-                "DELETE",
-                "v4/users/{user}/dataTypes/{dataType}/dataPoints/{dataPointId}",
-                delete_handler,
-            ),
+            # Single DELETE endpoint not supported by API.
             (
                 "POST",
                 "v4/users/{user}/dataTypes/{dataType}/dataPoints:batchDelete",
@@ -449,14 +443,20 @@ async def test_delete_and_batch_delete(
     """Test deleting single and batch deletion of data points."""
     await api.steps.delete("point-to-delete")
     assert len(requests) == 1
-    assert requests[0]["method"] == "DELETE"
-    assert requests[0]["url"].endswith("/dataPoints/point-to-delete")
+    assert requests[0]["method"] == "POST"
+    assert requests[0]["url"].endswith("/dataPoints:batchDelete")
+    assert requests[0]["body"]["names"] == [
+        "users/me/dataTypes/steps/dataPoints/point-to-delete"
+    ]
 
     await api.steps.batch_delete(["id-1", "id-2"])
     assert len(requests) == 2
     assert requests[1]["method"] == "POST"
     assert requests[1]["url"].endswith("/dataPoints:batchDelete")
-    assert requests[1]["body"]["dataPointIds"] == ["id-1", "id-2"]
+    assert requests[1]["body"]["names"] == [
+        "users/me/dataTypes/steps/dataPoints/id-1",
+        "users/me/dataTypes/steps/dataPoints/id-2",
+    ]
 
 
 async def test_create_steps_without_name(
@@ -599,7 +599,11 @@ async def test_sleep_crud(
     # 5. Delete
     await api.sleep.delete("sleep-1")
     assert len(requests) == 5
-    assert requests[4]["method"] == "DELETE"
+    assert requests[4]["method"] == "POST"
+    assert requests[4]["url"].endswith("/dataPoints:batchDelete")
+    assert requests[4]["body"]["names"] == [
+        "users/me/dataTypes/sleep/dataPoints/sleep-1"
+    ]
 
 
 # ==========================================

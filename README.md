@@ -25,6 +25,7 @@ Currently supported data types:
 * **Weight** (`api.weight`)
 * **Floors** (`api.floors`)
 * **Hydration Log (Water)** (`api.hydration_log`)
+* **Nutrition Log (Food)** (`api.nutrition_log`)
 * **Daily Resting Heart Rate** (`api.daily_resting_heart_rate`)
 
 
