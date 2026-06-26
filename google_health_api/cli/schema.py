@@ -150,9 +150,10 @@ def get_datatype_schemas(
     field_name: str,
     payload_cls: Any,
     description: str,
+    supports_rollup: bool = False,
 ) -> dict[str, dict[str, Any]]:
-    """Generate standard command schemas (list, get, create, patch, delete) for a data type."""
-    return {
+    """Generate standard command schemas (list, get, create, patch, delete, and optionally rollup) for a data type."""
+    schemas = {
         f"{command_name}.list": {
             "description": f"List {description} data points within a time range.",
             "method": "GET",
@@ -203,41 +204,91 @@ def get_datatype_schemas(
         },
     }
 
+    if supports_rollup:
+        schemas[f"{command_name}.rollup"] = {
+            "description": f"Roll up {description} data over physical or civil time intervals.",
+            "method": "POST",
+            "endpoint": f"v4/users/{{user}}/dataTypes/{command_name}/dataPoints:dailyRollUp",
+            "query_params": {
+                "timezone": {
+                    "type": "Optional[str]",
+                    "description": "Timezone for rollup alignment.",
+                },
+                "days": {
+                    "type": "Optional[int]",
+                    "description": "Number of days of history to fetch.",
+                },
+                "start-date": {
+                    "type": "Optional[str]",
+                    "description": "Start date in YYYY-MM-DD format.",
+                },
+                "end-date": {
+                    "type": "Optional[str]",
+                    "description": "End date in YYYY-MM-DD format.",
+                },
+            },
+            "response": {
+                "type": "object",
+                "properties": {
+                    "rollupDataPoints": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "civilStartTime": {"type": "object"},
+                                "civilEndTime": {"type": "object"},
+                                field_name: {"type": "object"},
+                            },
+                        },
+                    }
+                },
+            },
+        }
+
+    return schemas
+
 
 def get_command_schemas() -> dict[str, dict[str, Any]]:
     """Return request/response schemas for all CLI commands."""
     schemas = {}
 
     # Register standard data types dynamically
-    for cmd_name, field_name, payload_cls, desc in [
-        ("steps", "steps", Steps, "step count"),
-        ("heart-rate", "heartRate", HeartRate, "heart rate"),
-        ("sleep", "sleep", Sleep, "sleep"),
-        ("distance", "distance", Distance, "distance"),
+    for cmd_name, field_name, payload_cls, desc, supports_rollup in [
+        ("steps", "steps", Steps, "step count", True),
+        ("heart-rate", "heartRate", HeartRate, "heart rate", False),
+        ("sleep", "sleep", Sleep, "sleep", False),
+        ("distance", "distance", Distance, "distance", True),
         (
             "basal-energy-burned",
             "basalEnergyBurned",
             BasalEnergyBurned,
             "basal energy burned",
+            True,
         ),
-        ("vo2-max", "vo2Max", VO2Max, "VO2 max"),
-        ("weight", "weight", Weight, "weight"),
+        ("vo2-max", "vo2Max", VO2Max, "VO2 max", False),
+        ("weight", "weight", Weight, "weight", False),
         (
             "active-energy-burned",
             "activeEnergyBurned",
             ActiveEnergyBurned,
             "active energy burned",
+            True,
         ),
-        ("floors", "floors", Floors, "floors"),
-        ("hydration-log", "hydrationLog", HydrationLog, "hydration log"),
+        ("floors", "floors", Floors, "floors", True),
+        ("hydration-log", "hydrationLog", HydrationLog, "hydration log", True),
         (
             "daily-resting-heart-rate",
             "dailyRestingHeartRate",
             DailyRestingHeartRate,
             "daily resting heart rate",
+            False,
         ),
     ]:
-        schemas.update(get_datatype_schemas(cmd_name, field_name, payload_cls, desc))
+        schemas.update(
+            get_datatype_schemas(
+                cmd_name, field_name, payload_cls, desc, supports_rollup
+            )
+        )
 
     schemas.update(
         {

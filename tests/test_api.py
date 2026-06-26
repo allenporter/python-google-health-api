@@ -363,7 +363,7 @@ async def test_heart_rate_daily_rollup_raises(
     api: GoogleHealthApi,
 ) -> None:
     """Test daily rollup raises error for unsupported type."""
-    with pytest.raises(TypeError):
+    with pytest.raises(AttributeError):
         await api.heart_rate.daily_rollup(
             start_date=date(2026, 6, 22),
             end_date=date(2026, 6, 23),

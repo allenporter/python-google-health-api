@@ -27,7 +27,7 @@ def cmd_schema(args) -> None:
 
 
 def add_standard_datapoint_commands(
-    subparsers, command_name: str, help_name: str
+    subparsers, command_name: str, help_name: str, supports_rollup: bool = False
 ) -> None:
     """Helper to add standard list/get/create/patch/delete subparsers for a data type."""
     parser = subparsers.add_parser(command_name, help=f"Manage {help_name} data")
@@ -65,31 +65,32 @@ def add_standard_datapoint_commands(
     dl = sub_subparsers.add_parser("delete", help=f"Delete a {help_name} data point")
     dl.add_argument("data_point_id", type=str, help="The data point identifier")
 
-    rl = sub_subparsers.add_parser("rollup", help=f"Roll up {help_name} data")
-    rl.add_argument(
-        "--timezone",
-        type=str,
-        default=None,
-        help="Timezone for rollup (e.g. America/New_York). Defaults to settings timezone.",
-    )
-    rl.add_argument(
-        "--days",
-        type=int,
-        default=1,
-        help="Number of days to roll up. Defaults to 1 (today).",
-    )
-    rl.add_argument(
-        "--start-date",
-        type=str,
-        default=None,
-        help="Start date in YYYY-MM-DD format (inclusive).",
-    )
-    rl.add_argument(
-        "--end-date",
-        type=str,
-        default=None,
-        help="End date in YYYY-MM-DD format (exclusive).",
-    )
+    if supports_rollup:
+        rl = sub_subparsers.add_parser("rollup", help=f"Roll up {help_name} data")
+        rl.add_argument(
+            "--timezone",
+            type=str,
+            default=None,
+            help="Timezone for rollup (e.g. America/New_York). Defaults to settings timezone.",
+        )
+        rl.add_argument(
+            "--days",
+            type=int,
+            default=1,
+            help="Number of days to roll up. Defaults to 1 (today).",
+        )
+        rl.add_argument(
+            "--start-date",
+            type=str,
+            default=None,
+            help="Start date in YYYY-MM-DD format (inclusive).",
+        )
+        rl.add_argument(
+            "--end-date",
+            type=str,
+            default=None,
+            help="End date in YYYY-MM-DD format (exclusive).",
+        )
 
 
 def main() -> None:
@@ -146,23 +147,42 @@ def main() -> None:
     )
 
     # Register standard data type commands
-    add_standard_datapoint_commands(subparsers, "steps", "step count")
-    add_standard_datapoint_commands(subparsers, "heart-rate", "heart rate")
-    add_standard_datapoint_commands(subparsers, "sleep", "sleep")
-    add_standard_datapoint_commands(subparsers, "distance", "distance")
     add_standard_datapoint_commands(
-        subparsers, "basal-energy-burned", "basal energy burned"
+        subparsers, "steps", "step count", supports_rollup=True
     )
-    add_standard_datapoint_commands(subparsers, "vo2-max", "VO2 max")
-    add_standard_datapoint_commands(subparsers, "weight", "weight")
     add_standard_datapoint_commands(
-        subparsers, "active-energy-burned", "active energy burned"
+        subparsers, "heart-rate", "heart rate", supports_rollup=False
     )
-    add_standard_datapoint_commands(subparsers, "total-calories", "total calories")
-    add_standard_datapoint_commands(subparsers, "floors", "floors")
-    add_standard_datapoint_commands(subparsers, "hydration-log", "hydration log")
+    add_standard_datapoint_commands(subparsers, "sleep", "sleep", supports_rollup=False)
     add_standard_datapoint_commands(
-        subparsers, "daily-resting-heart-rate", "daily resting heart rate"
+        subparsers, "distance", "distance", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers, "basal-energy-burned", "basal energy burned", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers, "vo2-max", "VO2 max", supports_rollup=False
+    )
+    add_standard_datapoint_commands(
+        subparsers, "weight", "weight", supports_rollup=False
+    )
+    add_standard_datapoint_commands(
+        subparsers, "active-energy-burned", "active energy burned", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers, "total-calories", "total calories", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers, "floors", "floors", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers, "hydration-log", "hydration log", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers,
+        "daily-resting-heart-rate",
+        "daily resting heart rate",
+        supports_rollup=False,
     )
 
     # profile commands

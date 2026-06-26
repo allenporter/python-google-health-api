@@ -292,6 +292,10 @@ class DataPointSubApi(Generic[T]):
             json=payload,
         )
 
+
+class RollupDataPointSubApi(DataPointSubApi[T]):
+    """Generic client providing namespaced operations for a DataType that supports rollup."""
+
     async def daily_rollup(
         self,
         start_date: date,
@@ -716,7 +720,7 @@ class GoogleHealthApi:
         subscribers: Namespaced client for managing webhook subscriber endpoints and subscriptions.
     """
 
-    steps: DataPointSubApi[Steps]
+    steps: RollupDataPointSubApi[Steps]
     """Namespaced client for Step count data (`Steps` model)."""
 
     heart_rate: DataPointSubApi[HeartRate]
@@ -725,10 +729,10 @@ class GoogleHealthApi:
     sleep: DataPointSubApi[Sleep]
     """Namespaced client for Sleep session data (`Sleep` model)."""
 
-    distance: DataPointSubApi[Distance]
+    distance: RollupDataPointSubApi[Distance]
     """Namespaced client for Distance traveled data (`Distance` model)."""
 
-    basal_energy_burned: DataPointSubApi[BasalEnergyBurned]
+    basal_energy_burned: RollupDataPointSubApi[BasalEnergyBurned]
     """Namespaced client for Basal metabolic energy burned data (`BasalEnergyBurned` model)."""
 
     vo2_max: DataPointSubApi[VO2Max]
@@ -737,16 +741,16 @@ class GoogleHealthApi:
     weight: DataPointSubApi[Weight]
     """Namespaced client for Body weight data (`Weight` model)."""
 
-    active_energy_burned: DataPointSubApi[ActiveEnergyBurned]
+    active_energy_burned: RollupDataPointSubApi[ActiveEnergyBurned]
     """Namespaced client for Active energy burned data (`ActiveEnergyBurned` model)."""
 
-    total_calories: DataPointSubApi[Any]
+    total_calories: RollupDataPointSubApi[Any]
     """Namespaced client for Total calories rollup data."""
 
-    floors: DataPointSubApi[Floors]
+    floors: RollupDataPointSubApi[Floors]
     """Namespaced client for Floors elevation data (`Floors` model)."""
 
-    hydration_log: DataPointSubApi[HydrationLog]
+    hydration_log: RollupDataPointSubApi[HydrationLog]
     """Namespaced client for Hydration log data (`HydrationLog` model)."""
 
     daily_resting_heart_rate: DataPointSubApi[DailyRestingHeartRate]
@@ -761,17 +765,21 @@ class GoogleHealthApi:
     def __init__(self, auth: AbstractAuth) -> None:
         """Initialize the client."""
         self._session = GoogleHealthSession(auth, auth._websession, auth._host)
-        self.steps = DataPointSubApi(self._session, STEPS)
+        self.steps = RollupDataPointSubApi(self._session, STEPS)
         self.heart_rate = DataPointSubApi(self._session, HEART_RATE)
         self.sleep = DataPointSubApi(self._session, SLEEP)
-        self.distance = DataPointSubApi(self._session, DISTANCE)
-        self.basal_energy_burned = DataPointSubApi(self._session, BASAL_ENERGY_BURNED)
+        self.distance = RollupDataPointSubApi(self._session, DISTANCE)
+        self.basal_energy_burned = RollupDataPointSubApi(
+            self._session, BASAL_ENERGY_BURNED
+        )
         self.vo2_max = DataPointSubApi(self._session, VO2_MAX)
         self.weight = DataPointSubApi(self._session, WEIGHT)
-        self.active_energy_burned = DataPointSubApi(self._session, ACTIVE_ENERGY_BURNED)
-        self.total_calories = DataPointSubApi(self._session, TOTAL_CALORIES)
-        self.floors = DataPointSubApi(self._session, FLOORS)
-        self.hydration_log = DataPointSubApi(self._session, HYDRATION_LOG)
+        self.active_energy_burned = RollupDataPointSubApi(
+            self._session, ACTIVE_ENERGY_BURNED
+        )
+        self.total_calories = RollupDataPointSubApi(self._session, TOTAL_CALORIES)
+        self.floors = RollupDataPointSubApi(self._session, FLOORS)
+        self.hydration_log = RollupDataPointSubApi(self._session, HYDRATION_LOG)
         self.daily_resting_heart_rate = DataPointSubApi(
             self._session, DAILY_RESTING_HEART_RATE
         )

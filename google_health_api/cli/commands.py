@@ -411,6 +411,12 @@ async def handle_datatype_cmd(
             print_json(serialize_response(result, field_name), pretty)
 
     elif sub == "rollup":
+        if not hasattr(sub_api, "daily_rollup"):
+            print_error_json(
+                f"DataType {key} does not support daily rollups.",
+                status="INVALID_ARGUMENT",
+            )
+            return
         if args.start_date:
             start_date = date.fromisoformat(args.start_date)
             end_date = (
