@@ -1,7 +1,10 @@
 """Base classes and registry structures for Google Health API data models."""
 
 from dataclasses import dataclass, field
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .sleep import CivilDateTime
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
@@ -145,8 +148,8 @@ class DailyRollupDataPoint(Generic[R]):
     """Generic DailyRollupDataPoint representing consolidated rollup data points."""
 
     data: R
-    civil_start_time: Any
-    civil_end_time: Any
+    civil_start_time: "CivilDateTime | None"
+    civil_end_time: "CivilDateTime | None"
 
     @classmethod
     def from_api_dict(
