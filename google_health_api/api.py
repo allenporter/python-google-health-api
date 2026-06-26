@@ -152,7 +152,11 @@ class DataPointSubApi(Generic[T]):
             raw_json = await resp.json()
             reconciled_data_points = [
                 ReconciledDataPoint.from_api_dict(self._data_type, item)
-                for item in raw_json.get("reconciledDataPoints", [])
+                for item in (
+                    raw_json.get("dataPoints")
+                    or raw_json.get("reconciledDataPoints")
+                    or []
+                )
             ]
             return _ListReconciledDataPointsModel(
                 reconciled_data_points=reconciled_data_points,

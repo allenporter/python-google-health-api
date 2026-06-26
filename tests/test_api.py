@@ -14,7 +14,8 @@ from .conftest import AuthCallback
 FAKE_STEPS_PAYLOAD = {
     "name": "users/me/dataTypes/steps/dataPoints/point-1",
     "dataSource": {
-        "dataStreamName": "raw:com.fitbit.steps:fitbit:charge_6",
+        "platform": "FITBIT",
+        "recordingMethod": "PASSIVELY_MEASURED",
     },
     "steps": {
         "count": "500",
@@ -28,7 +29,8 @@ FAKE_STEPS_PAYLOAD = {
 FAKE_HEART_RATE_PAYLOAD = {
     "name": "users/me/dataTypes/heart-rate/dataPoints/point-2",
     "dataSource": {
-        "dataStreamName": "raw:com.fitbit.heart_rate:fitbit:charge_6",
+        "platform": "FITBIT",
+        "recordingMethod": "PASSIVELY_MEASURED",
     },
     "heartRate": {
         "beatsPerMinute": "76",
@@ -180,7 +182,7 @@ async def test_list_steps(
     assert point.data.start_time == "2026-06-22T08:00:00Z"
     assert point.data.end_time == "2026-06-22T08:15:00Z"
     assert point.data_source is not None
-    assert point.data_source.data_stream_name == "raw:com.fitbit.steps:fitbit:charge_6"
+    assert point.data_source.platform == "FITBIT"
 
     # Verify query params and AIP-160 filter
     assert len(requests) == 1
@@ -242,7 +244,7 @@ async def test_create_steps(
     new_point = DataPoint(
         name="users/me/dataTypes/steps/dataPoints/new-point",
         data=steps_data,
-        data_source=DataSource(data_stream_name="test-stream"),
+        data_source=DataSource(platform="GOOGLE_WEB_API", recording_method="MANUAL"),
     )
 
     point = await api.steps.create(new_point)
@@ -253,7 +255,7 @@ async def test_create_steps(
     assert req["method"] == "POST"
     assert req["body"]["name"] == "users/me/dataTypes/steps/dataPoints/new-point"
     assert req["body"]["steps"]["count"] == 150
-    assert req["body"]["dataSource"]["dataStreamName"] == "test-stream"
+    assert req["body"]["dataSource"]["platform"] == "GOOGLE_WEB_API"
 
 
 # ==========================================
@@ -316,7 +318,8 @@ async def test_create_steps_without_name(
         ),
     )
     new_point = DataPoint(
-        data=steps_data, data_source=DataSource(data_stream_name="test-stream")
+        data=steps_data,
+        data_source=DataSource(platform="GOOGLE_WEB_API", recording_method="MANUAL"),
     )
 
     point = await api.steps.create(new_point)
@@ -328,7 +331,7 @@ async def test_create_steps_without_name(
     assert req["method"] == "POST"
     assert "name" not in req["body"]
     assert req["body"]["steps"]["count"] == 150
-    assert req["body"]["dataSource"]["dataStreamName"] == "test-stream"
+    assert req["body"]["dataSource"]["platform"] == "GOOGLE_WEB_API"
 
 
 async def test_list_steps_timezone_conversion(

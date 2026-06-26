@@ -83,7 +83,8 @@ async def verify_steps(api: GoogleHealthApi) -> None:
         name=f"users/me/dataTypes/steps/dataPoints/{point_id}",
         data=steps_payload,
         data_source=DataSource(
-            data_stream_name="raw:com.google.health.sandbox:python_client_test"
+            platform="GOOGLE_WEB_API",
+            recording_method="PASSIVELY_MEASURED",
         ),
     )
 

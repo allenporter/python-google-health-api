@@ -53,7 +53,7 @@ async def main() -> None:
                 print(f"  Steps Count: {point.data.count}")
                 print(f"  Time Range: {point.data.start_time} -> {point.data.end_time}")
                 if point.data_source:
-                    print(f"  Source Stream: {point.data_source.data_stream_name}")
+                    print(f"  Source Platform: {point.data_source.platform}")
                 print("-" * 40)
 
         except Exception as err:

@@ -43,10 +43,13 @@ class Application(DataClassDictMixin):
 class Device(DataClassDictMixin):
     """Metadata about the device that recorded the metric."""
 
+    form_factor: str | None = field(
+        metadata=field_options(alias="formFactor"), default=None
+    )
+    display_name: str | None = field(
+        metadata=field_options(alias="displayName"), default=None
+    )
     manufacturer: str | None = None
-    model: str | None = None
-    type: str | None = None
-    uid: str | None = None
 
     class Config(BaseConfig):
         serialize_by_alias = True
@@ -56,11 +59,12 @@ class Device(DataClassDictMixin):
 class DataSource(DataClassDictMixin):
     """Metadata about the origin of a data point."""
 
-    data_stream_name: str | None = field(
-        metadata=field_options(alias="dataStreamName"), default=None
-    )
-    application: Application | None = None
     device: Device | None = None
+    platform: str | None = None
+    application: Application | None = None
+    recording_method: str | None = field(
+        metadata=field_options(alias="recordingMethod"), default=None
+    )
 
     class Config(BaseConfig):
         serialize_by_alias = True
@@ -107,9 +111,10 @@ class ReconciledDataPoint(Generic[T]):
         cls, data_type: DataType[T], raw_dict: dict[str, Any]
     ) -> "ReconciledDataPoint[T]":
         """Deserialize a raw API dictionary into a type-safe ReconciledDataPoint."""
-        data_point_dict = raw_dict.get("dataPoint")
-        if data_point_dict is None:
-            raise ValueError("Missing inner dataPoint field in reconciled response")
+        data_point_dict = raw_dict.get("dataPoint", raw_dict)
+        if "name" not in data_point_dict and "dataPointName" in raw_dict:
+            data_point_dict = dict(data_point_dict)
+            data_point_dict["name"] = raw_dict["dataPointName"]
         return cls(data_point=DataPoint.from_api_dict(data_type, data_point_dict))
 
 
