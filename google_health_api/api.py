@@ -594,14 +594,31 @@ class GoogleHealthApi:
     """
 
     steps: DataPointSubApi[Steps]
+    """Namespaced client for Step count data (`Steps` model)."""
+
     heart_rate: DataPointSubApi[HeartRate]
+    """Namespaced client for Heart rate data (`HeartRate` model)."""
+
     sleep: DataPointSubApi[Sleep]
+    """Namespaced client for Sleep session data (`Sleep` model)."""
+
     distance: DataPointSubApi[Distance]
+    """Namespaced client for Distance traveled data (`Distance` model)."""
+
     basal_energy_burned: DataPointSubApi[BasalEnergyBurned]
+    """Namespaced client for Basal metabolic energy burned data (`BasalEnergyBurned` model)."""
+
     vo2_max: DataPointSubApi[VO2Max]
+    """Namespaced client for VO2 Max fitness data (`VO2Max` model)."""
+
     weight: DataPointSubApi[Weight]
+    """Namespaced client for Body weight data (`Weight` model)."""
+
     paired_devices: PairedDevicesSubApi
+    """Namespaced client for managing user's paired devices."""
+
     subscribers: SubscribersSubApi
+    """Namespaced client for managing webhook subscriber endpoints and subscriptions."""
 
     def __init__(self, auth: AbstractAuth) -> None:
         """Initialize the client."""
