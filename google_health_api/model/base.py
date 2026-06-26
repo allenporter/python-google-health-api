@@ -13,11 +13,18 @@ T = TypeVar("T", bound=DataClassDictMixin)
 class DataType(Generic[T]):
     """Represents a Google Health data type and carries its serialization metadata."""
 
-    def __init__(self, key: str, field_name: str, payload_cls: type[T]) -> None:
+    def __init__(
+        self,
+        key: str,
+        field_name: str,
+        payload_cls: type[T],
+        time_field_path: str,
+    ) -> None:
         """Initialize the DataType registry token."""
         self.key = key  # kebab-case for endpoint (e.g. "heart-rate")
         self.field_name = field_name  # camelCase for JSON data block (e.g. "heartRate")
         self.payload_cls = payload_cls  # Python class to deserialize into
+        self.time_field_path = time_field_path
 
 
 @dataclass
@@ -72,8 +79,11 @@ class DataPoint(Generic[T]):
         cls, data_type: DataType[T], raw_dict: dict[str, Any]
     ) -> "DataPoint[T]":
         """Deserialize a raw API dictionary into a type-safe DataPoint."""
-        data_block = raw_dict.get("data", {})
-        payload_dict = data_block.get(data_type.field_name)
+        payload_dict = raw_dict.get(data_type.field_name)
+        if payload_dict is None:
+            data_block = raw_dict.get("data", {})
+            payload_dict = data_block.get(data_type.field_name)
+
         if payload_dict is None:
             raise ValueError(f"Missing expected data field: {data_type.field_name}")
 

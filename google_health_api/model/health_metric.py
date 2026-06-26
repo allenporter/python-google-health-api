@@ -20,4 +20,9 @@ class HeartRate(DataClassDictMixin):
         serialize_by_alias = True
 
 
-HEART_RATE = DataType("heart-rate", "heartRate", HeartRate)
+HEART_RATE = DataType(
+    "heart-rate",
+    "heartRate",
+    HeartRate,
+    "heart_rate.sample_time.physical_time",
+)

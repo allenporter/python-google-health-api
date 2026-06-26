@@ -20,4 +20,4 @@ class Steps(DataClassDictMixin):
         serialize_by_alias = True
 
 
-STEPS = DataType("steps", "steps", Steps)
+STEPS = DataType("steps", "steps", Steps, "steps.interval.start_time")

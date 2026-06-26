@@ -47,21 +47,20 @@ def _camel_to_snake(name: str) -> str:
 
 
 def _build_time_filter(
-    field_name: str, start_time: datetime | None, end_time: datetime | None
+    time_field_path: str, start_time: datetime | None, end_time: datetime | None
 ) -> str | None:
     """Build an AIP-160 compatible time filter expression."""
     filters = []
-    snake_field = _camel_to_snake(field_name)
     if start_time:
         # Convert to UTC and format as ISO 8601 UTC string (z-normalized)
         utc_start = start_time.astimezone(timezone.utc)
         iso_start = utc_start.isoformat().replace("+00:00", "Z")
-        filters.append(f"{snake_field}.start_time > '{iso_start}'")
+        filters.append(f'{time_field_path} >= "{iso_start}"')
     if end_time:
         # Convert to UTC and format as ISO 8601 UTC string (z-normalized)
         utc_end = end_time.astimezone(timezone.utc)
         iso_end = utc_end.isoformat().replace("+00:00", "Z")
-        filters.append(f"{snake_field}.end_time < '{iso_end}'")
+        filters.append(f'{time_field_path} < "{iso_end}"')
     return " AND ".join(filters) if filters else None
 
 
@@ -96,7 +95,7 @@ class DataPointSubApi(Generic[T]):
             if token:
                 params["pageToken"] = token
             filter_expr = _build_time_filter(
-                self._data_type.field_name, start_time, end_time
+                self._data_type.time_field_path, start_time, end_time
             )
             if filter_expr:
                 params["filter"] = filter_expr
@@ -141,7 +140,7 @@ class DataPointSubApi(Generic[T]):
             if token:
                 params["pageToken"] = token
             filter_expr = _build_time_filter(
-                self._data_type.field_name, start_time, end_time
+                self._data_type.time_field_path, start_time, end_time
             )
             if filter_expr:
                 params["filter"] = filter_expr

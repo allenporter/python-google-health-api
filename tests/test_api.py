@@ -190,7 +190,7 @@ async def test_list_steps(
     assert req["query"]["pageSize"] == "50"
     assert (
         req["query"]["filter"]
-        == "steps.start_time > '2026-06-22T08:00:00Z' AND steps.end_time < '2026-06-22T09:00:00Z'"
+        == 'steps.interval.start_time >= "2026-06-22T08:00:00Z" AND steps.interval.start_time < "2026-06-22T09:00:00Z"'
     )
 
 
@@ -347,5 +347,5 @@ async def test_list_steps_timezone_conversion(
     req = requests[0]
     assert (
         req["query"]["filter"]
-        == "steps.start_time > '2026-06-22T08:00:00Z' AND steps.end_time < '2026-06-22T09:00:00Z'"
+        == 'steps.interval.start_time >= "2026-06-22T08:00:00Z" AND steps.interval.start_time < "2026-06-22T09:00:00Z"'
     )
