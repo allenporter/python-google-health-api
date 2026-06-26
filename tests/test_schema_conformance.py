@@ -28,6 +28,19 @@ from google_health_api.model.subscription import (
     SubscriberConfig,
     Subscription,
 )
+from google_health_api.model.sleep import (
+    Sleep,
+    SessionTimeInterval,
+    CivilDateTime,
+    TimeOfDay,
+    SleepStage,
+    OutOfBedSegment,
+    SleepSummary,
+    StageSummary,
+    SleepMetadata,
+)
+from google_health_api.model.activity import Distance, BasalEnergyBurned
+from google_health_api.model.health_metric import VO2Max, Weight
 
 # Mapping of Python classes to their corresponding schema names in the discovery document.
 CLASS_TO_SCHEMA = {
@@ -51,6 +64,19 @@ CLASS_TO_SCHEMA = {
     Application: "Application",
     DataPoint: "DataPoint",
     ReconciledDataPoint: "ReconciledDataPoint",
+    Sleep: "Sleep",
+    SessionTimeInterval: "SessionTimeInterval",
+    CivilDateTime: "CivilDateTime",
+    TimeOfDay: "TimeOfDay",
+    SleepStage: "SleepStage",
+    OutOfBedSegment: "OutOfBedSegment",
+    SleepSummary: "SleepSummary",
+    StageSummary: "StageSummary",
+    SleepMetadata: "SleepMetadata",
+    Distance: "Distance",
+    BasalEnergyBurned: "BasalEnergyBurned",
+    VO2Max: "VO2Max",
+    Weight: "Weight",
 }
 
 

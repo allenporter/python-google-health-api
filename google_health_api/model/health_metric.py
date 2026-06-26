@@ -71,3 +71,69 @@ HEART_RATE = DataType(
     HeartRate,
     "heart_rate.sample_time.physical_time",
 )
+
+
+@dataclass
+class VO2Max(DataClassDictMixin):
+    """VO2 max measurement."""
+
+    vo2_max: float = field(metadata=field_options(alias="vo2Max"))
+    sample_time: ObservationSampleTime = field(
+        metadata=field_options(alias="sampleTime")
+    )
+    measurement_method: str | None = field(
+        metadata=field_options(alias="measurementMethod"), default=None
+    )
+
+    @property
+    def start_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    @property
+    def end_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+VO2_MAX = DataType(
+    "vo2-max",
+    "vo2Max",
+    VO2Max,
+    "vo2_max.sample_time.physical_time",
+)
+
+
+@dataclass
+class Weight(DataClassDictMixin):
+    """Body weight measurement."""
+
+    weight_grams: float = field(metadata=field_options(alias="weightGrams"))
+    sample_time: ObservationSampleTime = field(
+        metadata=field_options(alias="sampleTime")
+    )
+    notes: str | None = None
+
+    @property
+    def start_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    @property
+    def end_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+WEIGHT = DataType(
+    "weight",
+    "weight",
+    Weight,
+    "weight.sample_time.physical_time",
+)

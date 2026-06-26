@@ -47,3 +47,56 @@ class Steps(DataClassDictMixin):
 
 
 STEPS = DataType("steps", "steps", Steps, "steps.interval.start_time")
+
+
+@dataclass
+class Distance(DataClassDictMixin):
+    """Distance traveled over an interval of time."""
+
+    millimeters: int
+    interval: ObservationTimeInterval
+
+    @property
+    def start_time(self) -> str:
+        """Return the start time of the interval."""
+        return self.interval.start_time
+
+    @property
+    def end_time(self) -> str:
+        """Return the end time of the interval."""
+        return self.interval.end_time
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+DISTANCE = DataType("distance", "distance", Distance, "distance.interval.start_time")
+
+
+@dataclass
+class BasalEnergyBurned(DataClassDictMixin):
+    """Number of calories burned due to basal metabolic rate over a period of time."""
+
+    kcal: float
+    interval: ObservationTimeInterval
+
+    @property
+    def start_time(self) -> str:
+        """Return the start time of the interval."""
+        return self.interval.start_time
+
+    @property
+    def end_time(self) -> str:
+        """Return the end time of the interval."""
+        return self.interval.end_time
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+BASAL_ENERGY_BURNED = DataType(
+    "basal-energy-burned",
+    "basalEnergyBurned",
+    BasalEnergyBurned,
+    "basal_energy_burned.interval.start_time",
+)

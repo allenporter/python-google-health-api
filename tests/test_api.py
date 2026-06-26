@@ -7,7 +7,14 @@ import aiohttp
 import pytest
 from google_health_api.api import GoogleHealthApi
 from google_health_api.model import DataPoint, DataSource
-from google_health_api.model.activity import ObservationTimeInterval, Steps
+from google_health_api.model.activity import (
+    ObservationTimeInterval,
+    Steps,
+    Distance,
+    BasalEnergyBurned,
+)
+from google_health_api.model.health_metric import VO2Max, Weight, ObservationSampleTime
+from google_health_api.model.sleep import Sleep, SessionTimeInterval, SleepStage
 from .conftest import AuthCallback
 
 
@@ -356,3 +363,215 @@ async def test_list_steps_timezone_conversion(
         req["query"]["filter"]
         == 'steps.interval.start_time >= "2026-06-22T08:00:00Z" AND steps.interval.start_time < "2026-06-22T09:00:00Z"'
     )
+
+
+# ==========================================
+# Sleep Tests
+# ==========================================
+
+
+async def test_sleep_crud(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    get_response: list[dict[str, Any]],
+    create_response: list[dict[str, Any]],
+    patch_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test sleep endpoints (list, get, create, patch, delete)."""
+    fake_sleep_payload = {
+        "name": "users/me/dataTypes/sleep/dataPoints/sleep-1",
+        "sleep": {
+            "interval": {
+                "startTime": "2026-06-22T22:00:00Z",
+                "endTime": "2026-06-23T06:00:00Z",
+            },
+            "stages": [
+                {
+                    "startTime": "2026-06-22T22:00:00Z",
+                    "endTime": "2026-06-22T23:00:00Z",
+                    "startUtcOffset": "+00:00",
+                    "endUtcOffset": "+00:00",
+                    "type": "LIGHT",
+                }
+            ],
+        },
+    }
+
+    # 1. List
+    list_response.append({"dataPoints": [fake_sleep_payload]})
+    start = datetime(2026, 6, 22, 22, 0, 0, tzinfo=timezone.utc)
+    end = datetime(2026, 6, 23, 6, 0, 0, tzinfo=timezone.utc)
+    result = await api.sleep.list(start_time=start, end_time=end)
+    assert len(result.data_points) == 1
+    assert result.data_points[0].data.start_time == "2026-06-22T22:00:00Z"
+    assert len(requests) == 1
+    assert (
+        requests[0]["query"]["filter"]
+        == 'sleep.interval.start_time >= "2026-06-22T22:00:00Z" AND sleep.interval.start_time < "2026-06-23T06:00:00Z"'
+    )
+
+    # 2. Get
+    get_response.append(fake_sleep_payload)
+    point = await api.sleep.get("sleep-1")
+    assert point.data.end_time == "2026-06-23T06:00:00Z"
+    assert len(requests) == 2
+
+    # 3. Create
+    create_response.append(fake_sleep_payload)
+    new_sleep = Sleep(
+        interval=SessionTimeInterval(
+            start_time="2026-06-22T22:00:00Z", end_time="2026-06-23T06:00:00Z"
+        ),
+        stages=[
+            SleepStage(
+                start_time="2026-06-22T22:00:00Z",
+                end_time="2026-06-22T23:00:00Z",
+                start_utc_offset="+00:00",
+                end_utc_offset="+00:00",
+                type="LIGHT",
+            )
+        ],
+    )
+    created = await api.sleep.create(DataPoint(data=new_sleep))
+    assert created.data.stages is not None
+    assert created.data.stages[0].type == "LIGHT"
+    assert len(requests) == 3
+    assert (
+        requests[2]["body"]["sleep"]["interval"]["startTime"] == "2026-06-22T22:00:00Z"
+    )
+
+    # 4. Patch
+    patch_response.append(fake_sleep_payload)
+    patched = await api.sleep.patch("sleep-1", DataPoint(data=new_sleep))
+    assert patched.data.start_time == "2026-06-22T22:00:00Z"
+    assert len(requests) == 4
+
+    # 5. Delete
+    await api.sleep.delete("sleep-1")
+    assert len(requests) == 5
+    assert requests[4]["method"] == "DELETE"
+
+
+# ==========================================
+# Distance and BasalEnergyBurned Tests
+# ==========================================
+
+
+async def test_distance_and_basal_energy_burned(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    create_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test distance and basal energy burned clients."""
+    # Distance
+    fake_distance_payload = {
+        "name": "users/me/dataTypes/distance/dataPoints/dist-1",
+        "distance": {
+            "millimeters": "5000",
+            "interval": {
+                "startTime": "2026-06-22T08:00:00Z",
+                "endTime": "2026-06-22T08:15:00Z",
+            },
+        },
+    }
+    list_response.append({"dataPoints": [fake_distance_payload]})
+    result_dist = await api.distance.list()
+    assert len(result_dist.data_points) == 1
+    assert result_dist.data_points[0].data.millimeters == 5000
+
+    create_response.append(fake_distance_payload)
+    new_dist = Distance(
+        millimeters=5000,
+        interval=ObservationTimeInterval(
+            start_time="2026-06-22T08:00:00Z", end_time="2026-06-22T08:15:00Z"
+        ),
+    )
+    await api.distance.create(DataPoint(data=new_dist))
+    assert requests[-1]["body"]["distance"]["millimeters"] == 5000
+
+    # Basal Energy Burned
+    fake_beb_payload = {
+        "name": "users/me/dataTypes/basal-energy-burned/dataPoints/beb-1",
+        "basalEnergyBurned": {
+            "kcal": 15.5,
+            "interval": {
+                "startTime": "2026-06-22T08:00:00Z",
+                "endTime": "2026-06-22T08:15:00Z",
+            },
+        },
+    }
+    list_response.append({"dataPoints": [fake_beb_payload]})
+    result_beb = await api.basal_energy_burned.list()
+    assert len(result_beb.data_points) == 1
+    assert result_beb.data_points[0].data.kcal == 15.5
+
+    create_response.append(fake_beb_payload)
+    new_beb = BasalEnergyBurned(
+        kcal=15.5,
+        interval=ObservationTimeInterval(
+            start_time="2026-06-22T08:00:00Z", end_time="2026-06-22T08:15:00Z"
+        ),
+    )
+    await api.basal_energy_burned.create(DataPoint(data=new_beb))
+    assert requests[-1]["body"]["basalEnergyBurned"]["kcal"] == 15.5
+
+
+# ==========================================
+# VO2Max and Weight Tests
+# ==========================================
+
+
+async def test_vo2_max_and_weight(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    create_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test VO2Max and Weight clients."""
+    # VO2 Max
+    fake_vo2_payload = {
+        "name": "users/me/dataTypes/vo2-max/dataPoints/vo2-1",
+        "vo2Max": {
+            "vo2Max": 45.2,
+            "measurementMethod": "FITBIT_RUN",
+            "sampleTime": {"physicalTime": "2026-06-22T08:00:00Z"},
+        },
+    }
+    list_response.append({"dataPoints": [fake_vo2_payload]})
+    result_vo2 = await api.vo2_max.list()
+    assert len(result_vo2.data_points) == 1
+    assert result_vo2.data_points[0].data.vo2_max == 45.2
+
+    create_response.append(fake_vo2_payload)
+    new_vo2 = VO2Max(
+        vo2_max=45.2,
+        sample_time=ObservationSampleTime(physical_time="2026-06-22T08:00:00Z"),
+        measurement_method="FITBIT_RUN",
+    )
+    await api.vo2_max.create(DataPoint(data=new_vo2))
+    assert requests[-1]["body"]["vo2Max"]["vo2Max"] == 45.2
+
+    # Weight
+    fake_weight_payload = {
+        "name": "users/me/dataTypes/weight/dataPoints/w-1",
+        "weight": {
+            "weightGrams": 75000.0,
+            "notes": "morning weigh-in",
+            "sampleTime": {"physicalTime": "2026-06-22T08:00:00Z"},
+        },
+    }
+    list_response.append({"dataPoints": [fake_weight_payload]})
+    result_w = await api.weight.list()
+    assert len(result_w.data_points) == 1
+    assert result_w.data_points[0].data.weight_grams == 75000.0
+
+    create_response.append(fake_weight_payload)
+    new_w = Weight(
+        weight_grams=75000.0,
+        sample_time=ObservationSampleTime(physical_time="2026-06-22T08:00:00Z"),
+        notes="morning weigh-in",
+    )
+    await api.weight.create(DataPoint(data=new_w))
+    assert requests[-1]["body"]["weight"]["weightGrams"] == 75000.0

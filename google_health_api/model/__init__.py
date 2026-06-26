@@ -1,9 +1,16 @@
 """Data models for Google Health API."""
 
-from .activity import STEPS, Steps
+from .activity import (
+    BASAL_ENERGY_BURNED,
+    DISTANCE,
+    BasalEnergyBurned,
+    Distance,
+    STEPS,
+    Steps,
+)
 from .base import DataPoint, DataSource, DataType, ReconciledDataPoint
 from .device import ListPairedDevicesResult, PairedDevice, _ListPairedDevicesModel
-from .health_metric import HEART_RATE, HeartRate
+from .health_metric import HEART_RATE, VO2_MAX, WEIGHT, HeartRate, VO2Max, Weight
 from .pagination import (
     ListDataPointResult,
     ListReconciledDataPointsResult,
@@ -13,6 +20,18 @@ from .pagination import (
 from .operation import Operation, Status
 from .profile import Date, Identity, IrnProfile, Profile
 from .settings import Settings
+from .sleep import (
+    SLEEP,
+    CivilDateTime,
+    OutOfBedSegment,
+    SessionTimeInterval,
+    Sleep,
+    SleepMetadata,
+    SleepStage,
+    SleepSummary,
+    StageSummary,
+    TimeOfDay,
+)
 from .subscription import (
     EndpointAuthorization,
     ListSubscribersResult,
@@ -25,34 +44,59 @@ from .subscription import (
 )
 
 __all__ = [
+    # --- Core & Base API Structures ---
     "DataType",
-    "DataSource",
     "DataPoint",
     "ReconciledDataPoint",
-    "ListDataPointResult",
-    "ListReconciledDataPointsResult",
-    "_ListDataPointsModel",
-    "_ListReconciledDataPointsModel",
-    "STEPS",
+    "DataSource",
+    # --- Activity Models ---
     "Steps",
-    "HEART_RATE",
+    "STEPS",
+    "Distance",
+    "DISTANCE",
+    "BasalEnergyBurned",
+    "BASAL_ENERGY_BURNED",
+    # --- Health Metric Models ---
     "HeartRate",
-    "Date",
+    "HEART_RATE",
+    "VO2Max",
+    "VO2_MAX",
+    "Weight",
+    "WEIGHT",
+    # --- Sleep Models ---
+    "Sleep",
+    "SLEEP",
+    "SessionTimeInterval",
+    "CivilDateTime",
+    "TimeOfDay",
+    "SleepStage",
+    "OutOfBedSegment",
+    "SleepSummary",
+    "StageSummary",
+    "SleepMetadata",
+    # --- Profile & Settings Models ---
     "Profile",
     "IrnProfile",
     "Identity",
     "Settings",
+    "Date",
+    # --- Device & Webhook Subscription Models ---
     "PairedDevice",
-    "ListPairedDevicesResult",
-    "_ListPairedDevicesModel",
     "Subscriber",
     "SubscriberConfig",
     "EndpointAuthorization",
     "Subscription",
-    "ListSubscribersResult",
-    "ListSubscriptionsResult",
-    "_ListSubscribersModel",
-    "_ListSubscriptionsModel",
     "Operation",
     "Status",
+    # --- Pagination & Internal Result wrappers ---
+    "ListDataPointResult",
+    "ListReconciledDataPointsResult",
+    "ListPairedDevicesResult",
+    "ListSubscribersResult",
+    "ListSubscriptionsResult",
+    "_ListDataPointsModel",
+    "_ListReconciledDataPointsModel",
+    "_ListPairedDevicesModel",
+    "_ListSubscribersModel",
+    "_ListSubscriptionsModel",
 ]

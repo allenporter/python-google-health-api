@@ -1,4 +1,21 @@
-"""API client implementation for Google Health."""
+"""API client implementation for Google Health.
+
+This module provides the main entry point for interacting with the Google Health API.
+The primary class is `GoogleHealthApi`, which exposes namespaced sub-APIs for various
+wearable data types (such as steps, sleep, distance, etc.), paired devices, and webhook subscribers.
+
+Example usage:
+    from google_health_api import GoogleHealthApi
+    from google_health_api.auth import ServiceAccountAuth
+
+    auth = ServiceAccountAuth("path/to/key.json")
+    api = GoogleHealthApi(auth)
+
+    # Fetch steps
+    steps_result = await api.steps.list()
+    for point in steps_result.data_points:
+        print(f"Steps: {point.data.count} between {point.data.start_time} and {point.data.end_time}")
+"""
 
 import re
 from datetime import datetime, timezone
@@ -9,10 +26,17 @@ from mashumaro import DataClassDictMixin
 from .auth import AbstractAuth
 from .client import GoogleHealthSession
 from .model import (
+    BASAL_ENERGY_BURNED,
+    DISTANCE,
     HEART_RATE,
+    SLEEP,
     STEPS,
+    VO2_MAX,
+    WEIGHT,
+    BasalEnergyBurned,
     DataPoint,
     DataType,
+    Distance,
     HeartRate,
     Identity,
     IrnProfile,
@@ -26,10 +50,13 @@ from .model import (
     Profile,
     ReconciledDataPoint,
     Settings,
+    Sleep,
     Steps,
     Subscriber,
     SubscriberConfig,
     Subscription,
+    VO2Max,
+    Weight,
     _ListDataPointsModel,
     _ListPairedDevicesModel,
     _ListReconciledDataPointsModel,
@@ -548,10 +575,31 @@ class SubscribersSubApi:
 
 
 class GoogleHealthApi:
-    """The Google Health API client."""
+    """The Google Health API client.
+
+    This client serves as the main gateway to access all Google Health API resources.
+    It exposes namespaced properties for specific data types, allowing you to list,
+    get, create, patch, and delete data points in a type-safe manner.
+
+    Attributes:
+        steps: Namespaced client for Step count data (`Steps` model).
+        heart_rate: Namespaced client for Heart rate data (`HeartRate` model).
+        sleep: Namespaced client for Sleep session data (`Sleep` model).
+        distance: Namespaced client for Distance traveled data (`Distance` model).
+        basal_energy_burned: Namespaced client for Basal metabolic energy burned data (`BasalEnergyBurned` model).
+        vo2_max: Namespaced client for VO2 Max fitness data (`VO2Max` model).
+        weight: Namespaced client for Body weight data (`Weight` model).
+        paired_devices: Namespaced client for managing user's paired devices.
+        subscribers: Namespaced client for managing webhook subscriber endpoints and subscriptions.
+    """
 
     steps: DataPointSubApi[Steps]
     heart_rate: DataPointSubApi[HeartRate]
+    sleep: DataPointSubApi[Sleep]
+    distance: DataPointSubApi[Distance]
+    basal_energy_burned: DataPointSubApi[BasalEnergyBurned]
+    vo2_max: DataPointSubApi[VO2Max]
+    weight: DataPointSubApi[Weight]
     paired_devices: PairedDevicesSubApi
     subscribers: SubscribersSubApi
 
@@ -560,6 +608,11 @@ class GoogleHealthApi:
         self._session = GoogleHealthSession(auth, auth._websession, auth._host)
         self.steps = DataPointSubApi(self._session, STEPS)
         self.heart_rate = DataPointSubApi(self._session, HEART_RATE)
+        self.sleep = DataPointSubApi(self._session, SLEEP)
+        self.distance = DataPointSubApi(self._session, DISTANCE)
+        self.basal_energy_burned = DataPointSubApi(self._session, BASAL_ENERGY_BURNED)
+        self.vo2_max = DataPointSubApi(self._session, VO2_MAX)
+        self.weight = DataPointSubApi(self._session, WEIGHT)
         self.paired_devices = PairedDevicesSubApi(self._session)
         self.subscribers = SubscribersSubApi(self._session)
 
