@@ -158,6 +158,14 @@ class DailyRollupDataPoint(Generic[R]):
         """Deserialize a raw API dictionary into a type-safe DailyRollupDataPoint."""
         payload_dict = raw_dict.get(field_name)
         if payload_dict is None:
+            # Fall back to checking other dict keys (excluding civil times) to support rollups
+            # with fields named differently from standard endpoints (e.g. heartRateVariabilityPersonalRange)
+            for k, v in raw_dict.items():
+                if k not in ("civilStartTime", "civilEndTime") and isinstance(v, dict):
+                    payload_dict = v
+                    break
+
+        if payload_dict is None:
             raise ValueError(f"Missing expected rollup data field: {field_name}")
 
         payload = rollup_cls.from_dict(payload_dict)

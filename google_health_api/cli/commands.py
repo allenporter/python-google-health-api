@@ -318,6 +318,9 @@ async def setup_client(session: aiohttp.ClientSession) -> GoogleHealthApi:
     api.floors._session = api._session
     api.hydration_log._session = api._session
     api.daily_resting_heart_rate._session = api._session
+    api.heart_rate_variability._session = api._session
+    api.daily_heart_rate_variability._session = api._session
+    api.nutrition_log._session = api._session
     api.paired_devices._session = api._session
     api.subscribers._session = api._session
     api.subscribers.subscriptions._session = api._session
@@ -637,6 +640,36 @@ async def handle_daily_resting_heart_rate_cmd(
         "dailyRestingHeartRate",
         "daily-resting-heart-rate",
         "daily resting heart rate",
+        pretty,
+    )
+
+
+async def handle_heart_rate_variability_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle heart rate variability subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.heart_rate_variability,
+        "heartRateVariability",
+        "heart-rate-variability",
+        "heart rate variability",
+        pretty,
+    )
+
+
+async def handle_daily_heart_rate_variability_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle daily heart rate variability subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.daily_heart_rate_variability,
+        "dailyHeartRateVariability",
+        "daily-heart-rate-variability",
+        "daily heart rate variability",
         pretty,
     )
 
@@ -968,6 +1001,10 @@ async def async_run_cmd(args) -> None:
                 await handle_nutrition_log_cmd(args, api, pretty)
             elif cmd == "daily-resting-heart-rate":
                 await handle_daily_resting_heart_rate_cmd(args, api, pretty)
+            elif cmd == "heart-rate-variability":
+                await handle_heart_rate_variability_cmd(args, api, pretty)
+            elif cmd == "daily-heart-rate-variability":
+                await handle_daily_heart_rate_variability_cmd(args, api, pretty)
             elif cmd == "profile":
                 await handle_profile_cmd(args, api, pretty)
             elif cmd == "settings":

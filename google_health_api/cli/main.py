@@ -187,6 +187,18 @@ def main() -> None:
         "daily resting heart rate",
         supports_rollup=False,
     )
+    add_standard_datapoint_commands(
+        subparsers,
+        "heart-rate-variability",
+        "heart rate variability",
+        supports_rollup=False,
+    )
+    add_standard_datapoint_commands(
+        subparsers,
+        "daily-heart-rate-variability",
+        "daily heart rate variability",
+        supports_rollup=True,
+    )
 
     # profile commands
     profile_parser = subparsers.add_parser(

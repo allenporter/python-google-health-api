@@ -26,6 +26,8 @@ from google_health_api.model import (
     HydrationLog,
     NutritionLog,
     DailyRestingHeartRate,
+    HeartRateVariability,
+    DailyHeartRateVariability,
 )
 
 
@@ -284,6 +286,20 @@ def get_command_schemas() -> dict[str, dict[str, Any]]:
             DailyRestingHeartRate,
             "daily resting heart rate",
             False,
+        ),
+        (
+            "heart-rate-variability",
+            "heartRateVariability",
+            HeartRateVariability,
+            "heart rate variability",
+            False,
+        ),
+        (
+            "daily-heart-rate-variability",
+            "dailyHeartRateVariability",
+            DailyHeartRateVariability,
+            "daily heart rate variability",
+            True,
         ),
     ]:
         schemas.update(

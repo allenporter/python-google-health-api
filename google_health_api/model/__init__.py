@@ -27,13 +27,18 @@ from .base import (
 )
 from .device import ListPairedDevicesResult, PairedDevice, _ListPairedDevicesModel
 from .health_metric import (
+    DAILY_HEART_RATE_VARIABILITY,
     DAILY_RESTING_HEART_RATE,
     HEART_RATE,
+    HEART_RATE_VARIABILITY,
     VO2_MAX,
     WEIGHT,
+    DailyHeartRateVariability,
     DailyRestingHeartRate,
     DailyRestingHeartRateMetadata,
     HeartRate,
+    HeartRateVariability,
+    HeartRateVariabilityPersonalRangeRollupValue,
     VO2Max,
     Weight,
 )
@@ -124,6 +129,11 @@ __all__ = [
     "DailyRestingHeartRate",
     "DAILY_RESTING_HEART_RATE",
     "DailyRestingHeartRateMetadata",
+    "HeartRateVariability",
+    "HEART_RATE_VARIABILITY",
+    "DailyHeartRateVariability",
+    "DAILY_HEART_RATE_VARIABILITY",
+    "HeartRateVariabilityPersonalRangeRollupValue",
     # --- Sleep Models ---
     "Sleep",
     "SLEEP",

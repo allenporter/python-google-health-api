@@ -182,3 +182,106 @@ DAILY_RESTING_HEART_RATE = DataType(
     DailyRestingHeartRate,
     "daily_resting_heart_rate.date.year",
 )
+
+
+@dataclass
+class HeartRateVariability(DataClassDictMixin):
+    """Heart rate variability (HRV) intraday measurement."""
+
+    sample_time: ObservationSampleTime = field(
+        metadata=field_options(alias="sampleTime")
+    )
+    root_mean_square_of_successive_differences_milliseconds: float | None = field(
+        metadata=field_options(
+            alias="rootMeanSquareOfSuccessiveDifferencesMilliseconds"
+        ),
+        default=None,
+    )
+    standard_deviation_milliseconds: float | None = field(
+        metadata=field_options(alias="standardDeviationMilliseconds"),
+        default=None,
+    )
+
+    @property
+    def start_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    @property
+    def end_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+HEART_RATE_VARIABILITY = DataType(
+    "heart-rate-variability",
+    "heartRateVariability",
+    HeartRateVariability,
+    "heart_rate_variability.sample_time.physical_time",
+)
+
+
+@dataclass
+class DailyHeartRateVariability(DataClassDictMixin):
+    """Daily heart rate variability measurement."""
+
+    date: Date = field(metadata=field_options(alias="date"))
+    average_heart_rate_variability_milliseconds: float | None = field(
+        metadata=field_options(alias="averageHeartRateVariabilityMilliseconds"),
+        default=None,
+    )
+    non_rem_heart_rate_beats_per_minute: int | None = field(
+        metadata=field_options(alias="nonRemHeartRateBeatsPerMinute"),
+        default=None,
+    )
+    entropy: float | None = field(default=None)
+    deep_sleep_root_mean_square_of_successive_differences_milliseconds: float | None = (
+        field(
+            metadata=field_options(
+                alias="deepSleepRootMeanSquareOfSuccessiveDifferencesMilliseconds"
+            ),
+            default=None,
+        )
+    )
+
+    @property
+    def start_time(self) -> str:
+        """Return ISO format string of date."""
+        return f"{self.date.year:04d}-{self.date.month:02d}-{self.date.day:02d}"
+
+    @property
+    def end_time(self) -> str:
+        """Return ISO format string of date."""
+        return f"{self.date.year:04d}-{self.date.month:02d}-{self.date.day:02d}"
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+@dataclass
+class HeartRateVariabilityPersonalRangeRollupValue(DataClassDictMixin):
+    """Represents the rollup of the user's daily heart rate variability personal range."""
+
+    average_heart_rate_variability_milliseconds_min: float | None = field(
+        metadata=field_options(alias="averageHeartRateVariabilityMillisecondsMin"),
+        default=None,
+    )
+    average_heart_rate_variability_milliseconds_max: float | None = field(
+        metadata=field_options(alias="averageHeartRateVariabilityMillisecondsMax"),
+        default=None,
+    )
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+DAILY_HEART_RATE_VARIABILITY = DataType(
+    "daily-heart-rate-variability",
+    "dailyHeartRateVariability",
+    DailyHeartRateVariability,
+    "daily_heart_rate_variability.date.year",
+    HeartRateVariabilityPersonalRangeRollupValue,
+)

@@ -29,10 +29,12 @@ from .client import GoogleHealthSession
 from .model import (
     ACTIVE_ENERGY_BURNED,
     BASAL_ENERGY_BURNED,
+    DAILY_HEART_RATE_VARIABILITY,
     DAILY_RESTING_HEART_RATE,
     DISTANCE,
     FLOORS,
     HEART_RATE,
+    HEART_RATE_VARIABILITY,
     HYDRATION_LOG,
     NUTRITION_LOG,
     SLEEP,
@@ -47,12 +49,14 @@ from .model import (
     DailyRollUpDataPointsRequest,
     DailyRollupDataPoint,
     DailyRestingHeartRate,
+    DailyHeartRateVariability,
     DataPoint,
     DataType,
     Date,
     Distance,
     Floors,
     HeartRate,
+    HeartRateVariability,
     HydrationLog,
     NutritionLog,
     Identity,
@@ -780,6 +784,12 @@ class GoogleHealthApi:
     daily_resting_heart_rate: DataPointSubApi[DailyRestingHeartRate]
     """Namespaced client for Daily resting heart rate data (`DailyRestingHeartRate` model)."""
 
+    heart_rate_variability: DataPointSubApi[HeartRateVariability]
+    """Namespaced client for Heart rate variability intraday data (`HeartRateVariability` model)."""
+
+    daily_heart_rate_variability: RollupDataPointSubApi[DailyHeartRateVariability]
+    """Namespaced client for Daily heart rate variability data (`DailyHeartRateVariability` model)."""
+
     paired_devices: PairedDevicesSubApi
     """Namespaced client for managing user's paired devices."""
 
@@ -807,6 +817,12 @@ class GoogleHealthApi:
         self.nutrition_log = RollupDataPointSubApi(self._session, NUTRITION_LOG)
         self.daily_resting_heart_rate = DataPointSubApi(
             self._session, DAILY_RESTING_HEART_RATE
+        )
+        self.heart_rate_variability = DataPointSubApi(
+            self._session, HEART_RATE_VARIABILITY
+        )
+        self.daily_heart_rate_variability = RollupDataPointSubApi(
+            self._session, DAILY_HEART_RATE_VARIABILITY
         )
         self.paired_devices = PairedDevicesSubApi(self._session)
         self.subscribers = SubscribersSubApi(self._session)
