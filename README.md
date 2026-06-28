@@ -31,13 +31,7 @@ Currently supported data types:
 
 ## Installation
 
-Install the package from PyPI using `pip` or `uv`:
-
-```bash
-pip install google-health-api
-```
-
-Or using `uv`:
+Install the package from PyPI using `uv`:
 
 ```bash
 uv pip install google-health-api
