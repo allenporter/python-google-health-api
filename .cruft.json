@@ -8,7 +8,7 @@
       "email": "allen.porter@gmail.com",
       "github_username": "allenporter",
       "project_name": "google_health_api",
-      "description": "Project short description.",
+      "description": "An asynchronous, type-safe Python client library for the Google Health API.",
       "version": "0.0.1",
       "_template": "https://github.com/allenporter/cookiecutter-python"
     }

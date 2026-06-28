@@ -7,7 +7,7 @@ name = "google_health_api"
 version = "0.1.0"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-description = "Project short description."
+description = "An asynchronous, type-safe Python client library for the Google Health API."
 readme = "README.md"
 authors = [{ name = "Allen Porter", email = "allen.porter@gmail.com" }]
 requires-python = ">=3.14"
