@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
+from ..const import HealthApiScope
 from .base import DataType
 
 
@@ -196,6 +197,8 @@ STEPS = DataType(
     Steps,
     "steps.interval.start_time",
     StepsRollupValue,
+    read_scopes=[HealthApiScope.ACTIVITY_READ],
+    write_scopes=[HealthApiScope.ACTIVITY_WRITE],
 )
 
 
@@ -205,6 +208,8 @@ DISTANCE = DataType(
     Distance,
     "distance.interval.start_time",
     DistanceRollupValue,
+    read_scopes=[HealthApiScope.ACTIVITY_READ],
+    write_scopes=[HealthApiScope.ACTIVITY_WRITE],
 )
 
 
@@ -213,6 +218,8 @@ BASAL_ENERGY_BURNED = DataType(
     "basalEnergyBurned",
     BasalEnergyBurned,
     "basal_energy_burned.interval.start_time",
+    read_scopes=[HealthApiScope.ACTIVITY_READ],
+    write_scopes=[HealthApiScope.ACTIVITY_WRITE],
 )
 
 
@@ -222,6 +229,8 @@ ACTIVE_ENERGY_BURNED = DataType(
     ActiveEnergyBurned,
     "active_energy_burned.interval.start_time",
     ActiveEnergyBurnedRollupValue,
+    read_scopes=[HealthApiScope.ACTIVITY_READ],
+    write_scopes=[HealthApiScope.ACTIVITY_WRITE],
 )
 
 
@@ -231,6 +240,7 @@ TOTAL_CALORIES = DataType(
     None,  # Rollup only data type
     "",
     TotalCaloriesRollupValue,
+    read_scopes=[HealthApiScope.ACTIVITY_READ],
 )
 
 
@@ -240,4 +250,6 @@ FLOORS = DataType(
     Floors,
     "floors.interval.start_time",
     FloorsRollupValue,
+    read_scopes=[HealthApiScope.ACTIVITY_READ],
+    write_scopes=[HealthApiScope.ACTIVITY_WRITE],
 )

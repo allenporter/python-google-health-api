@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
+from ..const import HealthApiScope
 from .base import DataType
 from .profile import Date
 
@@ -71,6 +72,8 @@ HEART_RATE = DataType(
     "heartRate",
     HeartRate,
     "heart_rate.sample_time.physical_time",
+    read_scopes=[HealthApiScope.MEASUREMENTS_READ],
+    write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
 )
 
 
@@ -105,6 +108,8 @@ VO2_MAX = DataType(
     "vo2Max",
     VO2Max,
     "vo2_max.sample_time.physical_time",
+    read_scopes=[HealthApiScope.MEASUREMENTS_READ],
+    write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
 )
 
 
@@ -137,6 +142,8 @@ WEIGHT = DataType(
     "weight",
     Weight,
     "weight.sample_time.physical_time",
+    read_scopes=[HealthApiScope.MEASUREMENTS_READ],
+    write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
 )
 
 
@@ -181,6 +188,8 @@ DAILY_RESTING_HEART_RATE = DataType(
     "dailyRestingHeartRate",
     DailyRestingHeartRate,
     "daily_resting_heart_rate.date.year",
+    read_scopes=[HealthApiScope.MEASUREMENTS_READ],
+    write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
 )
 
 
@@ -221,6 +230,8 @@ HEART_RATE_VARIABILITY = DataType(
     "heartRateVariability",
     HeartRateVariability,
     "heart_rate_variability.sample_time.physical_time",
+    read_scopes=[HealthApiScope.MEASUREMENTS_READ],
+    write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
 )
 
 
@@ -284,4 +295,6 @@ DAILY_HEART_RATE_VARIABILITY = DataType(
     DailyHeartRateVariability,
     "daily_heart_rate_variability.date.year",
     HeartRateVariabilityPersonalRangeRollupValue,
+    read_scopes=[HealthApiScope.MEASUREMENTS_READ],
+    write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
 )

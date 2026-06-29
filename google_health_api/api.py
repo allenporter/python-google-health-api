@@ -26,6 +26,7 @@ from mashumaro import DataClassDictMixin
 
 from .auth import AbstractAuth
 from .client import GoogleHealthSession
+from .const import HealthApiScope
 from .model import (
     ACTIVE_ENERGY_BURNED,
     BASAL_ENERGY_BURNED,
@@ -127,6 +128,16 @@ class DataPointSubApi(Generic[T]):
         """Initialize the namespaced client."""
         self._session = session
         self._data_type = data_type
+
+    @property
+    def required_read_scopes(self) -> List[str]:
+        """Return the list of scopes required to read from this API."""
+        return self._data_type.read_scopes
+
+    @property
+    def required_write_scopes(self) -> List[str]:
+        """Return the list of scopes required to write to this API."""
+        return self._data_type.write_scopes
 
     async def list(
         self,
@@ -443,6 +454,16 @@ class PairedDevicesSubApi:
         """Initialize the namespaced client."""
         self._session = session
 
+    @property
+    def required_read_scopes(self) -> List[str]:
+        """Return the list of scopes required to read from this API."""
+        return [HealthApiScope.SETTINGS_READ]
+
+    @property
+    def required_write_scopes(self) -> List[str]:
+        """Return the list of scopes required to write to this API."""
+        return []
+
     async def list(
         self,
         page_size: int = 100,
@@ -504,6 +525,16 @@ class SubscriptionsSubApi:
     def __init__(self, session: GoogleHealthSession) -> None:
         """Initialize the subscriptions client."""
         self._session = session
+
+    @property
+    def required_read_scopes(self) -> List[str]:
+        """Return the list of scopes required to read from this API."""
+        return ["https://www.googleapis.com/auth/cloud-platform"]
+
+    @property
+    def required_write_scopes(self) -> List[str]:
+        """Return the list of scopes required to write to this API."""
+        return ["https://www.googleapis.com/auth/cloud-platform"]
 
     async def create(
         self,
@@ -616,6 +647,16 @@ class SubscribersSubApi:
         """Initialize the subscribers client."""
         self._session = session
         self.subscriptions = SubscriptionsSubApi(session)
+
+    @property
+    def required_read_scopes(self) -> List[str]:
+        """Return the list of scopes required to read from this API."""
+        return ["https://www.googleapis.com/auth/cloud-platform"]
+
+    @property
+    def required_write_scopes(self) -> List[str]:
+        """Return the list of scopes required to write to this API."""
+        return ["https://www.googleapis.com/auth/cloud-platform"]
 
     async def create(
         self,

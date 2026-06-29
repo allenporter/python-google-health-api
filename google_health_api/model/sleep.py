@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
+from ..const import HealthApiScope
 from .base import DataType
 from .profile import Date
 
@@ -228,4 +229,11 @@ class Sleep(DataClassDictMixin):
         serialize_by_alias = True
 
 
-SLEEP = DataType("sleep", "sleep", Sleep, "sleep.interval.end_time")
+SLEEP = DataType(
+    "sleep",
+    "sleep",
+    Sleep,
+    "sleep.interval.end_time",
+    read_scopes=[HealthApiScope.SLEEP_READ],
+    write_scopes=[HealthApiScope.SLEEP_WRITE],
+)

@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
+from ..const import HealthApiScope
 from .base import DataType
 from .sleep import SessionTimeInterval
 
@@ -170,4 +171,6 @@ NUTRITION_LOG = DataType(
     NutritionLog,
     "nutrition_log.interval.civil_start_time",
     NutritionLogRollupValue,
+    read_scopes=[HealthApiScope.NUTRITION_READ],
+    write_scopes=[HealthApiScope.NUTRITION_WRITE],
 )

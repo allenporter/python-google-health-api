@@ -23,6 +23,8 @@ class DataType(Generic[T]):
         payload_cls: type[T] | None,
         time_field_path: str,
         rollup_cls: type[Any] | None = None,
+        read_scopes: list[str] | None = None,
+        write_scopes: list[str] | None = None,
     ) -> None:
         """Initialize the DataType registry token."""
         self.key = key  # kebab-case for endpoint (e.g. "heart-rate")
@@ -30,6 +32,8 @@ class DataType(Generic[T]):
         self.payload_cls = payload_cls  # Python class to deserialize into
         self.time_field_path = time_field_path
         self.rollup_cls = rollup_cls
+        self.read_scopes = read_scopes or []
+        self.write_scopes = write_scopes or []
 
 
 @dataclass
