@@ -379,13 +379,12 @@ class RollupDataPointSubApi(DataPointSubApi[T]):
         If time_zone is not provided, it will fetch the user's timezone from settings.
         """
         if not time_zone:
-            time_zone = getattr(self._session, "_timezone_cache", {}).get(user)
+            time_zone = self._session._timezone_cache.get(user)
             if not time_zone:
                 resp = await self._session.get(f"v4/users/{user}/settings")
                 raw_json = await resp.json()
                 time_zone = raw_json.get("timeZone", "UTC")
-                if hasattr(self._session, "_timezone_cache"):
-                    self._session._timezone_cache[user] = time_zone
+                self._session._timezone_cache[user] = time_zone
 
         if isinstance(time_zone, str):
             resolved_tz = ZoneInfo(time_zone)
@@ -413,13 +412,12 @@ class RollupDataPointSubApi(DataPointSubApi[T]):
         If time_zone is not provided, it will fetch the user's timezone from settings.
         """
         if not time_zone:
-            time_zone = getattr(self._session, "_timezone_cache", {}).get(user)
+            time_zone = self._session._timezone_cache.get(user)
             if not time_zone:
                 resp = await self._session.get(f"v4/users/{user}/settings")
                 raw_json = await resp.json()
                 time_zone = raw_json.get("timeZone", "UTC")
-                if hasattr(self._session, "_timezone_cache"):
-                    self._session._timezone_cache[user] = time_zone
+                self._session._timezone_cache[user] = time_zone
 
         if isinstance(time_zone, str):
             resolved_tz = ZoneInfo(time_zone)
@@ -886,7 +884,7 @@ class GoogleHealthApi:
         resp = await self._session.get(f"v4/users/{user}/settings")
         raw_json = await resp.json()
         settings = Settings.from_dict(raw_json)
-        if settings.time_zone and hasattr(self._session, "_timezone_cache"):
+        if settings.time_zone:
             self._session._timezone_cache[user] = settings.time_zone
         return settings
 
@@ -911,9 +909,9 @@ class GoogleHealthApi:
         )
         raw_json = await resp.json()
         res_settings = Settings.from_dict(raw_json)
-        if res_settings.time_zone and hasattr(self._session, "_timezone_cache"):
+        if res_settings.time_zone:
             self._session._timezone_cache[user] = res_settings.time_zone
-        elif hasattr(self._session, "_timezone_cache"):
+        else:
             self._session._timezone_cache.pop(user, None)
         return res_settings
 
