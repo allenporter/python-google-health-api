@@ -35,6 +35,7 @@ class GoogleHealthSession:
         self._auth = auth
         self._websession = websession
         self._host = host or HEALTH_API_URL
+        self._timezone_cache: dict[str, str] = {}
 
     async def request(
         self,

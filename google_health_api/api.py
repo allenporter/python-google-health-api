@@ -379,9 +379,13 @@ class RollupDataPointSubApi(DataPointSubApi[T]):
         If time_zone is not provided, it will fetch the user's timezone from settings.
         """
         if not time_zone:
-            resp = await self._session.get(f"v4/users/{user}/settings")
-            raw_json = await resp.json()
-            time_zone = raw_json.get("timeZone", "UTC")
+            time_zone = getattr(self._session, "_timezone_cache", {}).get(user)
+            if not time_zone:
+                resp = await self._session.get(f"v4/users/{user}/settings")
+                raw_json = await resp.json()
+                time_zone = raw_json.get("timeZone", "UTC")
+                if hasattr(self._session, "_timezone_cache"):
+                    self._session._timezone_cache[user] = time_zone
 
         if isinstance(time_zone, str):
             resolved_tz = ZoneInfo(time_zone)
@@ -409,9 +413,13 @@ class RollupDataPointSubApi(DataPointSubApi[T]):
         If time_zone is not provided, it will fetch the user's timezone from settings.
         """
         if not time_zone:
-            resp = await self._session.get(f"v4/users/{user}/settings")
-            raw_json = await resp.json()
-            time_zone = raw_json.get("timeZone", "UTC")
+            time_zone = getattr(self._session, "_timezone_cache", {}).get(user)
+            if not time_zone:
+                resp = await self._session.get(f"v4/users/{user}/settings")
+                raw_json = await resp.json()
+                time_zone = raw_json.get("timeZone", "UTC")
+                if hasattr(self._session, "_timezone_cache"):
+                    self._session._timezone_cache[user] = time_zone
 
         if isinstance(time_zone, str):
             resolved_tz = ZoneInfo(time_zone)
@@ -877,7 +885,10 @@ class GoogleHealthApi:
         """
         resp = await self._session.get(f"v4/users/{user}/settings")
         raw_json = await resp.json()
-        return Settings.from_dict(raw_json)
+        settings = Settings.from_dict(raw_json)
+        if settings.time_zone and hasattr(self._session, "_timezone_cache"):
+            self._session._timezone_cache[user] = settings.time_zone
+        return settings
 
     async def update_settings(
         self, settings: Settings, update_mask: str | None = None, user: str = "me"
@@ -899,7 +910,12 @@ class GoogleHealthApi:
             params=params,
         )
         raw_json = await resp.json()
-        return Settings.from_dict(raw_json)
+        res_settings = Settings.from_dict(raw_json)
+        if res_settings.time_zone and hasattr(self._session, "_timezone_cache"):
+            self._session._timezone_cache[user] = res_settings.time_zone
+        elif hasattr(self._session, "_timezone_cache"):
+            self._session._timezone_cache.pop(user, None)
+        return res_settings
 
     async def get_irn_profile(self, user: str = "me") -> IrnProfile:
         """Retrieve the user's Irregular Rhythm Notifications (IRN) profile details.

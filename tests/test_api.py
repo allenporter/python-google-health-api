@@ -145,8 +145,20 @@ async def mock_api(
         requests.append({"method": "GET", "url": str(request.url)})
         return aiohttp.web.json_response(get_response.pop(0))
 
+    async def settings_patch_handler(
+        request: aiohttp.web.Request,
+    ) -> aiohttp.web.Response:
+        body = await request.json()
+        requests.append({"method": "PATCH", "url": str(request.url), "body": body})
+        return aiohttp.web.json_response(patch_response.pop(0))
+
     auth = await auth_cb(
         [
+            (
+                "PATCH",
+                "v4/users/{user}/settings",
+                settings_patch_handler,
+            ),
             ("GET", "v4/users/{user}/dataTypes/{dataType}/dataPoints", list_handler),
             ("POST", "v4/users/{user}/dataTypes/{dataType}/dataPoints", create_handler),
             (
@@ -826,3 +838,87 @@ async def test_floors_hydration_and_resting_hr(
     )
     await api.daily_resting_heart_rate.create(DataPoint(data=new_resting))
     assert requests[-1]["body"]["dailyRestingHeartRate"]["beatsPerMinute"] == 62
+
+
+async def test_timezone_caching(
+    api: GoogleHealthApi,
+    get_response: list[dict[str, Any]],
+    patch_response: list[dict[str, Any]],
+    list_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test that timezone queries are cached to avoid redundant network calls."""
+    # First call: populates settings, then calls dailyRollUp (2 requests)
+    get_response.append({"name": "users/me/settings", "timeZone": "America/New_York"})
+    list_response.append(
+        {
+            "rollupDataPoints": [
+                {
+                    "civilStartTime": {"date": {"year": 2026, "month": 6, "day": 22}},
+                    "civilEndTime": {"date": {"year": 2026, "month": 6, "day": 23}},
+                    "steps": {"countSum": "8000"},
+                }
+            ]
+        }
+    )
+
+    result = await api.steps.today()
+    assert result is not None
+    assert len(requests) == 2
+    assert "users/me/settings" in requests[0]["url"]
+    assert "steps/dataPoints:dailyRollUp" in requests[1]["url"]
+
+    # Clear requests to count from zero
+    requests.clear()
+
+    # Second call: uses cached timezone, does NOT call get_settings (1 request total)
+    list_response.append(
+        {
+            "rollupDataPoints": [
+                {
+                    "civilStartTime": {"date": {"year": 2026, "month": 6, "day": 22}},
+                    "civilEndTime": {"date": {"year": 2026, "month": 6, "day": 23}},
+                    "steps": {"countSum": "5000"},
+                }
+            ]
+        }
+    )
+
+    result = await api.steps.today()
+    assert result is not None
+    assert len(requests) == 1
+    assert "steps/dataPoints:dailyRollUp" in requests[0]["url"]
+
+    # Clear requests
+    requests.clear()
+
+    # Call update_settings: should update cache
+    patch_response.append({"name": "users/me/settings", "timeZone": "Europe/London"})
+    from google_health_api.model import Settings
+
+    await api.update_settings(
+        Settings(name="users/me/settings", time_zone="Europe/London")
+    )
+    assert len(requests) == 1
+    assert "users/me/settings" in requests[0]["url"]
+
+    # Clear requests
+    requests.clear()
+
+    # Third call: uses updated cached timezone from update_settings (1 request total)
+    list_response.append(
+        {
+            "rollupDataPoints": [
+                {
+                    "civilStartTime": {"date": {"year": 2026, "month": 6, "day": 22}},
+                    "civilEndTime": {"date": {"year": 2026, "month": 6, "day": 23}},
+                    "steps": {"countSum": "6000"},
+                }
+            ]
+        }
+    )
+
+    result = await api.steps.today()
+    assert result is not None
+    assert len(requests) == 1
+    assert "steps/dataPoints:dailyRollUp" in requests[0]["url"]
