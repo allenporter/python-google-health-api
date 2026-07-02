@@ -365,15 +365,46 @@ async def test_steps_daily_rollup(
     assert requests[0]["body"]["range"]["end"]["date"]["day"] == 23
 
 
-async def test_heart_rate_daily_rollup_raises(
+async def test_sleep_daily_rollup_raises(
     api: GoogleHealthApi,
 ) -> None:
     """Test daily rollup raises error for unsupported type."""
     with pytest.raises(AttributeError):
-        await api.heart_rate.daily_rollup(
+        await api.sleep.daily_rollup(
             start_date=date(2026, 6, 22),
             end_date=date(2026, 6, 23),
         )
+
+
+async def test_weight_daily_rollup(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test retrieving weight daily rollup."""
+    list_response.append(
+        {
+            "rollupDataPoints": [
+                {
+                    "civilStartTime": {"date": {"year": 2026, "month": 6, "day": 22}},
+                    "civilEndTime": {"date": {"year": 2026, "month": 6, "day": 23}},
+                    "weight": {"weightGramsAvg": 75000.0},
+                }
+            ]
+        }
+    )
+
+    result = await api.weight.daily_rollup(
+        start_date=date(2026, 6, 22),
+        end_date=date(2026, 6, 23),
+    )
+    assert len(result) == 1
+    point = result[0]
+    assert point.data.weight_grams_avg == 75000.0
+    assert point.civil_start_time.date.year == 2026
+
+    assert len(requests) == 1
+    assert "weight/dataPoints:dailyRollUp" in requests[0]["url"]
 
 
 async def test_steps_today(

@@ -233,3 +233,58 @@ def test_cli_new_datapoints(mock_load, mock_setup, capsys) -> None:
         main()
 
     mock_sleep_subapi.list.assert_called_once()
+
+
+@patch("google_health_api.cli.commands.setup_client")
+@patch("google_health_api.cli.commands.load_credentials_or_env")
+def test_cli_weight_rollup(mock_load, mock_setup, capsys) -> None:
+    """Test that the weight rollup command is correctly routed and executed in the CLI."""
+    mock_load.return_value = ("env", "fake-token")
+
+    mock_api = MagicMock()
+    mock_setup.return_value = mock_api
+
+    mock_weight_subapi = AsyncMock()
+    mock_api.weight = mock_weight_subapi
+    mock_weight_subapi._data_type = MagicMock()
+    mock_weight_subapi._data_type.field_name = "weight"
+
+    # Setup mock return value for weight daily_rollup
+    mock_rollup_point = MagicMock()
+    mock_rollup_point.civil_start_time = MagicMock()
+    mock_rollup_point.civil_start_time.to_dict.return_value = {
+        "date": {"year": 2026, "month": 6, "day": 22}
+    }
+    mock_rollup_point.civil_end_time = MagicMock()
+    mock_rollup_point.civil_end_time.to_dict.return_value = {
+        "date": {"year": 2026, "month": 6, "day": 23}
+    }
+
+    mock_rollup_data = MagicMock()
+    mock_rollup_data.to_dict.return_value = {"weightGramsAvg": 75000.0}
+    mock_rollup_point.data = mock_rollup_data
+
+    mock_weight_subapi.daily_rollup.return_value = [mock_rollup_point]
+
+    with patch.object(
+        sys,
+        "argv",
+        [
+            "google-health-cli",
+            "weight",
+            "rollup",
+            "--start-date",
+            "2026-06-22",
+            "--end-date",
+            "2026-06-23",
+        ],
+    ):
+        main()
+
+    mock_weight_subapi.daily_rollup.assert_called_once()
+
+    captured = capsys.readouterr()
+    res_json = json.loads(captured.out)
+    assert "rollupDataPoints" in res_json
+    assert len(res_json["rollupDataPoints"]) == 1
+    assert res_json["rollupDataPoints"][0]["weight"]["weightGramsAvg"] == 75000.0

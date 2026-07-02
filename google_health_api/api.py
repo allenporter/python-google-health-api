@@ -43,6 +43,18 @@ from .model import (
     TOTAL_CALORIES,
     VO2_MAX,
     WEIGHT,
+    ALTITUDE,
+    ACTIVE_MINUTES,
+    ACTIVE_ZONE_MINUTES,
+    SEDENTARY_PERIOD,
+    SWIM_LENGTHS_DATA,
+    ACTIVITY_LEVEL,
+    TIME_IN_HEART_RATE_ZONE,
+    CALORIES_IN_HEART_RATE_ZONE,
+    BLOOD_GLUCOSE,
+    CORE_BODY_TEMPERATURE,
+    BODY_FAT,
+    RUN_VO2_MAX,
     ActiveEnergyBurned,
     BasalEnergyBurned,
     CivilDateTime,
@@ -79,6 +91,17 @@ from .model import (
     Subscription,
     VO2Max,
     Weight,
+    Altitude,
+    ActiveMinutes,
+    ActiveZoneMinutes,
+    SedentaryPeriod,
+    SwimLengthsData,
+    ActivityLevel,
+    TimeInHeartRateZone,
+    BloodGlucose,
+    CoreBodyTemperature,
+    BodyFat,
+    RunVO2Max,
     _ListDataPointsModel,
     _ListPairedDevicesModel,
     _ListReconciledDataPointsModel,
@@ -795,7 +818,7 @@ class GoogleHealthApi:
     steps: RollupDataPointSubApi[Steps]
     """Namespaced client for Step count data (`Steps` model)."""
 
-    heart_rate: DataPointSubApi[HeartRate]
+    heart_rate: RollupDataPointSubApi[HeartRate]
     """Namespaced client for Heart rate data (`HeartRate` model)."""
 
     sleep: DataPointSubApi[Sleep]
@@ -810,7 +833,7 @@ class GoogleHealthApi:
     vo2_max: DataPointSubApi[VO2Max]
     """Namespaced client for VO2 Max fitness data (`VO2Max` model)."""
 
-    weight: DataPointSubApi[Weight]
+    weight: RollupDataPointSubApi[Weight]
     """Namespaced client for Body weight data (`Weight` model)."""
 
     active_energy_burned: RollupDataPointSubApi[ActiveEnergyBurned]
@@ -828,7 +851,7 @@ class GoogleHealthApi:
     nutrition_log: RollupDataPointSubApi[NutritionLog]
     """Namespaced client for Nutrition log data (`NutritionLog` model)."""
 
-    daily_resting_heart_rate: DataPointSubApi[DailyRestingHeartRate]
+    daily_resting_heart_rate: RollupDataPointSubApi[DailyRestingHeartRate]
     """Namespaced client for Daily resting heart rate data (`DailyRestingHeartRate` model)."""
 
     heart_rate_variability: DataPointSubApi[HeartRateVariability]
@@ -836,6 +859,42 @@ class GoogleHealthApi:
 
     daily_heart_rate_variability: RollupDataPointSubApi[DailyHeartRateVariability]
     """Namespaced client for Daily heart rate variability data (`DailyHeartRateVariability` model)."""
+
+    altitude: RollupDataPointSubApi[Altitude]
+    """Namespaced client for Altitude gain delta data (`Altitude` model)."""
+
+    body_fat: RollupDataPointSubApi[BodyFat]
+    """Namespaced client for Body fat data (`BodyFat` model)."""
+
+    active_minutes: RollupDataPointSubApi[ActiveMinutes]
+    """Namespaced client for Active minutes data (`ActiveMinutes` model)."""
+
+    active_zone_minutes: RollupDataPointSubApi[ActiveZoneMinutes]
+    """Namespaced client for Active zone minutes data (`ActiveZoneMinutes` model)."""
+
+    blood_glucose: RollupDataPointSubApi[BloodGlucose]
+    """Namespaced client for Blood glucose data (`BloodGlucose` model)."""
+
+    core_body_temperature: RollupDataPointSubApi[CoreBodyTemperature]
+    """Namespaced client for Core body temperature data (`CoreBodyTemperature` model)."""
+
+    sedentary_period: RollupDataPointSubApi[SedentaryPeriod]
+    """Namespaced client for Sedentary period data (`SedentaryPeriod` model)."""
+
+    swim_lengths_data: RollupDataPointSubApi[SwimLengthsData]
+    """Namespaced client for Swim lengths data (`SwimLengthsData` model)."""
+
+    run_vo2_max: RollupDataPointSubApi[RunVO2Max]
+    """Namespaced client for Run VO2 Max data (`RunVO2Max` model)."""
+
+    activity_level: RollupDataPointSubApi[ActivityLevel]
+    """Namespaced client for Activity level data (`ActivityLevel` model)."""
+
+    time_in_heart_rate_zone: RollupDataPointSubApi[TimeInHeartRateZone]
+    """Namespaced client for Time in heart rate zone data (`TimeInHeartRateZone` model)."""
+
+    calories_in_heart_rate_zone: RollupDataPointSubApi[Any]
+    """Namespaced client for Calories in heart rate zone rollup data."""
 
     paired_devices: PairedDevicesSubApi
     """Namespaced client for managing user's paired devices."""
@@ -847,14 +906,14 @@ class GoogleHealthApi:
         """Initialize the client."""
         self._session = GoogleHealthSession(auth, auth._websession, auth._host)
         self.steps = RollupDataPointSubApi(self._session, STEPS)
-        self.heart_rate = DataPointSubApi(self._session, HEART_RATE)
+        self.heart_rate = RollupDataPointSubApi(self._session, HEART_RATE)
         self.sleep = DataPointSubApi(self._session, SLEEP)
         self.distance = RollupDataPointSubApi(self._session, DISTANCE)
         self.basal_energy_burned = RollupDataPointSubApi(
             self._session, BASAL_ENERGY_BURNED
         )
         self.vo2_max = DataPointSubApi(self._session, VO2_MAX)
-        self.weight = DataPointSubApi(self._session, WEIGHT)
+        self.weight = RollupDataPointSubApi(self._session, WEIGHT)
         self.active_energy_burned = RollupDataPointSubApi(
             self._session, ACTIVE_ENERGY_BURNED
         )
@@ -862,7 +921,7 @@ class GoogleHealthApi:
         self.floors = RollupDataPointSubApi(self._session, FLOORS)
         self.hydration_log = RollupDataPointSubApi(self._session, HYDRATION_LOG)
         self.nutrition_log = RollupDataPointSubApi(self._session, NUTRITION_LOG)
-        self.daily_resting_heart_rate = DataPointSubApi(
+        self.daily_resting_heart_rate = RollupDataPointSubApi(
             self._session, DAILY_RESTING_HEART_RATE
         )
         self.heart_rate_variability = DataPointSubApi(
@@ -870,6 +929,26 @@ class GoogleHealthApi:
         )
         self.daily_heart_rate_variability = RollupDataPointSubApi(
             self._session, DAILY_HEART_RATE_VARIABILITY
+        )
+        self.altitude = RollupDataPointSubApi(self._session, ALTITUDE)
+        self.body_fat = RollupDataPointSubApi(self._session, BODY_FAT)
+        self.active_minutes = RollupDataPointSubApi(self._session, ACTIVE_MINUTES)
+        self.active_zone_minutes = RollupDataPointSubApi(
+            self._session, ACTIVE_ZONE_MINUTES
+        )
+        self.blood_glucose = RollupDataPointSubApi(self._session, BLOOD_GLUCOSE)
+        self.core_body_temperature = RollupDataPointSubApi(
+            self._session, CORE_BODY_TEMPERATURE
+        )
+        self.sedentary_period = RollupDataPointSubApi(self._session, SEDENTARY_PERIOD)
+        self.swim_lengths_data = RollupDataPointSubApi(self._session, SWIM_LENGTHS_DATA)
+        self.run_vo2_max = RollupDataPointSubApi(self._session, RUN_VO2_MAX)
+        self.activity_level = RollupDataPointSubApi(self._session, ACTIVITY_LEVEL)
+        self.time_in_heart_rate_zone = RollupDataPointSubApi(
+            self._session, TIME_IN_HEART_RATE_ZONE
+        )
+        self.calories_in_heart_rate_zone = RollupDataPointSubApi(
+            self._session, CALORIES_IN_HEART_RATE_ZONE
         )
         self.paired_devices = PairedDevicesSubApi(self._session)
         self.subscribers = SubscribersSubApi(self._session)

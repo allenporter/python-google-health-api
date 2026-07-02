@@ -67,11 +67,30 @@ class HeartRate(DataClassDictMixin):
         serialize_by_alias = True
 
 
+@dataclass
+class HeartRateRollupValue(DataClassDictMixin):
+    """Represents the result of the rollup of the heart rate data type."""
+
+    beats_per_minute_min: float | None = field(
+        metadata=field_options(alias="beatsPerMinuteMin"), default=None
+    )
+    beats_per_minute_avg: float | None = field(
+        metadata=field_options(alias="beatsPerMinuteAvg"), default=None
+    )
+    beats_per_minute_max: float | None = field(
+        metadata=field_options(alias="beatsPerMinuteMax"), default=None
+    )
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
 HEART_RATE = DataType(
     "heart-rate",
     "heartRate",
     HeartRate,
     "heart_rate.sample_time.physical_time",
+    HeartRateRollupValue,
     read_scopes=[HealthApiScope.MEASUREMENTS_READ],
     write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
 )
@@ -137,11 +156,24 @@ class Weight(DataClassDictMixin):
         serialize_by_alias = True
 
 
+@dataclass
+class WeightRollupValue(DataClassDictMixin):
+    """Represents the result of the rollup of the weight data type."""
+
+    weight_grams_avg: float | None = field(
+        metadata=field_options(alias="weightGramsAvg"), default=None
+    )
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
 WEIGHT = DataType(
     "weight",
     "weight",
     Weight,
     "weight.sample_time.physical_time",
+    WeightRollupValue,
     read_scopes=[HealthApiScope.MEASUREMENTS_READ],
     write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
 )
@@ -183,11 +215,27 @@ class DailyRestingHeartRate(DataClassDictMixin):
         serialize_by_alias = True
 
 
+@dataclass
+class RestingHeartRatePersonalRangeRollupValue(DataClassDictMixin):
+    """Represents the rollup value for the daily resting heart rate data type."""
+
+    beats_per_minute_max: float | None = field(
+        metadata=field_options(alias="beatsPerMinuteMax"), default=None
+    )
+    beats_per_minute_min: float | None = field(
+        metadata=field_options(alias="beatsPerMinuteMin"), default=None
+    )
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
 DAILY_RESTING_HEART_RATE = DataType(
     "daily-resting-heart-rate",
     "dailyRestingHeartRate",
     DailyRestingHeartRate,
     "daily_resting_heart_rate.date.year",
+    RestingHeartRatePersonalRangeRollupValue,
     read_scopes=[HealthApiScope.MEASUREMENTS_READ],
     write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
 )
@@ -295,6 +343,222 @@ DAILY_HEART_RATE_VARIABILITY = DataType(
     DailyHeartRateVariability,
     "daily_heart_rate_variability.date.year",
     HeartRateVariabilityPersonalRangeRollupValue,
+    read_scopes=[HealthApiScope.MEASUREMENTS_READ],
+    write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
+)
+
+
+@dataclass
+class BloodGlucose(DataClassDictMixin):
+    """Represents a blood glucose level measurement."""
+
+    sample_time: ObservationSampleTime = field(
+        metadata=field_options(alias="sampleTime")
+    )
+    blood_glucose_milligrams_per_deciliter: float = field(
+        metadata=field_options(alias="bloodGlucoseMilligramsPerDeciliter")
+    )
+    measurement_source: str | None = field(
+        metadata=field_options(alias="measurementSource"), default=None
+    )
+    notes: str | None = None
+    meal_type: str | None = field(
+        metadata=field_options(alias="mealType"), default=None
+    )
+    measurement_timing: str | None = field(
+        metadata=field_options(alias="measurementTiming"), default=None
+    )
+    specimen: str | None = None
+
+    @property
+    def start_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    @property
+    def end_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+@dataclass
+class BloodGlucoseRollupValue(DataClassDictMixin):
+    """Represents the result of the rollup of the blood glucose data type."""
+
+    blood_glucose_milligrams_per_deciliter_avg: float | None = field(
+        metadata=field_options(alias="bloodGlucoseMilligramsPerDeciliterAvg"),
+        default=None,
+    )
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+BLOOD_GLUCOSE = DataType(
+    "blood-glucose",
+    "bloodGlucose",
+    BloodGlucose,
+    "blood_glucose.sample_time.physical_time",
+    BloodGlucoseRollupValue,
+    read_scopes=[HealthApiScope.MEASUREMENTS_READ],
+    write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
+)
+
+
+@dataclass
+class CoreBodyTemperature(DataClassDictMixin):
+    """Core body temperature measurement."""
+
+    temperature_celsius: float = field(
+        metadata=field_options(alias="temperatureCelsius")
+    )
+    sample_time: ObservationSampleTime = field(
+        metadata=field_options(alias="sampleTime")
+    )
+    id: str | None = None
+    measurement_location: str | None = field(
+        metadata=field_options(alias="measurementLocation"), default=None
+    )
+
+    @property
+    def start_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    @property
+    def end_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+@dataclass
+class CoreBodyTemperatureRollupValue(DataClassDictMixin):
+    """Represents the result of the rollup of the core body temperature data type."""
+
+    temperature_celsius_min: float | None = field(
+        metadata=field_options(alias="temperatureCelsiusMin"), default=None
+    )
+    temperature_celsius_avg: float | None = field(
+        metadata=field_options(alias="temperatureCelsiusAvg"), default=None
+    )
+    temperature_celsius_max: float | None = field(
+        metadata=field_options(alias="temperatureCelsiusMax"), default=None
+    )
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+CORE_BODY_TEMPERATURE = DataType(
+    "core-body-temperature",
+    "coreBodyTemperature",
+    CoreBodyTemperature,
+    "core_body_temperature.sample_time.physical_time",
+    CoreBodyTemperatureRollupValue,
+    read_scopes=[HealthApiScope.MEASUREMENTS_READ],
+    write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
+)
+
+
+@dataclass
+class BodyFat(DataClassDictMixin):
+    """Body fat measurement."""
+
+    percentage: float
+    sample_time: ObservationSampleTime = field(
+        metadata=field_options(alias="sampleTime")
+    )
+
+    @property
+    def start_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    @property
+    def end_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+@dataclass
+class BodyFatRollupValue(DataClassDictMixin):
+    """Represents the result of the rollup of the body fat data type."""
+
+    body_fat_percentage_avg: float | None = field(
+        metadata=field_options(alias="bodyFatPercentageAvg"), default=None
+    )
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+BODY_FAT = DataType(
+    "body-fat",
+    "bodyFat",
+    BodyFat,
+    "body_fat.sample_time.physical_time",
+    BodyFatRollupValue,
+    read_scopes=[HealthApiScope.MEASUREMENTS_READ],
+    write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
+)
+
+
+@dataclass
+class RunVO2Max(DataClassDictMixin):
+    """VO2 max value calculated based on the user's running activity."""
+
+    run_vo2_max: float = field(metadata=field_options(alias="runVo2Max"))
+    sample_time: ObservationSampleTime = field(
+        metadata=field_options(alias="sampleTime")
+    )
+
+    @property
+    def start_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    @property
+    def end_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+@dataclass
+class RunVO2MaxRollupValue(DataClassDictMixin):
+    """Represents the result of the rollup of the user's run VO2 max."""
+
+    rate_max: float | None = field(
+        metadata=field_options(alias="rateMax"), default=None
+    )
+    rate_min: float | None = field(
+        metadata=field_options(alias="rateMin"), default=None
+    )
+    rate_avg: float | None = field(
+        metadata=field_options(alias="rateAvg"), default=None
+    )
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+RUN_VO2_MAX = DataType(
+    "run-vo2-max",
+    "runVo2Max",
+    RunVO2Max,
+    "run_vo2_max.sample_time.physical_time",
+    RunVO2MaxRollupValue,
     read_scopes=[HealthApiScope.MEASUREMENTS_READ],
     write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
 )

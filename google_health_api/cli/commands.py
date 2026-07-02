@@ -138,7 +138,7 @@ def load_credentials_or_env():
         token_uri=data.get("token_uri"),
         client_id=data.get("client_id"),
         client_secret=data.get("client_secret"),
-        scopes=SCOPES,
+        scopes=data.get("scopes") or SCOPES,
         expiry=expiry,
     )
     return ("file", creds)
@@ -674,6 +674,160 @@ async def handle_daily_heart_rate_variability_cmd(
     )
 
 
+async def handle_altitude_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle altitude subcommands."""
+    await handle_datatype_cmd(
+        args, api, api.altitude, "altitude", "altitude", "altitude", pretty
+    )
+
+
+async def handle_body_fat_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle body fat subcommands."""
+    await handle_datatype_cmd(
+        args, api, api.body_fat, "bodyFat", "body-fat", "body fat", pretty
+    )
+
+
+async def handle_active_minutes_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle active minutes subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.active_minutes,
+        "activeMinutes",
+        "active-minutes",
+        "active minutes",
+        pretty,
+    )
+
+
+async def handle_active_zone_minutes_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle active zone minutes subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.active_zone_minutes,
+        "activeZoneMinutes",
+        "active-zone-minutes",
+        "active zone minutes",
+        pretty,
+    )
+
+
+async def handle_blood_glucose_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle blood glucose subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.blood_glucose,
+        "bloodGlucose",
+        "blood-glucose",
+        "blood glucose",
+        pretty,
+    )
+
+
+async def handle_core_body_temperature_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle core body temperature subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.core_body_temperature,
+        "coreBodyTemperature",
+        "core-body-temperature",
+        "core body temperature",
+        pretty,
+    )
+
+
+async def handle_sedentary_period_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle sedentary period subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.sedentary_period,
+        "sedentaryPeriod",
+        "sedentary-period",
+        "sedentary period",
+        pretty,
+    )
+
+
+async def handle_swim_lengths_data_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle swim lengths data subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.swim_lengths_data,
+        "swimLengthsData",
+        "swim-lengths-data",
+        "swim lengths data",
+        pretty,
+    )
+
+
+async def handle_run_vo2_max_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle run VO2 max subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.run_vo2_max,
+        "runVo2Max",
+        "run-vo2-max",
+        "run VO2 max",
+        pretty,
+    )
+
+
+async def handle_activity_level_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle activity level subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.activity_level,
+        "activityLevel",
+        "activity-level",
+        "activity level",
+        pretty,
+    )
+
+
+async def handle_time_in_heart_rate_zone_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle time in heart rate zone subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.time_in_heart_rate_zone,
+        "timeInHeartRateZone",
+        "time-in-heart-rate-zone",
+        "time in heart rate zone",
+        pretty,
+    )
+
+
+async def handle_calories_in_heart_rate_zone_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle calories in heart rate zone subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.calories_in_heart_rate_zone,
+        "caloriesInHeartRateZone",
+        "calories-in-heart-rate-zone",
+        "calories in heart rate zone",
+        pretty,
+    )
+
+
 async def handle_profile_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
     """Handle profile subcommands."""
     sub = args.subcommand
@@ -1005,6 +1159,30 @@ async def async_run_cmd(args) -> None:
                 await handle_heart_rate_variability_cmd(args, api, pretty)
             elif cmd == "daily-heart-rate-variability":
                 await handle_daily_heart_rate_variability_cmd(args, api, pretty)
+            elif cmd == "altitude":
+                await handle_altitude_cmd(args, api, pretty)
+            elif cmd == "body-fat":
+                await handle_body_fat_cmd(args, api, pretty)
+            elif cmd == "active-minutes":
+                await handle_active_minutes_cmd(args, api, pretty)
+            elif cmd == "active-zone-minutes":
+                await handle_active_zone_minutes_cmd(args, api, pretty)
+            elif cmd == "blood-glucose":
+                await handle_blood_glucose_cmd(args, api, pretty)
+            elif cmd == "core-body-temperature":
+                await handle_core_body_temperature_cmd(args, api, pretty)
+            elif cmd == "sedentary-period":
+                await handle_sedentary_period_cmd(args, api, pretty)
+            elif cmd == "swim-lengths-data":
+                await handle_swim_lengths_data_cmd(args, api, pretty)
+            elif cmd == "run-vo2-max":
+                await handle_run_vo2_max_cmd(args, api, pretty)
+            elif cmd == "activity-level":
+                await handle_activity_level_cmd(args, api, pretty)
+            elif cmd == "time-in-heart-rate-zone":
+                await handle_time_in_heart_rate_zone_cmd(args, api, pretty)
+            elif cmd == "calories-in-heart-rate-zone":
+                await handle_calories_in_heart_rate_zone_cmd(args, api, pretty)
             elif cmd == "profile":
                 await handle_profile_cmd(args, api, pretty)
             elif cmd == "settings":

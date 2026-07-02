@@ -151,7 +151,7 @@ def main() -> None:
         subparsers, "steps", "step count", supports_rollup=True
     )
     add_standard_datapoint_commands(
-        subparsers, "heart-rate", "heart rate", supports_rollup=False
+        subparsers, "heart-rate", "heart rate", supports_rollup=True
     )
     add_standard_datapoint_commands(subparsers, "sleep", "sleep", supports_rollup=False)
     add_standard_datapoint_commands(
@@ -164,7 +164,7 @@ def main() -> None:
         subparsers, "vo2-max", "VO2 max", supports_rollup=False
     )
     add_standard_datapoint_commands(
-        subparsers, "weight", "weight", supports_rollup=False
+        subparsers, "weight", "weight", supports_rollup=True
     )
     add_standard_datapoint_commands(
         subparsers, "active-energy-burned", "active energy burned", supports_rollup=True
@@ -185,7 +185,7 @@ def main() -> None:
         subparsers,
         "daily-resting-heart-rate",
         "daily resting heart rate",
-        supports_rollup=False,
+        supports_rollup=True,
     )
     add_standard_datapoint_commands(
         subparsers,
@@ -197,6 +197,51 @@ def main() -> None:
         subparsers,
         "daily-heart-rate-variability",
         "daily heart rate variability",
+        supports_rollup=True,
+    )
+    add_standard_datapoint_commands(
+        subparsers, "altitude", "altitude", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers, "body-fat", "body fat", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers, "active-minutes", "active minutes", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers, "active-zone-minutes", "active zone minutes", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers, "blood-glucose", "blood glucose", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers,
+        "core-body-temperature",
+        "core body temperature",
+        supports_rollup=True,
+    )
+    add_standard_datapoint_commands(
+        subparsers, "sedentary-period", "sedentary period", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers, "swim-lengths-data", "swim lengths data", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers, "run-vo2-max", "run VO2 max", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers, "activity-level", "activity level", supports_rollup=True
+    )
+    add_standard_datapoint_commands(
+        subparsers,
+        "time-in-heart-rate-zone",
+        "time in heart rate zone",
+        supports_rollup=True,
+    )
+    add_standard_datapoint_commands(
+        subparsers,
+        "calories-in-heart-rate-zone",
+        "calories in heart rate zone",
         supports_rollup=True,
     )
 
