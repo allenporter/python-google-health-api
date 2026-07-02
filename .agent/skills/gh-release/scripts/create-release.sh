@@ -39,7 +39,11 @@ else
   sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$FILE_PATH"
 fi
 
-git add "$FILE_PATH"
+if command -v uv &> /dev/null; then
+  uv lock
+fi
+
+git add "$FILE_PATH" uv.lock
 git commit -m "chore(release): $VERSION"
 git push
 gh release create "$VERSION" --generate-notes
