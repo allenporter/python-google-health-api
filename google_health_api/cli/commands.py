@@ -25,6 +25,7 @@ from google_health_api.model import (
     ReconciledDataPoint,
 )
 
+
 from .validation import validate_resource_name, check_dry_run
 
 TOKEN_FILE = "token.json"
@@ -45,6 +46,8 @@ SCOPES = [
     HealthApiScope.LOCATION_READ,
     HealthApiScope.ECG_READ,
     HealthApiScope.IRN_READ,
+    HealthApiScope.USERINFO_PROFILE,
+    HealthApiScope.USERINFO_EMAIL,
 ]
 
 
@@ -857,6 +860,12 @@ async def handle_profile_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
         print_json(serialize_response(result), pretty)
 
 
+async def handle_userinfo_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle userinfo subcommands."""
+    result = await api.get_user_info()
+    print_json(serialize_response(result), pretty)
+
+
 async def handle_settings_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
     """Handle settings subcommands."""
     sub = args.subcommand
@@ -1185,6 +1194,8 @@ async def async_run_cmd(args) -> None:
                 await handle_calories_in_heart_rate_zone_cmd(args, api, pretty)
             elif cmd == "profile":
                 await handle_profile_cmd(args, api, pretty)
+            elif cmd == "userinfo":
+                await handle_userinfo_cmd(args, api, pretty)
             elif cmd == "settings":
                 await handle_settings_cmd(args, api, pretty)
             elif cmd == "devices":

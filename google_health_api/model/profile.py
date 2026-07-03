@@ -78,3 +78,31 @@ class Identity(DataClassDictMixin):
 
     class Config(BaseConfig):
         serialize_by_alias = True
+
+
+@dataclass
+class UserInfo(DataClassDictMixin):
+    """User info details from Google OAuth2 userinfo endpoint."""
+
+    sub: str
+    name: str | None = None
+    given_name: str | None = field(
+        metadata=field_options(alias="given_name"), default=None
+    )
+    family_name: str | None = field(
+        metadata=field_options(alias="family_name"), default=None
+    )
+    picture: str | None = None
+    email: str | None = None
+    email_verified: bool | None = field(
+        metadata=field_options(alias="email_verified"), default=None
+    )
+    locale: str | None = None
+
+    @property
+    def display_name(self) -> str | None:
+        """Alias for name, which acts as the user's display name."""
+        return self.name
+
+    class Config(BaseConfig):
+        serialize_by_alias = True

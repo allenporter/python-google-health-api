@@ -72,6 +72,7 @@ def test_cli_schema(mock_load, capsys) -> None:
     schemas = json.loads(captured.out)
     assert "steps.list" in schemas
     assert "profile.get" in schemas
+    assert "userinfo" in schemas
 
     # Test retrieving a specific command schema
     with patch.object(sys, "argv", ["google-health-cli", "schema", "steps.list"]):
@@ -288,3 +289,30 @@ def test_cli_weight_rollup(mock_load, mock_setup, capsys) -> None:
     assert "rollupDataPoints" in res_json
     assert len(res_json["rollupDataPoints"]) == 1
     assert res_json["rollupDataPoints"][0]["weight"]["weightGramsAvg"] == 75000.0
+
+
+@patch("google_health_api.cli.commands.setup_client")
+@patch("google_health_api.cli.commands.load_credentials_or_env")
+def test_cli_userinfo(mock_load, mock_setup, capsys) -> None:
+    """Test that the userinfo command is correctly routed and executed in the CLI."""
+    mock_load.return_value = ("env", "fake-token")
+
+    mock_api = MagicMock()
+    mock_setup.return_value = mock_api
+
+    mock_userinfo = MagicMock()
+    mock_userinfo.to_dict.return_value = {
+        "sub": "110248495921238986420",
+        "name": "John Doe",
+        "email": "johndoe@example.com",
+    }
+    mock_api.get_user_info = AsyncMock(return_value=mock_userinfo)
+
+    with patch.object(sys, "argv", ["google-health-cli", "userinfo"]):
+        main()
+
+    mock_api.get_user_info.assert_called_once()
+    captured = capsys.readouterr()
+    res_json = json.loads(captured.out)
+    assert res_json["sub"] == "110248495921238986420"
+    assert res_json["name"] == "John Doe"

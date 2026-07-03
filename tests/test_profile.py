@@ -2,8 +2,10 @@
 
 from collections.abc import AsyncGenerator
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
+
 
 from google_health_api.api import GoogleHealthApi
 from google_health_api.model import (
@@ -159,6 +161,7 @@ async def mock_api(
             ),
         ]
     )
+
     yield GoogleHealthApi(auth)
 
 
@@ -334,3 +337,37 @@ async def test_get_paired_device(
     assert len(requests) == 1
     assert requests[0]["method"] == "GET"
     assert requests[0]["url"].endswith("/pairedDevices/device-123")
+
+
+async def test_get_user_info(api: GoogleHealthApi) -> None:
+    """Test retrieving OAuth2 userinfo details."""
+    fake_userinfo = {
+        "sub": "110248495921238986420",
+        "name": "John Doe",
+        "given_name": "John",
+        "family_name": "Doe",
+        "picture": "https://lh3.googleusercontent.com/a-/AOh14Gg...",
+        "email": "johndoe@example.com",
+        "email_verified": True,
+        "locale": "en",
+    }
+
+    with patch.object(api._session, "get", new_callable=AsyncMock) as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.json = AsyncMock(return_value=fake_userinfo)
+        mock_get.return_value = mock_resp
+
+        user_info = await api.get_user_info()
+        assert user_info.sub == "110248495921238986420"
+        assert user_info.name == "John Doe"
+        assert user_info.given_name == "John"
+        assert user_info.family_name == "Doe"
+        assert user_info.picture == "https://lh3.googleusercontent.com/a-/AOh14Gg..."
+        assert user_info.email == "johndoe@example.com"
+        assert user_info.email_verified is True
+        assert user_info.locale == "en"
+        assert user_info.display_name == "John Doe"
+
+        mock_get.assert_called_once_with(
+            "https://www.googleapis.com/oauth2/v3/userinfo"
+        )

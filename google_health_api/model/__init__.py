@@ -111,7 +111,7 @@ from .pagination import (
     _ListReconciledDataPointsModel,
 )
 from .operation import Operation, Status
-from .profile import Date, Identity, IrnProfile, Profile
+from .profile import Date, Identity, IrnProfile, Profile, UserInfo
 from .settings import Settings
 from .sleep import (
     SLEEP,
@@ -256,6 +256,7 @@ __all__ = [
     "Identity",
     "Settings",
     "Date",
+    "UserInfo",
     # --- Device & Webhook Subscription Models ---
     "PairedDevice",
     "Subscriber",

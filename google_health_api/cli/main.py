@@ -261,6 +261,9 @@ def main() -> None:
         help="Comma-separated fields update mask",
     )
 
+    # userinfo command
+    subparsers.add_parser("userinfo", help="Get Google OAuth2 userinfo details")
+
     # settings commands
     settings_parser = subparsers.add_parser("settings", help="Manage user settings")
     settings_subparsers = settings_parser.add_subparsers(

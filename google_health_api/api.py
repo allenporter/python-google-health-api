@@ -89,6 +89,7 @@ from .model import (
     Subscriber,
     SubscriberConfig,
     Subscription,
+    UserInfo,
     VO2Max,
     Weight,
     Altitude,
@@ -1044,3 +1045,9 @@ class GoogleHealthApi:
         resp = await self._session.get(f"v4/users/{user}/irnProfile")
         raw_json = await resp.json()
         return IrnProfile.from_dict(raw_json)
+
+    async def get_user_info(self) -> UserInfo:
+        """Retrieve the authenticated user's Google OAuth2 userinfo."""
+        resp = await self._session.get("https://www.googleapis.com/oauth2/v3/userinfo")
+        raw_json = await resp.json()
+        return UserInfo.from_dict(raw_json)

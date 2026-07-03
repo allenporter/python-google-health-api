@@ -33,3 +33,6 @@ class HealthApiScope:
     ECG_READ = "https://www.googleapis.com/auth/googlehealth.ecg.readonly"
 
     IRN_READ = "https://www.googleapis.com/auth/googlehealth.irn.readonly"
+
+    USERINFO_PROFILE = "https://www.googleapis.com/auth/userinfo.profile"
+    USERINFO_EMAIL = "https://www.googleapis.com/auth/userinfo.email"

@@ -11,6 +11,7 @@ from google_health_api.model import (
     Settings,
     Identity,
     IrnProfile,
+    UserInfo,
     Subscriber,
     SubscriberConfig,
     Subscription,
@@ -310,6 +311,12 @@ def get_command_schemas() -> dict[str, dict[str, Any]]:
 
     schemas.update(
         {
+            "userinfo": {
+                "description": "Retrieve the authenticated user's Google OAuth2 userinfo.",
+                "method": "GET",
+                "endpoint": "https://www.googleapis.com/oauth2/v3/userinfo",
+                "response": generate_schema(UserInfo),
+            },
             "profile.get": {
                 "description": "Retrieve the user's profile details.",
                 "method": "GET",
