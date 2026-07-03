@@ -25,3 +25,6 @@ google-health-cli = "google_health_api.cli.main:main"
 
 [tool.setuptools.packages.find]
 include = ["google_health_api*"]
+
+[tool.setuptools.package-data]
+google_health_api = ["py.typed"]
