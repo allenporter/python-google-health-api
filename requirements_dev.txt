@@ -8,6 +8,6 @@ pytest-cov==7.1.0
 pytest==9.1.1
 pytest-aiohttp==1.1.1
 ruff==0.15.21
-google-auth==2.55.2
+google-auth==2.56.0
 requests==2.34.2
 google-auth-oauthlib==1.4.0
