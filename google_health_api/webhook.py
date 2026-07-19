@@ -111,6 +111,11 @@ class WebhookVerifier:
         self._last_fetched: datetime.datetime | None = None
 
     async def _fetch_keyset_data(self) -> dict:
+        """Fetches the raw JSON keyset dictionary from the network.
+
+        Raises:
+            HealthApiException: If the network request fails.
+        """
         try:
             async with self._websession.get(self._keyset_url) as response:
                 response.raise_for_status()
@@ -121,11 +126,23 @@ class WebhookVerifier:
             ) from e
 
     def _should_refresh(self, now: datetime.datetime) -> bool:
+        """Determines if the keyset cache has expired its standard refresh interval.
+
+        Returns True if the cache is empty, or if the time since the last fetch
+        exceeds the configured refresh interval (default 24 hours).
+        """
         if self._cached_keyset is None or self._last_fetched is None:
             return True
         return (now - self._last_fetched) > self._refresh_interval
 
     def _can_use_cache(self, now: datetime.datetime) -> bool:
+        """Determines if a stale cache can still be used as a fallback.
+
+        Returns True if the cache is present and the time since the last fetch
+        is within the absolute maximum cache lifetime (default 7 days). This
+        enables the API client to continue verifying payloads during extended
+        Google Health API keyset URL outages.
+        """
         if self._cached_keyset is None or self._last_fetched is None:
             return False
         return (now - self._last_fetched) <= self._max_cache_lifetime
