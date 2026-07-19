@@ -43,6 +43,7 @@ from .model import (
     TOTAL_CALORIES,
     VO2_MAX,
     WEIGHT,
+    HEIGHT,
     ALTITUDE,
     ACTIVE_MINUTES,
     ACTIVE_ZONE_MINUTES,
@@ -92,6 +93,8 @@ from .model import (
     UserInfo,
     VO2Max,
     Weight,
+    Height,
+    Bmi,
     Altitude,
     ActiveMinutes,
     ActiveZoneMinutes,
@@ -471,6 +474,120 @@ class RollupDataPointSubApi(DataPointSubApi[T]):
         return rollups[0] if rollups else None
 
 
+class BmiSubApi:
+    """Synthetic client providing Body Mass Index (BMI) calculated from height and weight."""
+
+    def __init__(self, api: "GoogleHealthApi") -> None:
+        """Initialize the namespaced client."""
+        self._api = api
+
+    @property
+    def required_read_scopes(self) -> List[str]:
+        """Return the list of scopes required to read from this API."""
+        return [HealthApiScope.MEASUREMENTS_READ]
+
+    @property
+    def required_write_scopes(self) -> List[str]:
+        """Return the list of scopes required to write to this API."""
+        return []
+
+    async def list(
+        self,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        page_size: int = 100,
+        page_token: str | None = None,
+        user: str = "me",
+    ) -> ListDataPointResult[Bmi]:
+        """List synthetic BMI data points within an optional time range.
+
+        Args:
+            start_time: Retrieve weight data points after this timestamp.
+            end_time: Retrieve weight data points before this timestamp.
+            page_size: Maximum number of weight data points to return.
+            page_token: Page token to retrieve next set of records.
+            user: User ID or literal 'me'.
+        """
+        # Fetch weight data points
+        weight_result = await self._api.weight.list(
+            start_time=start_time,
+            end_time=end_time,
+            page_size=page_size,
+            page_token=page_token,
+            user=user,
+        )
+        if not weight_result.data_points:
+            return ListDataPointResult(_ListDataPointsModel())
+
+        # Fetch height data points (since height is rarely updated, query all to cover possible records)
+        height_result = await self._api.height.list(user=user)
+        if not height_result.data_points:
+            return ListDataPointResult(_ListDataPointsModel())
+
+        # Sort heights by sample time
+        heights = sorted(
+            height_result.data_points,
+            key=lambda dp: dp.data.sample_time.physical_time,
+        )
+
+        bmi_points = []
+        for weight_dp in weight_result.data_points:
+            w_time = weight_dp.data.sample_time.physical_time
+
+            # Find the closest height record at or before the weight record
+            best_height_dp = heights[0]
+            for h_dp in heights:
+                if h_dp.data.sample_time.physical_time <= w_time:
+                    best_height_dp = h_dp
+                else:
+                    break
+
+            w_g = weight_dp.data.weight_grams
+            h_mm = best_height_dp.data.height_millimeters
+
+            # BMI = weight_kg / height_m^2
+            bmi_val = (w_g / 1000.0) / ((h_mm / 1000.0) ** 2)
+
+            bmi_data = Bmi(
+                bmi=round(bmi_val, 2),
+                weight_grams=w_g,
+                height_millimeters=h_mm,
+                sample_time=weight_dp.data.sample_time,
+            )
+
+            # Construct DataPoint matching weight name/source but with bmi data
+            new_name = (
+                weight_dp.name.replace("weight", "bmi") if weight_dp.name else None
+            )
+            bmi_points.append(
+                DataPoint(
+                    name=new_name,
+                    data=bmi_data,
+                    data_source=weight_dp.data_source,
+                )
+            )
+
+        model = _ListDataPointsModel(
+            data_points=bmi_points,
+            next_page_token=weight_result.next_page_token,
+        )
+
+        async def get_next_page(token: str) -> _ListDataPointsModel[Bmi]:
+            next_result = await self.list(
+                start_time=start_time,
+                end_time=end_time,
+                page_size=page_size,
+                page_token=token,
+                user=user,
+            )
+            return next_result._response
+
+        return ListDataPointResult(
+            model,
+            get_next_page=get_next_page if weight_result.next_page_token else None,
+        )
+
+
 class PairedDevicesSubApi:
     """Client providing namespaced operations for PairedDevices."""
 
@@ -837,6 +954,12 @@ class GoogleHealthApi:
     weight: RollupDataPointSubApi[Weight]
     """Namespaced client for Body weight data (`Weight` model)."""
 
+    height: DataPointSubApi[Height]
+    """Namespaced client for Body height data (`Height` model)."""
+
+    bmi: BmiSubApi
+    """Namespaced client for synthetic Body Mass Index (BMI) data (`Bmi` model)."""
+
     active_energy_burned: RollupDataPointSubApi[ActiveEnergyBurned]
     """Namespaced client for Active energy burned data (`ActiveEnergyBurned` model)."""
 
@@ -915,6 +1038,8 @@ class GoogleHealthApi:
         )
         self.vo2_max = DataPointSubApi(self._session, VO2_MAX)
         self.weight = RollupDataPointSubApi(self._session, WEIGHT)
+        self.height = DataPointSubApi(self._session, HEIGHT)
+        self.bmi = BmiSubApi(self)
         self.active_energy_burned = RollupDataPointSubApi(
             self._session, ACTIVE_ENERGY_BURNED
         )

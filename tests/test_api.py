@@ -18,6 +18,7 @@ from google_health_api.model.activity import (
 from google_health_api.model.health_metric import (
     VO2Max,
     Weight,
+    Height,
     ObservationSampleTime,
     DailyRestingHeartRate,
     DailyRestingHeartRateMetadata,
@@ -772,6 +773,27 @@ async def test_vo2_max_and_weight(
     await api.weight.create(DataPoint(data=new_w))
     assert requests[-1]["body"]["weight"]["weightGrams"] == 75000.0
 
+    # Height
+    fake_height_payload = {
+        "name": "users/me/dataTypes/height/dataPoints/h-1",
+        "height": {
+            "heightMillimeters": 1780,
+            "sampleTime": {"physicalTime": "2026-06-22T08:00:00Z"},
+        },
+    }
+    list_response.append({"dataPoints": [fake_height_payload]})
+    result_h = await api.height.list()
+    assert len(result_h.data_points) == 1
+    assert result_h.data_points[0].data.height_millimeters == 1780
+
+    create_response.append(fake_height_payload)
+    new_h = Height(
+        height_millimeters=1780,
+        sample_time=ObservationSampleTime(physical_time="2026-06-22T08:00:00Z"),
+    )
+    await api.height.create(DataPoint(data=new_h))
+    assert requests[-1]["body"]["height"]["heightMillimeters"] == 1780
+
 
 # ==========================================
 # Floors, HydrationLog, and Resting Heart Rate Tests
@@ -953,3 +975,83 @@ async def test_timezone_caching(
     assert result is not None
     assert len(requests) == 1
     assert "steps/dataPoints:dailyRollUp" in requests[0]["url"]
+
+
+async def test_bmi_list(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test that synthetic BMI list fetches weights/heights and calculates correctly."""
+    # 1. Setup weight response payload (two weight data points)
+    fake_weights_payload = {
+        "dataPoints": [
+            {
+                "name": "users/me/dataTypes/weight/dataPoints/w-1",
+                "weight": {
+                    "weightGrams": 82400.0,
+                    "sampleTime": {"physicalTime": "2026-07-18T12:00:00Z"},
+                },
+            },
+            {
+                "name": "users/me/dataTypes/weight/dataPoints/w-2",
+                "weight": {
+                    "weightGrams": 85000.0,
+                    "sampleTime": {"physicalTime": "2026-07-19T12:00:00Z"},
+                },
+            },
+        ]
+    }
+
+    # 2. Setup height response payload (two height data points at different times)
+    fake_heights_payload = {
+        "dataPoints": [
+            {
+                "name": "users/me/dataTypes/height/dataPoints/h-1",
+                "height": {
+                    "heightMillimeters": 1850,
+                    "sampleTime": {"physicalTime": "2025-12-14T00:00:00Z"},
+                },
+            },
+            {
+                "name": "users/me/dataTypes/height/dataPoints/h-2",
+                "height": {
+                    "heightMillimeters": 1860,
+                    "sampleTime": {"physicalTime": "2026-07-19T00:00:00Z"},
+                },
+            },
+        ]
+    }
+
+    # list_response is used sequentially by the mock handler
+    list_response.append(fake_weights_payload)
+    list_response.append(fake_heights_payload)
+
+    # 3. Call api.bmi.list()
+    start_time = datetime(2026, 7, 18, tzinfo=timezone.utc)
+    end_time = datetime(2026, 7, 20, tzinfo=timezone.utc)
+    result = await api.bmi.list(start_time=start_time, end_time=end_time)
+
+    # 4. Assert requests were made properly
+    assert len(requests) == 2
+    assert "weight/dataPoints" in requests[0]["url"]
+    assert "height/dataPoints" in requests[1]["url"]
+
+    # 5. Assert BMI calculations and alignments are correct
+    assert len(result.data_points) == 2
+
+    # Weight 1 (82.4 kg) matches Height 1 (1.85 m)
+    # BMI = 82.4 / (1.85^2) = 24.08
+    point1 = result.data_points[0]
+    assert point1.name == "users/me/dataTypes/bmi/dataPoints/w-1"
+    assert point1.data.bmi == 24.08
+    assert point1.data.weight_grams == 82400.0
+    assert point1.data.height_millimeters == 1850
+
+    # Weight 2 (85.0 kg) matches Height 2 (1.86 m) (since 2026-07-19T12:00:00Z is after 2026-07-19T00:00:00Z)
+    # BMI = 85.0 / (1.86^2) = 24.57
+    point2 = result.data_points[1]
+    assert point2.name == "users/me/dataTypes/bmi/dataPoints/w-2"
+    assert point2.data.bmi == 24.57
+    assert point2.data.weight_grams == 85000.0
+    assert point2.data.height_millimeters == 1860

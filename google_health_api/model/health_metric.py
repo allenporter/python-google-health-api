@@ -180,6 +180,74 @@ WEIGHT = DataType(
 
 
 @dataclass
+class Height(DataClassDictMixin):
+    """Body height measurement."""
+
+    height_millimeters: int = field(metadata=field_options(alias="heightMillimeters"))
+    sample_time: ObservationSampleTime = field(
+        metadata=field_options(alias="sampleTime")
+    )
+
+    @property
+    def start_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    @property
+    def end_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+HEIGHT = DataType(
+    "height",
+    "height",
+    Height,
+    "height.sample_time.physical_time",
+    read_scopes=[HealthApiScope.MEASUREMENTS_READ],
+    write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
+)
+
+
+@dataclass
+class Bmi(DataClassDictMixin):
+    """Synthetic Body Mass Index (BMI) measurement."""
+
+    bmi: float
+    weight_grams: float = field(metadata=field_options(alias="weightGrams"))
+    height_millimeters: int = field(metadata=field_options(alias="heightMillimeters"))
+    sample_time: ObservationSampleTime = field(
+        metadata=field_options(alias="sampleTime")
+    )
+
+    @property
+    def start_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    @property
+    def end_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+BMI = DataType(
+    "bmi",
+    "bmi",
+    Bmi,
+    "bmi.sample_time.physical_time",
+    read_scopes=[HealthApiScope.MEASUREMENTS_READ],
+    write_scopes=[],
+)
+
+
+@dataclass
 class DailyRestingHeartRateMetadata(DataClassDictMixin):
     """Metadata for the daily resting heart rate."""
 

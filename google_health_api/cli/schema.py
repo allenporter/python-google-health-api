@@ -23,6 +23,8 @@ from google_health_api.model import (
     BasalEnergyBurned,
     VO2Max,
     Weight,
+    Height,
+    Bmi,
     Floors,
     HydrationLog,
     NutritionLog,
@@ -271,6 +273,8 @@ def get_command_schemas() -> dict[str, dict[str, Any]]:
         ),
         ("vo2-max", "vo2Max", VO2Max, "VO2 max", False),
         ("weight", "weight", Weight, "weight", False),
+        ("height", "height", Height, "height", False),
+        ("bmi", "bmi", Bmi, "bmi", False),
         (
             "active-energy-burned",
             "activeEnergyBurned",
