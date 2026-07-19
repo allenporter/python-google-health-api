@@ -8,6 +8,22 @@ binary wire format to extract key fields, avoiding a dependency on the full
 from typing import Any
 
 
+# Varint decoding constants
+_VARINT_DATA_MASK = 0x7F
+_VARINT_CONTINUATION_MASK = 0x80
+_VARINT_SHIFT_BITS = 7
+
+# Tag parsing constants
+_TAG_FIELD_NUM_SHIFT = 3
+_TAG_WIRE_TYPE_MASK = 0x07
+
+# Protobuf wire types
+_WIRE_TYPE_VARINT = 0
+_WIRE_TYPE_FIXED64 = 1
+_WIRE_TYPE_LENGTH_DELIMITED = 2
+_WIRE_TYPE_FIXED32 = 5
+
+
 class ProtobufParseError(ValueError):
     """Raised when there is an issue parsing serialized protobuf bytes."""
 
@@ -19,11 +35,11 @@ def _decode_varint(data: bytes, pos: int) -> tuple[int, int]:
     limit = len(data)
     while pos < limit:
         b = data[pos]
-        val |= (b & 0x7F) << shift
+        val |= (b & _VARINT_DATA_MASK) << shift
         pos += 1
-        if not (b & 0x80):
+        if not (b & _VARINT_CONTINUATION_MASK):
             break
-        shift += 7
+        shift += _VARINT_SHIFT_BITS
     return val, pos
 
 
@@ -38,19 +54,23 @@ def parse_protobuf(data: bytes) -> dict[int, Any]:
     limit = len(data)
     while pos < limit:
         tag, pos = _decode_varint(data, pos)
-        field_num = tag >> 3
-        wire_type = tag & 0x07
-        if wire_type == 0:
+        field_num = tag >> _TAG_FIELD_NUM_SHIFT
+        wire_type = tag & _TAG_WIRE_TYPE_MASK
+        if wire_type == _WIRE_TYPE_VARINT:
             val, pos = _decode_varint(data, pos)
             fields[field_num] = val
-        elif wire_type == 2:
+        elif wire_type == _WIRE_TYPE_LENGTH_DELIMITED:
             length, pos = _decode_varint(data, pos)
             val = data[pos : pos + length]
+            if len(val) < length:
+                raise ProtobufParseError(
+                    f"Truncated length-delimited field (expected {length} bytes, got {len(val)})"
+                )
             pos += length
             fields[field_num] = val
-        elif wire_type == 1:
+        elif wire_type == _WIRE_TYPE_FIXED64:
             pos += 8
-        elif wire_type == 5:
+        elif wire_type == _WIRE_TYPE_FIXED32:
             pos += 4
         else:
             raise ProtobufParseError(
