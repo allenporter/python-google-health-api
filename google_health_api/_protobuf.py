@@ -37,12 +37,8 @@ TYPE_BYTES = "bytes"
 TYPE_STRING = "string"
 TYPE_BIG_ENDIAN_INT = "big_endian_int"
 
-# Hardcoded decoders for logical types
-_DECODERS: dict[str, Callable[[Any], Any]] = {
-    TYPE_INT32: int,
-    TYPE_INT64: int,
-    TYPE_UINT32: int,
-    TYPE_UINT64: int,
+# Hardcoded decoders for logical types that are stored as bytes on the wire
+_DECODERS: dict[str, Callable[[bytes], Any]] = {
     TYPE_BYTES: lambda v: v,
     TYPE_STRING: lambda v: v.decode("utf-8"),
     TYPE_BIG_ENDIAN_INT: lambda v: int.from_bytes(v, byteorder="big"),
@@ -69,7 +65,7 @@ def _decode_varint(data: bytes, pos: int) -> tuple[int, int]:
 
 
 def parse_protobuf(
-    data: bytes, decoders: dict[int, Callable[[Any], Any]] | None = None
+    data: bytes, decoders: dict[int, Callable[[bytes], Any]] | None = None
 ) -> dict[int, Any]:
     """Parse serialized protobuf bytes into a dict of {field_number: value}.
 
@@ -112,6 +108,10 @@ def parse_protobuf(
             )
 
         if decoders and field_num in decoders:
+            if not isinstance(val, bytes):
+                raise ProtobufParseError(
+                    f"Field {field_num} is not bytes but has a decoder configured"
+                )
             try:
                 val = decoders[field_num](val)
             except Exception as e:
@@ -144,7 +144,12 @@ def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
                 proto_type = metadata[PROTO_TYPE]
                 if proto_type in _DECODERS:
                     decoders[field_num] = _DECODERS[proto_type]
-                else:
+                elif proto_type not in (
+                    TYPE_INT32,
+                    TYPE_INT64,
+                    TYPE_UINT32,
+                    TYPE_UINT64,
+                ):
                     raise ProtobufParseError(f"Unsupported proto type: {proto_type}")
 
             if f.default is not dataclasses.MISSING:
