@@ -24,6 +24,10 @@ _WIRE_TYPE_FIXED64 = 1
 _WIRE_TYPE_LENGTH_DELIMITED = 2
 _WIRE_TYPE_FIXED32 = 5
 
+# Dataclass field metadata keys
+FIELD_NUMBER = "field_number"
+PROTO_TYPE = "proto_type"
+
 # Protobuf logical field types
 TYPE_INT32 = "int32"
 TYPE_INT64 = "int64"
@@ -133,13 +137,13 @@ def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
 
     for f in dataclasses.fields(cls):
         metadata = f.metadata
-        if "field_number" in metadata:
-            field_num = metadata["field_number"]
+        if FIELD_NUMBER in metadata:
+            field_num = metadata[FIELD_NUMBER]
             field_map[field_num] = f.name
 
             # Map the logical proto_type to the hardcoded decoder function
-            if "proto_type" in metadata:
-                proto_type = metadata["proto_type"]
+            if PROTO_TYPE in metadata:
+                proto_type = metadata[PROTO_TYPE]
                 if proto_type in _DECODERS:
                     decoders[field_num] = _DECODERS[proto_type]
                 else:
