@@ -30,6 +30,8 @@ The lifecycle of a webhook integration consists of three main phases:
      HTTP `204 No Content`.
    - Your endpoint should verify the signature delivered in the `X-HEALTHAPI-SIGNATURE` header
      (an ECDSA signature of the JSON payload) using the Google Health API's public keyset.
+     (Note: To use the `WebhookVerifier` for this, you must install the SDK with the
+     `webhook` extra: `pip install google_health_api[webhook]`).
    - Parse the JSON payload using `WebhookNotification.from_dict()`.
    - Using the parsed `healthUserId`, `dataType`, and `civilIso8601TimeInterval`, query the API
      asynchronously to retrieve the updated data.
