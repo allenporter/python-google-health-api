@@ -184,6 +184,12 @@ def main() -> None:
     )
     add_standard_datapoint_commands(
         subparsers,
+        "daily-sleep-temperature-derivations",
+        "daily sleep temperature derivations",
+        supports_rollup=False,
+    )
+    add_standard_datapoint_commands(
+        subparsers,
         "daily-respiratory-rate",
         "daily respiratory rate",
         supports_rollup=False,

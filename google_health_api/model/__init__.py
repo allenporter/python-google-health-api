@@ -156,6 +156,8 @@ from .profile import Date, Identity, IrnProfile, Profile, UserInfo
 from .settings import Settings
 from .sleep import (
     SLEEP,
+    DAILY_SLEEP_TEMPERATURE_DERIVATIONS,
+    DailySleepTemperatureDerivations,
     CivilDateTime,
     CivilTimeInterval,
     DailyRollUpDataPointsRequest,
@@ -292,6 +294,8 @@ __all__ = [
     # --- Sleep Models ---
     "Sleep",
     "SLEEP",
+    "DailySleepTemperatureDerivations",
+    "DAILY_SLEEP_TEMPERATURE_DERIVATIONS",
     # --- Exercise Models ---
     "Exercise",
     "EXERCISE",

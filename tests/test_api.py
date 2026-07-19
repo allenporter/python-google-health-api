@@ -25,7 +25,12 @@ from google_health_api.model.health_metric import (
     DailyRestingHeartRate,
     DailyRestingHeartRateMetadata,
 )
-from google_health_api.model.sleep import Sleep, SessionTimeInterval, SleepStage
+from google_health_api.model.sleep import (
+    Sleep,
+    SessionTimeInterval,
+    SleepStage,
+    DailySleepTemperatureDerivations,
+)
 from google_health_api.model.hydration import HydrationLog, VolumeQuantity
 from google_health_api.model.heart import (
     Electrocardiogram,
@@ -1483,3 +1488,41 @@ async def test_daily_heart_rate_zones(
     )
     await api.daily_heart_rate_zones.create(DataPoint(data=new_point))
     assert len(requests[-1]["body"]["dailyHeartRateZones"]["heartRateZones"]) == 1
+
+
+async def test_daily_sleep_temperature_derivations(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    create_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test daily_sleep_temperature_derivations sub-API."""
+    fake_payload = {
+        "name": "users/me/dataTypes/daily-sleep-temperature-derivations/dataPoints/dstd-1",
+        "dailySleepTemperatureDerivations": {
+            "date": {"year": 2026, "month": 6, "day": 22},
+            "nightlyTemperatureCelsius": 36.2,
+            "baselineTemperatureCelsius": 36.0,
+            "relativeNightlyStddev30dCelsius": 0.15,
+        },
+    }
+    list_response.append({"dataPoints": [fake_payload]})
+    result = await api.daily_sleep_temperature_derivations.list()
+    assert len(result.data_points) == 1
+    assert result.data_points[0].data.nightly_temperature_celsius == 36.2
+    assert result.data_points[0].data.baseline_temperature_celsius == 36.0
+
+    create_response.append(fake_payload)
+    new_point = DailySleepTemperatureDerivations(
+        date=Date(year=2026, month=6, day=22),
+        nightly_temperature_celsius=36.2,
+        baseline_temperature_celsius=36.0,
+        relative_nightly_stddev_30d_celsius=0.15,
+    )
+    await api.daily_sleep_temperature_derivations.create(DataPoint(data=new_point))
+    assert (
+        requests[-1]["body"]["dailySleepTemperatureDerivations"][
+            "nightlyTemperatureCelsius"
+        ]
+        == 36.2
+    )

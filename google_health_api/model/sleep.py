@@ -237,3 +237,32 @@ SLEEP = DataType(
     read_scopes=[HealthApiScope.SLEEP_READ],
     write_scopes=[HealthApiScope.SLEEP_WRITE],
 )
+
+
+@dataclass
+class DailySleepTemperatureDerivations(DataClassDictMixin):
+    """Provides derived sleep temperature values."""
+
+    date: Date
+    nightly_temperature_celsius: float = field(
+        metadata=field_options(alias="nightlyTemperatureCelsius")
+    )
+    baseline_temperature_celsius: float | None = field(
+        metadata=field_options(alias="baselineTemperatureCelsius"), default=None
+    )
+    relative_nightly_stddev_30d_celsius: float | None = field(
+        metadata=field_options(alias="relativeNightlyStddev30dCelsius"), default=None
+    )
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+DAILY_SLEEP_TEMPERATURE_DERIVATIONS = DataType(
+    "daily-sleep-temperature-derivations",
+    "dailySleepTemperatureDerivations",
+    DailySleepTemperatureDerivations,
+    "daily_sleep_temperature_derivations.date",
+    read_scopes=[HealthApiScope.SLEEP_READ],
+    write_scopes=[HealthApiScope.SLEEP_WRITE],
+)
