@@ -43,11 +43,9 @@ _DECODERS: dict[str, Callable[[Any], Any]] = {
     TYPE_INT64: int,
     TYPE_UINT32: int,
     TYPE_UINT64: int,
-    TYPE_BYTES: lambda v: bytes(v) if isinstance(v, (bytes, bytearray)) else v,
-    TYPE_STRING: lambda v: v.decode("utf-8") if isinstance(v, bytes) else str(v),
-    TYPE_BIG_ENDIAN_INT: lambda v: (
-        int.from_bytes(v, byteorder="big") if isinstance(v, bytes) else int(v)
-    ),
+    TYPE_BYTES: lambda v: v,
+    TYPE_STRING: lambda v: v.decode("utf-8"),
+    TYPE_BIG_ENDIAN_INT: lambda v: int.from_bytes(v, byteorder="big"),
 }
 
 
