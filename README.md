@@ -1,5 +1,7 @@
 # Python Google Health API Client Library
 
+[![API Reference](https://img.shields.io/badge/API-Reference-blue.svg)](https://allenporter.github.io/python-google-health-api/)
+
 An asynchronous, type-safe Python client library for the Google Health API (`health.googleapis.com/v4`). This library is designed to help developers migrate from the legacy Fitbit Web API to the Google Health API.
 
 It exposes Google Health data types as clean, type-annotated properties on the client (e.g., `api.steps` and `api.heart_rate`).
@@ -13,20 +15,52 @@ It exposes Google Health data types as clean, type-annotated properties on the c
 
 ## Supported Data Types
 
-Currently supported data types:
-* **Steps** (`api.steps`)
-* **Heart Rate** (`api.heart_rate`)
-* **Sleep** (`api.sleep`)
-* **Distance** (`api.distance`)
-* **Basal Energy Burned** (`api.basal_energy_burned`)
-* **Active Energy Burned** (`api.active_energy_burned`)
-* **Total Calories** (`api.total_calories`)
-* **VO2 Max** (`api.vo2_max`)
-* **Weight** (`api.weight`)
-* **Floors** (`api.floors`)
-* **Hydration Log (Water)** (`api.hydration_log`)
-* **Nutrition Log (Food)** (`api.nutrition_log`)
-* **Daily Resting Heart Rate** (`api.daily_resting_heart_rate`)
+The library supports all **36 data types** defined in the Google Health API schema:
+
+* **Activity & Fitness**:
+  * Steps (`api.steps`)
+  * Distance (`api.distance`)
+  * Floors (`api.floors`)
+  * Active Minutes (`api.active_minutes`)
+  * Active Zone Minutes (`api.active_zone_minutes`)
+  * Sedentary Period (`api.sedentary_period`)
+  * Altitude (`api.altitude`)
+  * Swim Lengths (`api.swim_lengths_data`)
+  * Exercise Logs (`api.exercise`)
+  * Activity Level (`api.activity_level`)
+* **Body & Health Measurements**:
+  * Weight (`api.weight`)
+  * Height (`api.height`)
+  * BMI (`api.bmi`)
+  * Body Fat (`api.body_fat`)
+  * Blood Glucose (`api.blood_glucose`)
+  * Core Body Temperature (`api.core_body_temperature`)
+* **Nutrition & Hydration**:
+  * Nutrition Log (`api.nutrition_log`)
+  * Hydration Log (`api.hydration_log`)
+* **Heart & Cardio Health**:
+  * Heart Rate (`api.heart_rate`)
+  * Daily Resting Heart Rate (`api.daily_resting_heart_rate`)
+  * Heart Rate Variability (`api.heart_rate_variability`)
+  * Daily Heart Rate Variability (`api.daily_heart_rate_variability`)
+  * Time in Heart Rate Zone (`api.time_in_heart_rate_zone`)
+  * Calories in Heart Rate Zone (`api.calories_in_heart_rate_zone`)
+  * Daily Heart Rate Zones (`api.daily_heart_rate_zones`)
+  * VO2 Max (`api.vo2_max`)
+  * Run VO2 Max (`api.run_vo2_max`)
+  * Daily VO2 Max (`api.daily_vo2_max`)
+  * Electrocardiogram (ECG) (`api.electrocardiogram`)
+  * Irregular Rhythm Notification (`api.irregular_rhythm_notification`)
+* **Energy Expenditures**:
+  * Basal Energy Burned (`api.basal_energy_burned`)
+  * Active Energy Burned (`api.active_energy_burned`)
+  * Total Calories (`api.total_calories`)
+* **Respiratory Metrics**:
+  * Daily Respiratory Rate (`api.daily_respiratory_rate`)
+  * Respiratory Rate Sleep Summary (`api.respiratory_rate_sleep_summary`)
+* **Sleep & Temperature**:
+  * Sleep (`api.sleep`)
+  * Daily Sleep Temperature Derivations (`api.daily_sleep_temperature_derivations`)
 
 
 ## Installation
