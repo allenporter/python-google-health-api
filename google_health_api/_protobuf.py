@@ -87,17 +87,12 @@ class ProtobufParseError(ValueError):
     """Raised when there is an issue parsing serialized protobuf bytes."""
 
 
-_NO_DEFAULT = object()
-
-
 @dataclasses.dataclass
 class _ProtoFieldMetadata:
     """Contains parsing metadata for a single protobuf dataclass field."""
 
     field_name: str
     decoder: Callable[[Any], Any] | None = None
-    default_val: Any = _NO_DEFAULT
-    default_factory: Callable[[], Any] | None = None
 
 
 def _decode_varint(data: bytes, pos: int) -> tuple[int, int]:
@@ -136,18 +131,9 @@ def _extract_proto_metadata(cls: type[Any]) -> dict[int, _ProtoFieldMetadata]:
             else:
                 raise ProtobufParseError(f"Unsupported proto type: {proto_type}")
 
-        default_val = _NO_DEFAULT
-        default_factory = None
-        if f.default is not dataclasses.MISSING:
-            default_val = f.default
-        elif f.default_factory is not dataclasses.MISSING:
-            default_factory = f.default_factory
-
         field_metadata[field_num] = _ProtoFieldMetadata(
             field_name=f.name,
             decoder=decoder,
-            default_val=default_val,
-            default_factory=default_factory,
         )
 
     return field_metadata
@@ -217,13 +203,6 @@ def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
                         f"Failed to decode field {field_num}: {e}"
                     ) from e
             args[f_meta.field_name] = val
-
-    for f_meta in field_metadata.values():
-        if f_meta.field_name not in args:
-            if f_meta.default_val is not _NO_DEFAULT:
-                args[f_meta.field_name] = f_meta.default_val
-            elif f_meta.default_factory is not None:
-                args[f_meta.field_name] = f_meta.default_factory()
 
     try:
         return cls(**args)
