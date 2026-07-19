@@ -23,7 +23,11 @@ and has precompiled wheels everywhere). This module manually performs the parsin
 of the Tink JSON container and protobuf-encoded key material, and delegating the
 actual signature verification to `cryptography`. This does not violate the "never
 write your own cryptography" rule as the cryptographic operations are fully
-handled by a highly vetted, industry-standard library.
+delegated to the standard OpenSSL/Rust backend.
+
+Note: To use the signature verification functionality, you must install this
+package with the `webhook` optional dependency:
+`pip install google_health_api[webhook]`.
 
 For more details on signature verification, see the official documentation:
 https://developers.google.com/health/webhooks#how_to_verify_the_signature
@@ -231,8 +235,8 @@ class WebhookKeyset(DataClassDictMixin):
         if not _HAS_CRYPTOGRAPHY:
             raise ImportError(
                 "The 'cryptography' package is required for signature verification. "
-                "Please install google_health_api with the 'security' extra: "
-                "pip install google_health_api[security]"
+                "Please install google_health_api with the 'webhook' extra: "
+                "pip install google_health_api[webhook]"
             )
 
         parsed_sig = self._parse_signature_header(signature_header)

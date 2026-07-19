@@ -30,6 +30,8 @@ The lifecycle of a webhook integration consists of three main phases:
      HTTP `204 No Content`.
    - Your endpoint should verify the signature delivered in the `X-HEALTHAPI-SIGNATURE` header
      (an ECDSA signature of the JSON payload) using the Google Health API's public keyset.
+     (Note: To use the `WebhookVerifier` for this, you must install the SDK with the
+     `webhook` extra: `pip install google_health_api[webhook]`).
    - Parse the JSON payload using `WebhookNotification.from_dict()`.
    - Using the parsed `healthUserId`, `dataType`, and `civilIso8601TimeInterval`, query the API
      asynchronously to retrieve the updated data.
@@ -64,14 +66,141 @@ elif notification.data:
 ```
 """
 
+import datetime
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+import aiohttp
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
+from google_health_api.exceptions import HealthApiException, WebhookSignatureError
 from google_health_api.model import DATATYPES
 from google_health_api.model.base import DataType
+from google_health_api.tink import (
+    KeysetError,
+    SignatureVerificationError,
+    WebhookKeyset,
+)
+
+# The standard public URL for Google Health API webhook keysets.
+GOOGLE_HEALTH_KEYSET_URL = (
+    "https://www.gstatic.com/googlehealthapi/webhooks/webhooks_public_keyset.json"
+)
+
+# Keysets are cached in memory to avoid HTTP calls on every webhook payload.
+# A refresh is attempted periodically (once per day) to gracefully rotate keys.
+DEFAULT_REFRESH_INTERVAL = datetime.timedelta(days=1)
+
+# If fetching a new keyset fails (e.g., due to a network outage), it is
+# generally safe to continue using the previously cached keyset up to a maximum limit
+# to ensure high availability for incoming webhooks.
+DEFAULT_MAX_CACHE_LIFETIME = datetime.timedelta(days=7)
+
+
+class WebhookVerifier:
+    """A long-lived verifier that fetches, caches, and uses a Tink WebhookKeyset."""
+
+    def __init__(
+        self,
+        websession: aiohttp.ClientSession,
+        keyset_url: str = GOOGLE_HEALTH_KEYSET_URL,
+        refresh_interval: datetime.timedelta = DEFAULT_REFRESH_INTERVAL,
+        max_cache_lifetime: datetime.timedelta = DEFAULT_MAX_CACHE_LIFETIME,
+    ) -> None:
+        self._websession = websession
+        self._keyset_url = keyset_url
+        self._refresh_interval = refresh_interval
+        self._max_cache_lifetime = max_cache_lifetime
+
+        self._cached_keyset: WebhookKeyset | None = None
+        self._last_fetched: datetime.datetime | None = None
+
+    async def verify(self, signature_header: str, raw_payload: bytes) -> None:
+        """Fetches the keyset (if needed) and verifies the payload signature.
+
+        Callers are responsible for extracting the signature from the incoming
+        HTTP request headers (expected in the `GOOGLE-HEALTH-API-SIGNATURE` header)
+        and providing the raw bytes of the HTTP request body. It is critical to
+        pass the unmodified raw bytes; do not parse or decode the payload first.
+
+        Args:
+            signature_header: The Base64-encoded signature extracted from the
+                request header.
+            raw_payload: The unmodified raw HTTP request body bytes.
+
+        Raises:
+            HealthApiException: If the keyset cannot be fetched from the network
+                and no valid cache exists. Callers should typically return a 500
+                status code in this case.
+            WebhookSignatureError: If the signature is malformed, invalid, or belongs
+                to an unknown key. Callers should typically return a 400 or 401
+                status code in this case.
+            ImportError: If the `cryptography` package is not installed.
+        """
+        keyset = await self._get_keyset()
+        try:
+            keyset.verify_signature(signature_header, raw_payload)
+        except (SignatureVerificationError, KeysetError) as e:
+            raise WebhookSignatureError(
+                f"Webhook signature verification failed: {e}"
+            ) from e
+
+    async def _fetch_keyset_data(self) -> dict:
+        """Fetches the raw JSON keyset dictionary from the network.
+
+        Raises:
+            HealthApiException: If the network request fails.
+        """
+        try:
+            async with self._websession.get(self._keyset_url) as response:
+                response.raise_for_status()
+                return await response.json()
+        except aiohttp.ClientError as e:
+            raise HealthApiException(
+                "Failed to fetch Webhook Keyset from network."
+            ) from e
+
+    def _should_refresh(self, now: datetime.datetime) -> bool:
+        """Determines if the keyset cache has expired its standard refresh interval.
+
+        Returns True if the cache is empty, or if the time since the last fetch
+        exceeds the configured refresh interval (default 24 hours).
+        """
+        if self._cached_keyset is None or self._last_fetched is None:
+            return True
+        return (now - self._last_fetched) > self._refresh_interval
+
+    def _can_use_cache(self, now: datetime.datetime) -> bool:
+        """Determines if a stale cache can still be used as a fallback.
+
+        Returns True if the cache is present and the time since the last fetch
+        is within the absolute maximum cache lifetime (default 7 days). This
+        enables the API client to continue verifying payloads during extended
+        Google Health API keyset URL outages.
+        """
+        if self._cached_keyset is None or self._last_fetched is None:
+            return False
+        return (now - self._last_fetched) <= self._max_cache_lifetime
+
+    async def _get_keyset(self) -> WebhookKeyset:
+        """Returns the cached keyset or fetches a new one if the refresh interval has elapsed.
+
+        If a fetch fails, falls back to the cached keyset as long as it is within
+        the max_cache_lifetime.
+        """
+        now = datetime.datetime.now(datetime.timezone.utc)
+        if self._should_refresh(now):
+            try:
+                data = await self._fetch_keyset_data()
+                self._cached_keyset = WebhookKeyset.from_dict(data)
+                self._last_fetched = now
+            except HealthApiException:
+                if not self._can_use_cache(now):
+                    raise
+        if not self._cached_keyset:
+            raise HealthApiException("Keyset is not available.")
+        return self._cached_keyset
 
 
 @dataclass
