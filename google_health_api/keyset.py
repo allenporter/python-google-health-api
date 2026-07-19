@@ -31,10 +31,12 @@ https://developers.google.com/health/webhooks#how_to_verify_the_signature
 
 import base64
 from dataclasses import dataclass, field
-from typing import Any
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
+
+from ._protobuf import parse_protobuf
+
 
 try:
     from cryptography.hazmat.primitives import hashes
@@ -53,63 +55,6 @@ class SignatureVerificationError(ValueError):
     """Raised when the webhook signature verification fails."""
 
 
-def _decode_varint(data: bytes, pos: int) -> tuple[int, int]:
-    """Decode a varint from the data starting at pos. Returns (value, next_pos)."""
-    val = 0
-    shift = 0
-    limit = len(data)
-    while pos < limit:
-        b = data[pos]
-        val |= (b & 0x7F) << shift
-        pos += 1
-        if not (b & 0x80):
-            break
-        shift += 7
-    return val, pos
-
-
-def _parse_protobuf(data: bytes) -> dict[int, Any]:
-    """Parse serialized protobuf bytes into a dict of {field_number: value}.
-
-    This is a lightweight, dependency-free protobuf parser that allows us to extract
-    the public key coordinates from the serialized Tink `EcdsaPublicKey` message:
-
-    ```protobuf
-    // Tink ecdsa.proto definition:
-    message EcdsaPublicKey {
-      uint32 version = 1;
-      EcdsaParams params = 2;
-      bytes x = 3;  // Big-endian public key X coordinate
-      bytes y = 4;  // Big-endian public key Y coordinate
-    }
-    ```
-    """
-    fields = {}
-    pos = 0
-    limit = len(data)
-    while pos < limit:
-        tag, pos = _decode_varint(data, pos)
-        field_num = tag >> 3
-        wire_type = tag & 0x07
-        if wire_type == 0:
-            val, pos = _decode_varint(data, pos)
-            fields[field_num] = val
-        elif wire_type == 2:
-            length, pos = _decode_varint(data, pos)
-            val = data[pos : pos + length]
-            pos += length
-            fields[field_num] = val
-        elif wire_type == 1:
-            pos += 8
-        elif wire_type == 5:
-            pos += 4
-        else:
-            raise KeysetError(
-                f"Unsupported wire type {wire_type} in protobuf keyset value"
-            )
-    return fields
-
-
 @dataclass
 class EcdsaPublicKey:
     """Represents a Tink-encoded ECDSA P-256 public key.
@@ -126,7 +71,7 @@ class EcdsaPublicKey:
     def deserialize(cls, data: bytes) -> "EcdsaPublicKey":
         """Deserialize from binary serialized Protobuf bytes."""
         try:
-            fields = _parse_protobuf(data)
+            fields = parse_protobuf(data)
         except Exception as e:
             raise KeysetError("Failed to parse key protobuf data") from e
 
