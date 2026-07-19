@@ -95,13 +95,19 @@ def test_parse_protobuf_fixed_types() -> None:
     assert obj.val64 == fixed64_bytes
     assert obj.val32 == fixed32_bytes
 
-    # Truncated fixed64
+
+def test_parse_protobuf_fixed64_truncated() -> None:
+    """Verify that deserialize_protobuf raises ProtobufParseError on truncated fixed64 fields."""
+    # field 1: wire type 1 (fixed64) -> tag (1 << 3) | 1 = 9
     truncated_fixed64 = bytes([9, 1, 2, 3])
     with pytest.raises(ProtobufParseError) as exc_info:
         deserialize_protobuf(DummyFixedField, truncated_fixed64)
     assert "Truncated fixed64 field" in str(exc_info.value)
 
-    # Truncated fixed32
+
+def test_parse_protobuf_fixed32_truncated() -> None:
+    """Verify that deserialize_protobuf raises ProtobufParseError on truncated fixed32 fields."""
+    # field 2: wire type 5 (fixed32) -> tag (2 << 3) | 5 = 21
     truncated_fixed32 = bytes([21, 1, 2])
     with pytest.raises(ProtobufParseError) as exc_info:
         deserialize_protobuf(DummyFixedField, truncated_fixed32)
