@@ -94,12 +94,11 @@ class EcdsaPublicKey:
         """Deserialize from binary serialized Protobuf bytes.
 
         Raises:
-            KeysetError: If parsing fails due to [ProtobufParseError](file:///Users/allen/.gemini/antigravity/worktrees/python-google-health-api/review-webhook-signature-implementation/google_health_api/_protobuf.py#L11)
-                or truncated data (which raises an [IndexError]).
+            KeysetError: If parsing fails due to [ProtobufParseError](file:///Users/allen/.gemini/antigravity/worktrees/python-google-health-api/review-webhook-signature-implementation/google_health_api/_protobuf.py#L11).
         """
         try:
             return deserialize_protobuf(cls, data)
-        except (ProtobufParseError, IndexError) as e:
+        except ProtobufParseError as e:
             raise KeysetError("Failed to parse key protobuf data") from e
 
     def to_cryptography_key(self) -> "ec.EllipticCurvePublicKey":
@@ -117,7 +116,7 @@ class EcdsaPublicKey:
                 curve=ec.SECP256R1(),
             )
             return public_numbers.public_key()
-        except Exception as e:
+        except ValueError as e:
             raise KeysetError(
                 "Failed to construct ECDSA public key from coordinates"
             ) from e
@@ -185,7 +184,7 @@ class WebhookKeyset(DataClassDictMixin):
 
         try:
             key_data_bytes = base64.b64decode(matching_key.key_data.value)
-        except Exception as e:
+        except ValueError as e:
             raise KeysetError("Failed to Base64-decode key value") from e
 
         public_key_proto = EcdsaPublicKey.deserialize(key_data_bytes)
@@ -202,7 +201,7 @@ class WebhookKeyset(DataClassDictMixin):
         """Decodes base64 signature header and extracts key ID and raw signature bytes."""
         try:
             signature_bytes = base64.b64decode(signature_header)
-        except Exception as e:
+        except ValueError as e:
             raise SignatureVerificationError(
                 "Failed to Base64-decode signature header"
             ) from e

@@ -177,48 +177,51 @@ def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
     args = {}
     pos = 0
     limit = len(data)
-    while pos < limit:
-        tag, pos = _decode_varint(data, pos)
-        field_num = tag >> _TAG_FIELD_NUM_SHIFT
-        wire_type = tag & _TAG_WIRE_TYPE_MASK
+    try:
+        while pos < limit:
+            tag, pos = _decode_varint(data, pos)
+            field_num = tag >> _TAG_FIELD_NUM_SHIFT
+            wire_type = tag & _TAG_WIRE_TYPE_MASK
 
-        if wire_type == _WIRE_TYPE_VARINT:
-            val, pos = _decode_varint(data, pos)
-        elif wire_type == _WIRE_TYPE_LENGTH_DELIMITED:
-            length, pos = _decode_varint(data, pos)
-            val = data[pos : pos + length]
-            if len(val) < length:
+            if wire_type == _WIRE_TYPE_VARINT:
+                val, pos = _decode_varint(data, pos)
+            elif wire_type == _WIRE_TYPE_LENGTH_DELIMITED:
+                length, pos = _decode_varint(data, pos)
+                val = data[pos : pos + length]
+                if len(val) < length:
+                    raise ProtobufParseError(
+                        f"Truncated length-delimited field (expected {length} bytes, got {len(val)})"
+                    )
+                pos += length
+            elif wire_type == _WIRE_TYPE_FIXED64:
+                val = data[pos : pos + 8]
+                if len(val) < 8:
+                    raise ProtobufParseError("Truncated fixed64 field")
+                pos += 8
+            elif wire_type == _WIRE_TYPE_FIXED32:
+                val = data[pos : pos + 4]
+                if len(val) < 4:
+                    raise ProtobufParseError("Truncated fixed32 field")
+                pos += 4
+            else:
                 raise ProtobufParseError(
-                    f"Truncated length-delimited field (expected {length} bytes, got {len(val)})"
+                    f"Unsupported wire type {wire_type} in protobuf structure"
                 )
-            pos += length
-        elif wire_type == _WIRE_TYPE_FIXED64:
-            val = data[pos : pos + 8]
-            if len(val) < 8:
-                raise ProtobufParseError("Truncated fixed64 field")
-            pos += 8
-        elif wire_type == _WIRE_TYPE_FIXED32:
-            val = data[pos : pos + 4]
-            if len(val) < 4:
-                raise ProtobufParseError("Truncated fixed32 field")
-            pos += 4
-        else:
-            raise ProtobufParseError(
-                f"Unsupported wire type {wire_type} in protobuf structure"
-            )
 
-        if field_num not in field_metadata:
-            continue
+            if field_num not in field_metadata:
+                continue
 
-        f_meta = field_metadata[field_num]
-        if f_meta.decoder:
-            try:
-                val = f_meta.decoder(val)
-            except Exception as e:
-                raise ProtobufParseError(
-                    f"Failed to decode field {field_num}: {e}"
-                ) from e
-        args[f_meta.field_name] = val
+            f_meta = field_metadata[field_num]
+            if f_meta.decoder:
+                try:
+                    val = f_meta.decoder(val)
+                except Exception as e:
+                    raise ProtobufParseError(
+                        f"Failed to decode field {field_num}: {e}"
+                    ) from e
+            args[f_meta.field_name] = val
+    except IndexError as e:
+        raise ProtobufParseError("Truncated protobuf payload") from e
 
     try:
         return cls(**args)
