@@ -58,6 +58,7 @@ from .model import (
     RUN_VO2_MAX,
     OXYGEN_SATURATION,
     DAILY_OXYGEN_SATURATION,
+    EXERCISE,
     ActiveEnergyBurned,
     BasalEnergyBurned,
     CivilDateTime,
@@ -110,6 +111,7 @@ from .model import (
     RunVO2Max,
     OxygenSaturation,
     DailyOxygenSaturation,
+    Exercise,
     _ListDataPointsModel,
     _ListPairedDevicesModel,
     _ListReconciledDataPointsModel,
@@ -999,6 +1001,9 @@ class GoogleHealthApi:
     daily_oxygen_saturation: DataPointSubApi[DailyOxygenSaturation]
     """Namespaced client for Daily oxygen saturation data (`DailyOxygenSaturation` model)."""
 
+    exercise: DataPointSubApi[Exercise]
+    """Namespaced client for Exercise activity log data (`Exercise` model)."""
+
     altitude: RollupDataPointSubApi[Altitude]
     """Namespaced client for Altitude gain delta data (`Altitude` model)."""
 
@@ -1075,6 +1080,7 @@ class GoogleHealthApi:
         self.daily_oxygen_saturation = DataPointSubApi(
             self._session, DAILY_OXYGEN_SATURATION
         )
+        self.exercise = DataPointSubApi(self._session, EXERCISE)
         self.altitude = RollupDataPointSubApi(self._session, ALTITUDE)
         self.body_fat = RollupDataPointSubApi(self._session, BODY_FAT)
         self.active_minutes = RollupDataPointSubApi(self._session, ACTIVE_MINUTES)

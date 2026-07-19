@@ -27,6 +27,11 @@ from google_health_api.model.health_metric import (
 )
 from google_health_api.model.sleep import Sleep, SessionTimeInterval, SleepStage
 from google_health_api.model.hydration import HydrationLog, VolumeQuantity
+from google_health_api.model.exercise import (
+    Exercise,
+    ExerciseMetadata,
+    MetricsSummary,
+)
 from .conftest import AuthCallback
 
 
@@ -1120,3 +1125,58 @@ async def test_daily_oxygen_saturation(
     )
     await api.daily_oxygen_saturation.create(DataPoint(data=new_point))
     assert requests[-1]["body"]["dailyOxygenSaturation"]["averagePercentage"] == 97.4
+
+
+async def test_exercise(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    create_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test exercise sub-API."""
+    fake_payload = {
+        "name": "users/me/dataTypes/exercise/dataPoints/ex-1",
+        "exercise": {
+            "exerciseType": "WALKING",
+            "displayName": "Afternoon Walk",
+            "interval": {
+                "startTime": "2026-06-22T08:00:00Z",
+                "endTime": "2026-06-22T09:00:00Z",
+            },
+            "metricsSummary": {
+                "activeZoneMinutes": 45,
+                "distanceMillimeters": 3200000.0,
+                "caloriesKcal": 210.5,
+            },
+            "exerciseMetadata": {
+                "hasGps": True,
+            },
+        },
+    }
+    list_response.append({"dataPoints": [fake_payload]})
+    result = await api.exercise.list()
+    assert len(result.data_points) == 1
+    assert result.data_points[0].data.exercise_type == "WALKING"
+    assert result.data_points[0].data.display_name == "Afternoon Walk"
+    assert result.data_points[0].data.metrics_summary.active_zone_minutes == 45
+    assert result.data_points[0].data.exercise_metadata.has_gps is True
+
+    create_response.append(fake_payload)
+    new_point = Exercise(
+        exercise_type="WALKING",
+        display_name="Afternoon Walk",
+        interval=SessionTimeInterval(
+            start_time="2026-06-22T08:00:00Z",
+            end_time="2026-06-22T09:00:00Z",
+        ),
+        metrics_summary=MetricsSummary(
+            active_zone_minutes=45,
+            distance_millimeters=3200000.0,
+            calories_kcal=210.5,
+        ),
+        exercise_metadata=ExerciseMetadata(
+            has_gps=True,
+        ),
+    )
+    await api.exercise.create(DataPoint(data=new_point))
+    assert requests[-1]["body"]["exercise"]["displayName"] == "Afternoon Walk"

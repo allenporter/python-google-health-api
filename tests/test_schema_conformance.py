@@ -111,9 +111,25 @@ from google_health_api.model.nutrition import (
     EnergyQuantityRollup,
     NutrientQuantityRollup,
 )
+from google_health_api.model.exercise import (
+    Exercise,
+    ExerciseMetadata,
+    TimeInHeartRateZones,
+    MobilityMetrics,
+    MetricsSummary,
+    ExerciseEvent,
+    SplitSummary,
+)
 
 # Mapping of Python classes to their corresponding schema names in the discovery document.
 CLASS_TO_SCHEMA = {
+    Exercise: "Exercise",
+    ExerciseMetadata: "ExerciseMetadata",
+    TimeInHeartRateZones: "TimeInHeartRateZones",
+    MobilityMetrics: "MobilityMetrics",
+    MetricsSummary: "MetricsSummary",
+    ExerciseEvent: "ExerciseEvent",
+    SplitSummary: "SplitSummary",
     Steps: "Steps",
     ObservationTimeInterval: "ObservationTimeInterval",
     HeartRate: "HeartRate",
