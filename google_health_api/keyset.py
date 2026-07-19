@@ -102,6 +102,26 @@ class EcdsaPublicKey:
         except (ProtobufParseError, IndexError) as e:
             raise KeysetError("Failed to parse key protobuf data") from e
 
+    def to_cryptography_key(self) -> "ec.EllipticCurvePublicKey":
+        """Converts this key to a cryptography EllipticCurvePublicKey.
+
+        Raises:
+            KeysetError: If constructing the curve public key fails.
+        """
+        if not _HAS_CRYPTOGRAPHY:
+            raise KeysetError("The cryptography library is not installed.")
+        try:
+            public_numbers = ec.EllipticCurvePublicNumbers(
+                x=self.x,
+                y=self.y,
+                curve=ec.SECP256R1(),
+            )
+            return public_numbers.public_key()
+        except Exception as e:
+            raise KeysetError(
+                "Failed to construct ECDSA public key from coordinates"
+            ) from e
+
 
 @dataclass
 class KeyData(DataClassDictMixin):
@@ -160,6 +180,26 @@ class WebhookKeyset(DataClassDictMixin):
                 "pip install google_health_api[security]"
             )
 
+        key_id, signature_der = self._parse_signature_header(signature_header)
+        matching_key = self._get_enabled_key(key_id)
+
+        try:
+            key_data_bytes = base64.b64decode(matching_key.key_data.value)
+        except Exception as e:
+            raise KeysetError("Failed to Base64-decode key value") from e
+
+        public_key_proto = EcdsaPublicKey.deserialize(key_data_bytes)
+        public_key = public_key_proto.to_cryptography_key()
+
+        try:
+            public_key.verify(signature_der, raw_payload, ec.ECDSA(hashes.SHA256()))
+        except Exception as e:
+            raise SignatureVerificationError(
+                "Signature verification failed: invalid signature"
+            ) from e
+
+    def _parse_signature_header(self, signature_header: str) -> tuple[int, bytes]:
+        """Decodes base64 signature header and extracts key ID and raw signature bytes."""
         try:
             signature_bytes = base64.b64decode(signature_header)
         except Exception as e:
@@ -172,50 +212,19 @@ class WebhookKeyset(DataClassDictMixin):
                 "Signature header is too short (must be at least 5 bytes)"
             )
 
-        # Tink's output prefix is 5 bytes: 1-byte version (usually 0x01) + 4-byte keyId
-        _version = signature_bytes[0]
         key_id = int.from_bytes(signature_bytes[1:5], byteorder="big")
         signature_der = signature_bytes[5:]
+        return key_id, signature_der
 
-        # Find matching ENABLED key in the keyset
-        matching_key = None
+    def _get_enabled_key(self, key_id: int) -> KeysetKey:
+        """Finds the ENABLED key in the keyset with the specified key ID."""
         for k in self.key:
-            if k.key_id == key_id:
-                if k.status == "ENABLED":
-                    matching_key = k
-                    break
-                else:
-                    raise KeysetError(
-                        f"Key ID {key_id} is present in keyset but status is {k.status}"
-                    )
+            if k.key_id != key_id:
+                continue
+            if k.status != "ENABLED":
+                raise KeysetError(
+                    f"Key ID {key_id} is present in keyset but status is {k.status}"
+                )
+            return k
 
-        if not matching_key:
-            raise KeysetError(f"No enabled key found in keyset for key ID {key_id}")
-
-        # Parse coordinates from Tink protobuf wrapper
-        try:
-            key_data_bytes = base64.b64decode(matching_key.key_data.value)
-        except Exception as e:
-            raise KeysetError("Failed to Base64-decode key value") from e
-
-        public_key_proto = EcdsaPublicKey.deserialize(key_data_bytes)
-
-        # Load key coordinates and verify signature
-        try:
-            public_numbers = ec.EllipticCurvePublicNumbers(
-                x=public_key_proto.x,
-                y=public_key_proto.y,
-                curve=ec.SECP256R1(),
-            )
-            public_key = public_numbers.public_key()
-        except Exception as e:
-            raise KeysetError(
-                "Failed to construct ECDSA public key from coordinates"
-            ) from e
-
-        try:
-            public_key.verify(signature_der, raw_payload, ec.ECDSA(hashes.SHA256()))
-        except Exception as e:
-            raise SignatureVerificationError(
-                "Signature verification failed: invalid signature"
-            ) from e
+        raise KeysetError(f"No enabled key found in keyset for key ID {key_id}")
