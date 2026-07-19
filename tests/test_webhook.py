@@ -11,7 +11,7 @@ from aiohttp.web import Application, Request, Response, json_response
 
 from google_health_api import model
 from google_health_api.exceptions import HealthApiException
-from google_health_api.tink import WebhookKeyset, _HAS_CRYPTOGRAPHY
+from google_health_api.tink import WebhookKeyset
 from google_health_api.webhook import WebhookData, WebhookNotification, WebhookVerifier
 
 
@@ -84,7 +84,6 @@ def keyset_json() -> dict:
     }
 
 
-@pytest.mark.skipif(not _HAS_CRYPTOGRAPHY, reason="Cryptography library required")
 async def test_webhook_verifier_success(
     aiohttp_client: Callable[[Application], Awaitable[aiohttp.ClientSession]],
     keyset_json: dict,
@@ -108,7 +107,6 @@ async def test_webhook_verifier_success(
     assert len(keyset.key) == 1
 
 
-@pytest.mark.skipif(not _HAS_CRYPTOGRAPHY, reason="Cryptography library required")
 async def test_webhook_verifier_caching(
     aiohttp_client: Callable[[Application], Awaitable[aiohttp.ClientSession]],
     keyset_json: dict,
@@ -138,7 +136,6 @@ async def test_webhook_verifier_caching(
     assert request_count == 1
 
 
-@pytest.mark.skipif(not _HAS_CRYPTOGRAPHY, reason="Cryptography library required")
 async def test_webhook_verifier_fallback(
     aiohttp_client: Callable[[Application], Awaitable[aiohttp.ClientSession]],
     keyset_json: dict,
@@ -171,7 +168,6 @@ async def test_webhook_verifier_fallback(
     assert keyset2 is keyset1
 
 
-@pytest.mark.skipif(not _HAS_CRYPTOGRAPHY, reason="Cryptography library required")
 async def test_webhook_verifier_hard_expire(
     aiohttp_client: Callable[[Application], Awaitable[aiohttp.ClientSession]],
     keyset_json: dict,
@@ -207,7 +203,6 @@ def test_webhook_data_type_none() -> None:
     assert data.data_type is None
 
 
-@pytest.mark.skipif(not _HAS_CRYPTOGRAPHY, reason="Cryptography library required")
 async def test_webhook_verifier_verify_method(
     aiohttp_client: Callable[[Application], Awaitable[aiohttp.ClientSession]],
     keyset_json: dict,
@@ -231,7 +226,42 @@ async def test_webhook_verifier_verify_method(
         mock_verify.assert_called_once_with("fake-sig", b"fake-payload")
 
 
-@pytest.mark.skipif(not _HAS_CRYPTOGRAPHY, reason="Cryptography library required")
+async def test_webhook_verifier_verify_method_exception(
+    aiohttp_client: Callable[[Application], Awaitable[aiohttp.ClientSession]],
+    keyset_json: dict,
+) -> None:
+    """Verify that verify() wraps KeysetError into WebhookSignatureError."""
+    from google_health_api.exceptions import WebhookSignatureError
+    from google_health_api.tink import KeysetError
+
+    app = Application()
+
+    async def handler(request: Request) -> Response:
+        return json_response(keyset_json)
+
+    app.router.add_get("/keyset", handler)
+    client = await aiohttp_client(app)
+
+    verifier = WebhookVerifier(
+        websession=client,
+        keyset_url="/keyset",
+    )
+
+    with patch("google_health_api.tink.WebhookKeyset.verify_signature") as mock_verify:
+        mock_verify.side_effect = KeysetError("Mocked failure")
+        with pytest.raises(
+            WebhookSignatureError, match="Webhook signature verification failed"
+        ):
+            await verifier.verify("fake-sig", b"fake-payload")
+
+
+def test_can_use_cache_none() -> None:
+    """Verify that _can_use_cache returns False if keyset is empty."""
+    verifier = WebhookVerifier(websession=None)  # type: ignore
+    now = datetime.datetime.now(datetime.timezone.utc)
+    assert not verifier._can_use_cache(now)
+
+
 async def test_webhook_verifier_empty_cache(
     aiohttp_client: Callable[[Application], Awaitable[aiohttp.ClientSession]],
     keyset_json: dict,

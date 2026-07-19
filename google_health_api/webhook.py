@@ -72,10 +72,14 @@ import aiohttp
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
-from google_health_api.exceptions import HealthApiException
+from google_health_api.exceptions import HealthApiException, WebhookSignatureError
 from google_health_api.model import DATATYPES
 from google_health_api.model.base import DataType
-from google_health_api.tink import WebhookKeyset
+from google_health_api.tink import (
+    KeysetError,
+    SignatureVerificationError,
+    WebhookKeyset,
+)
 
 # The standard public URL for Google Health API webhook keysets.
 GOOGLE_HEALTH_KEYSET_URL = (
@@ -125,15 +129,20 @@ class WebhookVerifier:
 
         Raises:
             HealthApiException: If the keyset cannot be fetched from the network
-                and no valid cache exists.
-            google_health_api.tink.SignatureVerificationError: If the signature
-                header is malformed or the signature verification fails.
-            google_health_api.tink.KeysetError: If the signature corresponds to
-                an unknown or disabled key in the keyset.
+                and no valid cache exists. Callers should typically return a 500
+                status code in this case.
+            WebhookSignatureError: If the signature is malformed, invalid, or belongs
+                to an unknown key. Callers should typically return a 400 or 401
+                status code in this case.
             ImportError: If the `cryptography` package is not installed.
         """
         keyset = await self._get_keyset()
-        keyset.verify_signature(signature_header, raw_payload)
+        try:
+            keyset.verify_signature(signature_header, raw_payload)
+        except (SignatureVerificationError, KeysetError) as e:
+            raise WebhookSignatureError(
+                f"Webhook signature verification failed: {e}"
+            ) from e
 
     async def _fetch_keyset_data(self) -> dict:
         """Fetches the raw JSON keyset dictionary from the network.

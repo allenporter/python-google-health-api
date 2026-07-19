@@ -186,18 +186,23 @@ def test_ecdsa_public_key_deserialization_protobuf_error() -> None:
         EcdsaPublicKey.deserialize(b"garbage")
 
 
-def test_tink_no_cryptography() -> None:
-    """Verify behavior when cryptography is not installed."""
+def test_tink_no_cryptography_to_cryptography_key() -> None:
+    """Verify that to_cryptography_key raises when cryptography is missing."""
     from unittest.mock import patch
     from google_health_api import tink
 
     with patch.object(tink, "_HAS_CRYPTOGRAPHY", False):
-        # 1. to_cryptography_key raises
         key = EcdsaPublicKey(version=0, x=1, y=2)
         with pytest.raises(KeysetError, match="cryptography library is not installed"):
             key.to_cryptography_key()
 
-        # 2. verify_signature raises
+
+def test_tink_no_cryptography_verify_signature() -> None:
+    """Verify that verify_signature raises when cryptography is missing."""
+    from unittest.mock import patch
+    from google_health_api import tink
+
+    with patch.object(tink, "_HAS_CRYPTOGRAPHY", False):
         keyset = WebhookKeyset(primary_key_id=1)
         with pytest.raises(ImportError, match="cryptography' package is required"):
             keyset.verify_signature("sig", b"payload")
