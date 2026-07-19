@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
-from ._protobuf import parse_protobuf
+from ._protobuf import ProtobufParseError, parse_protobuf
 
 
 try:
@@ -69,10 +69,15 @@ class EcdsaPublicKey:
 
     @classmethod
     def deserialize(cls, data: bytes) -> "EcdsaPublicKey":
-        """Deserialize from binary serialized Protobuf bytes."""
+        """Deserialize from binary serialized Protobuf bytes.
+
+        Raises:
+            KeysetError: If parsing fails due to [ProtobufParseError](file:///Users/allen/.gemini/antigravity/worktrees/python-google-health-api/review-webhook-signature-implementation/google_health_api/_protobuf.py#L11)
+                or truncated data (which raises an [IndexError]).
+        """
         try:
             fields = parse_protobuf(data)
-        except Exception as e:
+        except (ProtobufParseError, IndexError) as e:
             raise KeysetError("Failed to parse key protobuf data") from e
 
         if 3 not in fields or 4 not in fields:
