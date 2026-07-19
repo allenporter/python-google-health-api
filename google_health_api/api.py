@@ -955,17 +955,6 @@ class GoogleHealthApi:
     This client serves as the main gateway to access all Google Health API resources.
     It exposes namespaced properties for specific data types, allowing you to list,
     get, create, patch, and delete data points in a type-safe manner.
-
-    Attributes:
-        steps: Namespaced client for Step count data (`Steps` model).
-        heart_rate: Namespaced client for Heart rate data (`HeartRate` model).
-        sleep: Namespaced client for Sleep session data (`Sleep` model).
-        distance: Namespaced client for Distance traveled data (`Distance` model).
-        basal_energy_burned: Namespaced client for Basal metabolic energy burned data (`BasalEnergyBurned` model).
-        vo2_max: Namespaced client for VO2 Max fitness data (`VO2Max` model).
-        weight: Namespaced client for Body weight data (`Weight` model).
-        paired_devices: Namespaced client for managing user's paired devices.
-        subscribers: Namespaced client for managing webhook subscriber endpoints and subscriptions.
     """
 
     steps: RollupDataPointSubApi[Steps]
