@@ -317,6 +317,8 @@ async def setup_client(session: aiohttp.ClientSession) -> GoogleHealthApi:
     api.vo2_max._session = api._session
     api.weight._session = api._session
     api.height._session = api._session
+    api.oxygen_saturation._session = api._session
+    api.daily_oxygen_saturation._session = api._session
     api.active_energy_burned._session = api._session
     api.total_calories._session = api._session
     api.floors._session = api._session
@@ -610,6 +612,36 @@ async def handle_height_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
 async def handle_bmi_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
     """Handle bmi subcommands."""
     await handle_datatype_cmd(args, api, api.bmi, "bmi", "bmi", "BMI", pretty)
+
+
+async def handle_oxygen_saturation_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle oxygen saturation subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.oxygen_saturation,
+        "oxygenSaturation",
+        "oxygen-saturation",
+        "oxygen saturation",
+        pretty,
+    )
+
+
+async def handle_daily_oxygen_saturation_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle daily oxygen saturation subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.daily_oxygen_saturation,
+        "dailyOxygenSaturation",
+        "daily-oxygen-saturation",
+        "daily oxygen saturation",
+        pretty,
+    )
 
 
 async def handle_floors_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
@@ -1169,6 +1201,10 @@ async def async_run_cmd(args) -> None:
                 await handle_height_cmd(args, api, pretty)
             elif cmd == "bmi":
                 await handle_bmi_cmd(args, api, pretty)
+            elif cmd == "oxygen-saturation":
+                await handle_oxygen_saturation_cmd(args, api, pretty)
+            elif cmd == "daily-oxygen-saturation":
+                await handle_daily_oxygen_saturation_cmd(args, api, pretty)
             elif cmd == "active-energy-burned":
                 await handle_active_energy_burned_cmd(args, api, pretty)
             elif cmd == "total-calories":
