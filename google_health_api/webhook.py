@@ -150,7 +150,27 @@ class WebhookVerifier:
         return self._cached_keyset
 
     async def verify(self, signature_header: str, raw_payload: bytes) -> None:
-        """Fetches the keyset (if needed) and verifies the payload signature."""
+        """Fetches the keyset (if needed) and verifies the payload signature.
+
+        Callers are responsible for extracting the signature from the incoming
+        HTTP request headers (expected in the `GOOGLE-HEALTH-API-SIGNATURE` header)
+        and providing the raw bytes of the HTTP request body. It is critical to
+        pass the unmodified raw bytes; do not parse or decode the payload first.
+
+        Args:
+            signature_header: The Base64-encoded signature extracted from the
+                request header.
+            raw_payload: The unmodified raw HTTP request body bytes.
+
+        Raises:
+            HealthApiException: If the keyset cannot be fetched from the network
+                and no valid cache exists.
+            google_health_api.tink.SignatureVerificationError: If the signature
+                header is malformed or the signature verification fails.
+            google_health_api.tink.KeysetError: If the signature corresponds to
+                an unknown or disabled key in the keyset.
+            ImportError: If the `cryptography` package is not installed.
+        """
         keyset = await self._get_keyset()
         keyset.verify_signature(signature_header, raw_payload)
 
