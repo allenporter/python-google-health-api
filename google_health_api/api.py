@@ -141,6 +141,12 @@ T = TypeVar("T", bound=DataClassDictMixin)
 
 __all__ = [
     "GoogleHealthApi",
+    "DataPointSubApi",
+    "RollupDataPointSubApi",
+    "BmiSubApi",
+    "PairedDevicesSubApi",
+    "SubscriptionsSubApi",
+    "SubscribersSubApi",
 ]
 
 
