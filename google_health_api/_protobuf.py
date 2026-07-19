@@ -24,6 +24,28 @@ _WIRE_TYPE_FIXED64 = 1
 _WIRE_TYPE_LENGTH_DELIMITED = 2
 _WIRE_TYPE_FIXED32 = 5
 
+# Protobuf logical field types
+TYPE_INT32 = "int32"
+TYPE_INT64 = "int64"
+TYPE_UINT32 = "uint32"
+TYPE_UINT64 = "uint64"
+TYPE_BYTES = "bytes"
+TYPE_STRING = "string"
+TYPE_BIG_ENDIAN_INT = "big_endian_int"
+
+# Hardcoded decoders for logical types
+_DECODERS: dict[str, Callable[[Any], Any]] = {
+    TYPE_INT32: int,
+    TYPE_INT64: int,
+    TYPE_UINT32: int,
+    TYPE_UINT64: int,
+    TYPE_BYTES: lambda v: bytes(v) if isinstance(v, (bytes, bytearray)) else v,
+    TYPE_STRING: lambda v: v.decode("utf-8") if isinstance(v, bytes) else str(v),
+    TYPE_BIG_ENDIAN_INT: lambda v: (
+        int.from_bytes(v, byteorder="big") if isinstance(v, bytes) else int(v)
+    ),
+}
+
 
 class ProtobufParseError(ValueError):
     """Raised when there is an issue parsing serialized protobuf bytes."""
@@ -103,7 +125,7 @@ def parse_protobuf(
 def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
     """Generic helper to parse protobuf bytes and instantiate a tagged dataclass.
 
-    Inspects dataclass fields for 'field_number' and 'decoder' metadata.
+    Inspects dataclass fields for 'field_number' and 'proto_type' metadata.
     """
     decoders = {}
     field_map = {}
@@ -114,8 +136,15 @@ def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
         if "field_number" in metadata:
             field_num = metadata["field_number"]
             field_map[field_num] = f.name
-            if "decoder" in metadata:
-                decoders[field_num] = metadata["decoder"]
+
+            # Map the logical proto_type to the hardcoded decoder function
+            if "proto_type" in metadata:
+                proto_type = metadata["proto_type"]
+                if proto_type in _DECODERS:
+                    decoders[field_num] = _DECODERS[proto_type]
+                else:
+                    raise ProtobufParseError(f"Unsupported proto type: {proto_type}")
+
             if f.default is not dataclasses.MISSING:
                 default_vals[f.name] = f.default
             elif f.default_factory is not dataclasses.MISSING:

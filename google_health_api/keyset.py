@@ -35,7 +35,12 @@ from dataclasses import dataclass, field
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
-from ._protobuf import ProtobufParseError, deserialize_protobuf
+from ._protobuf import (
+    TYPE_BIG_ENDIAN_INT,
+    TYPE_UINT32,
+    ProtobufParseError,
+    deserialize_protobuf,
+)
 
 
 try:
@@ -63,19 +68,11 @@ class EcdsaPublicKey:
     https://github.com/tink-crypto/tink-java/blob/main/proto/ecdsa.proto
     """
 
-    x: int = field(
-        metadata={
-            "field_number": 3,
-            "decoder": lambda b: int.from_bytes(b, byteorder="big"),
-        }
+    x: int = field(metadata={"field_number": 3, "proto_type": TYPE_BIG_ENDIAN_INT})
+    y: int = field(metadata={"field_number": 4, "proto_type": TYPE_BIG_ENDIAN_INT})
+    version: int = field(
+        metadata={"field_number": 1, "proto_type": TYPE_UINT32}, default=0
     )
-    y: int = field(
-        metadata={
-            "field_number": 4,
-            "decoder": lambda b: int.from_bytes(b, byteorder="big"),
-        }
-    )
-    version: int = field(metadata={"field_number": 1}, default=0)
 
     @classmethod
     def deserialize(cls, data: bytes) -> "EcdsaPublicKey":
