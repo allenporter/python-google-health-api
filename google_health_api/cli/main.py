@@ -174,6 +174,15 @@ def main() -> None:
         subparsers, "exercise", "exercise", supports_rollup=False
     )
     add_standard_datapoint_commands(
+        subparsers, "electrocardiogram", "electrocardiogram", supports_rollup=False
+    )
+    add_standard_datapoint_commands(
+        subparsers,
+        "irregular-rhythm-notification",
+        "irregular rhythm notification",
+        supports_rollup=False,
+    )
+    add_standard_datapoint_commands(
         subparsers, "oxygen-saturation", "oxygen saturation", supports_rollup=False
     )
     add_standard_datapoint_commands(

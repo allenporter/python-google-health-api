@@ -59,6 +59,8 @@ from .model import (
     OXYGEN_SATURATION,
     DAILY_OXYGEN_SATURATION,
     EXERCISE,
+    ELECTROCARDIOGRAM,
+    IRREGULAR_RHYTHM_NOTIFICATION,
     ActiveEnergyBurned,
     BasalEnergyBurned,
     CivilDateTime,
@@ -112,6 +114,8 @@ from .model import (
     OxygenSaturation,
     DailyOxygenSaturation,
     Exercise,
+    Electrocardiogram,
+    IrregularRhythmNotification,
     _ListDataPointsModel,
     _ListPairedDevicesModel,
     _ListReconciledDataPointsModel,
@@ -146,7 +150,7 @@ def _build_time_filter(
             utc_start = start_time.astimezone(timezone.utc)
             iso_start = utc_start.isoformat().replace("+00:00", "Z")
         filters.append(f'{time_field_path} >= "{iso_start}"')
-    if end_time:
+    if end_time and "electrocardiogram" not in time_field_path:
         if is_civil:
             iso_end = end_time.strftime("%Y-%m-%dT%H:%M:%S")
         elif is_date:
@@ -1004,6 +1008,12 @@ class GoogleHealthApi:
     exercise: DataPointSubApi[Exercise]
     """Namespaced client for Exercise activity log data (`Exercise` model)."""
 
+    electrocardiogram: DataPointSubApi[Electrocardiogram]
+    """Namespaced client for Electrocardiogram data (`Electrocardiogram` model)."""
+
+    irregular_rhythm_notification: DataPointSubApi[IrregularRhythmNotification]
+    """Namespaced client for Irregular rhythm notification data (`IrregularRhythmNotification` model)."""
+
     altitude: RollupDataPointSubApi[Altitude]
     """Namespaced client for Altitude gain delta data (`Altitude` model)."""
 
@@ -1081,6 +1091,10 @@ class GoogleHealthApi:
             self._session, DAILY_OXYGEN_SATURATION
         )
         self.exercise = DataPointSubApi(self._session, EXERCISE)
+        self.electrocardiogram = DataPointSubApi(self._session, ELECTROCARDIOGRAM)
+        self.irregular_rhythm_notification = DataPointSubApi(
+            self._session, IRREGULAR_RHYTHM_NOTIFICATION
+        )
         self.altitude = RollupDataPointSubApi(self._session, ALTITUDE)
         self.body_fat = RollupDataPointSubApi(self._session, BODY_FAT)
         self.active_minutes = RollupDataPointSubApi(self._session, ACTIVE_MINUTES)
