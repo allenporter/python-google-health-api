@@ -60,7 +60,7 @@ class EcdsaPublicKey:
     """Represents a Tink-encoded ECDSA P-256 public key.
 
     Parsed from the serialized protobuf representation:
-    https://github.com/tink-crypto/tink/blob/master/proto/ecdsa.proto
+    https://github.com/tink-crypto/tink-java/blob/main/proto/ecdsa.proto
     """
 
     version: int
