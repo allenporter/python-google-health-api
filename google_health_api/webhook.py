@@ -137,7 +137,6 @@ class WebhookVerifier:
         the max_cache_lifetime.
         """
         now = datetime.datetime.now(datetime.timezone.utc)
-
         if self._should_refresh(now):
             try:
                 data = await self._fetch_keyset_data()
@@ -146,10 +145,8 @@ class WebhookVerifier:
             except HealthApiException:
                 if not self._can_use_cache(now):
                     raise
-
         if not self._cached_keyset:
             raise HealthApiException("Keyset is not available.")
-
         return self._cached_keyset
 
     async def verify(self, signature_header: str, raw_payload: bytes) -> None:
