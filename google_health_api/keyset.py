@@ -111,6 +111,44 @@ def _parse_protobuf(data: bytes) -> dict[int, Any]:
 
 
 @dataclass
+class EcdsaPublicKey:
+    """Represents a Tink-encoded ECDSA P-256 public key.
+
+    Parsed from the serialized protobuf representation:
+    https://github.com/tink-crypto/tink/blob/master/proto/ecdsa.proto
+    """
+
+    version: int
+    x: bytes
+    y: bytes
+
+    @classmethod
+    def deserialize(cls, data: bytes) -> "EcdsaPublicKey":
+        """Deserialize from binary serialized Protobuf bytes."""
+        try:
+            fields = _parse_protobuf(data)
+        except Exception as e:
+            raise KeysetError("Failed to parse key protobuf data") from e
+
+        if 3 not in fields or 4 not in fields:
+            raise KeysetError(
+                "Protobuf data missing X or Y coordinates (fields 3 and 4)"
+            )
+
+        x_bytes = fields[3]
+        y_bytes = fields[4]
+
+        if not isinstance(x_bytes, bytes) or not isinstance(y_bytes, bytes):
+            raise KeysetError("Coordinates X and Y must be bytes")
+
+        return cls(
+            version=fields.get(1, 0),
+            x=x_bytes,
+            y=y_bytes,
+        )
+
+
+@dataclass
 class KeyData(DataClassDictMixin):
     """Contains the cryptographic key material and type URL."""
 
@@ -205,27 +243,13 @@ class WebhookKeyset(DataClassDictMixin):
         except Exception as e:
             raise KeysetError("Failed to Base64-decode key value") from e
 
-        try:
-            fields = _parse_protobuf(key_data_bytes)
-        except Exception as e:
-            raise KeysetError("Failed to parse key protobuf data") from e
-
-        if 3 not in fields or 4 not in fields:
-            raise KeysetError(
-                "Protobuf data missing X or Y coordinates (fields 3 and 4)"
-            )
-
-        x_bytes = fields[3]
-        y_bytes = fields[4]
-
-        if not isinstance(x_bytes, bytes) or not isinstance(y_bytes, bytes):
-            raise KeysetError("Coordinates X and Y must be bytes")
+        public_key_proto = EcdsaPublicKey.deserialize(key_data_bytes)
 
         # Load key coordinates and verify signature
         try:
             public_numbers = ec.EllipticCurvePublicNumbers(
-                x=int.from_bytes(x_bytes, byteorder="big"),
-                y=int.from_bytes(y_bytes, byteorder="big"),
+                x=int.from_bytes(public_key_proto.x, byteorder="big"),
+                y=int.from_bytes(public_key_proto.y, byteorder="big"),
                 curve=ec.SECP256R1(),
             )
             public_key = public_numbers.public_key()
