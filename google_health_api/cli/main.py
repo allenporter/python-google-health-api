@@ -174,6 +174,15 @@ def main() -> None:
         subparsers, "exercise", "exercise", supports_rollup=False
     )
     add_standard_datapoint_commands(
+        subparsers, "daily-vo2-max", "daily VO2 max", supports_rollup=False
+    )
+    add_standard_datapoint_commands(
+        subparsers,
+        "daily-heart-rate-zones",
+        "daily heart rate zones",
+        supports_rollup=False,
+    )
+    add_standard_datapoint_commands(
         subparsers,
         "daily-respiratory-rate",
         "daily respiratory rate",

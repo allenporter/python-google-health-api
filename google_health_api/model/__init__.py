@@ -138,6 +138,13 @@ from .respiratory import (
     RespiratoryRateSleepSummary,
     RespiratoryRateSleepSummaryStatistics,
 )
+from .fitness import (
+    DAILY_VO2_MAX,
+    DAILY_HEART_RATE_ZONES,
+    DailyVO2Max,
+    DailyHeartRateZones,
+    HeartRateZone,
+)
 from .pagination import (
     ListDataPointResult,
     ListReconciledDataPointsResult,
@@ -262,6 +269,12 @@ __all__ = [
     "OXYGEN_SATURATION",
     "DailyOxygenSaturation",
     "DAILY_OXYGEN_SATURATION",
+    # --- Fitness Models ---
+    "DailyVO2Max",
+    "DAILY_VO2_MAX",
+    "DailyHeartRateZones",
+    "DAILY_HEART_RATE_ZONES",
+    "HeartRateZone",
     # --- Heart Models ---
     "Electrocardiogram",
     "ELECTROCARDIOGRAM",

@@ -134,8 +134,17 @@ from google_health_api.model.respiratory import (
     RespiratoryRateSleepSummaryStatistics,
 )
 
+from google_health_api.model.fitness import (
+    DailyVO2Max,
+    DailyHeartRateZones,
+    HeartRateZone,
+)
+
 # Mapping of Python classes to their corresponding schema names in the discovery document.
 CLASS_TO_SCHEMA = {
+    DailyVO2Max: "DailyVO2Max",
+    DailyHeartRateZones: "DailyHeartRateZones",
+    HeartRateZone: "HeartRateZone",
     DailyRespiratoryRate: "DailyRespiratoryRate",
     RespiratoryRateSleepSummary: "RespiratoryRateSleepSummary",
     RespiratoryRateSleepSummaryStatistics: "RespiratoryRateSleepSummaryStatistics",

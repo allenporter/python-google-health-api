@@ -322,6 +322,8 @@ async def setup_client(session: aiohttp.ClientSession) -> GoogleHealthApi:
     api.exercise._session = api._session
     api.electrocardiogram._session = api._session
     api.irregular_rhythm_notification._session = api._session
+    api.daily_vo2_max._session = api._session
+    api.daily_heart_rate_zones._session = api._session
     api.daily_respiratory_rate._session = api._session
     api.respiratory_rate_sleep_summary._session = api._session
     api.active_energy_burned._session = api._session
@@ -623,6 +625,34 @@ async def handle_exercise_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
     """Handle exercise subcommands."""
     await handle_datatype_cmd(
         args, api, api.exercise, "exercise", "exercise", "exercise", pretty
+    )
+
+
+async def handle_daily_vo2_max_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle daily VO2 max subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.daily_vo2_max,
+        "dailyVo2Max",
+        "daily-vo2-max",
+        "daily VO2 max",
+        pretty,
+    )
+
+
+async def handle_daily_heart_rate_zones_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle daily heart rate zones subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.daily_heart_rate_zones,
+        "dailyHeartRateZones",
+        "daily-heart-rate-zones",
+        "daily heart rate zones",
+        pretty,
     )
 
 
@@ -1275,6 +1305,10 @@ async def async_run_cmd(args) -> None:
                 await handle_bmi_cmd(args, api, pretty)
             elif cmd == "exercise":
                 await handle_exercise_cmd(args, api, pretty)
+            elif cmd == "daily-vo2-max":
+                await handle_daily_vo2_max_cmd(args, api, pretty)
+            elif cmd == "daily-heart-rate-zones":
+                await handle_daily_heart_rate_zones_cmd(args, api, pretty)
             elif cmd == "daily-respiratory-rate":
                 await handle_daily_respiratory_rate_cmd(args, api, pretty)
             elif cmd == "respiratory-rate-sleep-summary":
