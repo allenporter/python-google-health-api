@@ -64,15 +64,12 @@ def _decode_varint(data: bytes, pos: int) -> tuple[int, int]:
     return val, pos
 
 
-def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
-    """Generic helper to parse protobuf bytes and instantiate a tagged dataclass.
-
-    Inspects dataclass fields for 'field_number' and 'proto_type' metadata,
-    parses the binary wire format, and deserializes values directly into the
-    dataclass fields.
-    """
-    decoders = {}
+def _extract_proto_metadata(
+    cls: type[Any],
+) -> tuple[dict[int, str], dict[int, Callable[[bytes], Any]], dict[str, Any]]:
+    """Extracts field mapping, decoders, and default values from dataclass metadata."""
     field_map = {}
+    decoders = {}
     default_vals = {}
 
     for f in dataclasses.fields(cls):
@@ -98,6 +95,18 @@ def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
                 default_vals[f.name] = f.default
             elif f.default_factory is not dataclasses.MISSING:
                 default_vals[f.name] = f.default_factory()
+
+    return field_map, decoders, default_vals
+
+
+def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
+    """Generic helper to parse protobuf bytes and instantiate a tagged dataclass.
+
+    Inspects dataclass fields for 'field_number' and 'proto_type' metadata,
+    parses the binary wire format, and deserializes values directly into the
+    dataclass fields.
+    """
+    field_map, decoders, default_vals = _extract_proto_metadata(cls)
 
     args = {}
     pos = 0
