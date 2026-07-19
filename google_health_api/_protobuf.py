@@ -94,6 +94,30 @@ class _ProtoFieldMetadata:
     field_name: str
     decoder: Callable[[Any], Any] | None = None
 
+    @classmethod
+    def from_field(cls, f: dataclasses.Field[Any]) -> "_ProtoFieldMetadata":
+        """Parses a dataclass field and extracts its protobuf mapping metadata."""
+        metadata = f.metadata
+        if FIELD_NUMBER not in metadata:
+            raise ProtobufParseError(
+                f"Field '{f.name}' is missing required metadata '{FIELD_NUMBER}'"
+            )
+        if PROTO_TYPE not in metadata:
+            raise ProtobufParseError(
+                f"Field '{f.name}' is missing required metadata '{PROTO_TYPE}'"
+            )
+
+        proto_type = metadata[PROTO_TYPE]
+        if proto_type not in _DECODERS:
+            raise ProtobufParseError(
+                f"Unsupported proto type '{proto_type}' on field '{f.name}'"
+            )
+
+        return cls(
+            field_name=f.name,
+            decoder=_DECODERS[proto_type],
+        )
+
 
 def _decode_varint(data: bytes, pos: int) -> tuple[int, int]:
     """Decode a varint from the data starting at pos. Returns (value, next_pos)."""
@@ -114,35 +138,10 @@ def _decode_varint(data: bytes, pos: int) -> tuple[int, int]:
 def _extract_proto_metadata(cls: type[Any]) -> dict[int, _ProtoFieldMetadata]:
     """Extracts field mapping, decoders, and default values from dataclass metadata."""
     field_metadata = {}
-
     for f in dataclasses.fields(cls):
-        metadata = f.metadata
-        if FIELD_NUMBER not in metadata:
-            raise ProtobufParseError(
-                f"Field '{f.name}' in '{cls.__name__}' is missing required metadata '{FIELD_NUMBER}'"
-            )
-        if PROTO_TYPE not in metadata:
-            raise ProtobufParseError(
-                f"Field '{f.name}' in '{cls.__name__}' is missing required metadata '{PROTO_TYPE}'"
-            )
-
-        field_num = metadata[FIELD_NUMBER]
-        proto_type = metadata[PROTO_TYPE]
-        decoder = None
-
-        # Map the logical proto_type to the hardcoded decoder function
-        if proto_type in _DECODERS:
-            decoder = _DECODERS[proto_type]
-        else:
-            raise ProtobufParseError(
-                f"Unsupported proto type '{proto_type}' on field '{f.name}'"
-            )
-
-        field_metadata[field_num] = _ProtoFieldMetadata(
-            field_name=f.name,
-            decoder=decoder,
-        )
-
+        meta = _ProtoFieldMetadata.from_field(f)
+        field_num = f.metadata[FIELD_NUMBER]
+        field_metadata[field_num] = meta
     return field_metadata
 
 
@@ -200,16 +199,18 @@ def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
                 f"Unsupported wire type {wire_type} in protobuf structure"
             )
 
-        if field_num in field_metadata:
-            f_meta = field_metadata[field_num]
-            if f_meta.decoder:
-                try:
-                    val = f_meta.decoder(val)
-                except Exception as e:
-                    raise ProtobufParseError(
-                        f"Failed to decode field {field_num}: {e}"
-                    ) from e
-            args[f_meta.field_name] = val
+        if field_num not in field_metadata:
+            continue
+
+        f_meta = field_metadata[field_num]
+        if f_meta.decoder:
+            try:
+                val = f_meta.decoder(val)
+            except Exception as e:
+                raise ProtobufParseError(
+                    f"Failed to decode field {field_num}: {e}"
+                ) from e
+        args[f_meta.field_name] = val
 
     try:
         return cls(**args)
