@@ -194,7 +194,12 @@ class _TinkSignature:
 
 @dataclass
 class WebhookKeyset(DataClassDictMixin):
-    """A Google Tink JSON keyset containing public verification keys."""
+    """A Google Tink JSON keyset containing public verification keys.
+
+    This object is typically long-lived and refreshed periodically from a public URL.
+    It aggregates caching of parsed cryptographic keys internally to optimize
+    signature verification performance across many incoming webhook requests.
+    """
 
     primary_key_id: int = field(metadata=field_options(alias="primaryKeyId"))
     key: list[KeysetKey] = field(default_factory=list)
