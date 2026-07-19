@@ -44,8 +44,12 @@ https://developers.google.com/health/webhooks#how_to_verify_the_signature
    are allowed to verify signatures. Disabled keys are ignored.
 """
 
+from __future__ import annotations
+
 import base64
 from dataclasses import dataclass, field
+from functools import cached_property
+from typing import Self
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
@@ -58,7 +62,6 @@ from ._protobuf import (
     ProtobufParseError,
     deserialize_protobuf,
 )
-
 
 try:
     from cryptography.hazmat.primitives import hashes
@@ -90,7 +93,7 @@ class EcdsaPublicKey:
     version: int = field(metadata={FIELD_NUMBER: 1, PROTO_TYPE: TYPE_UINT32}, default=0)
 
     @classmethod
-    def deserialize(cls, data: bytes) -> "EcdsaPublicKey":
+    def deserialize(cls, data: bytes) -> Self:
         """Deserialize from binary serialized Protobuf bytes.
 
         Raises:
@@ -101,7 +104,7 @@ class EcdsaPublicKey:
         except ProtobufParseError as e:
             raise KeysetError("Failed to parse key protobuf data") from e
 
-    def to_cryptography_key(self) -> "ec.EllipticCurvePublicKey":
+    def to_cryptography_key(self) -> ec.EllipticCurvePublicKey:
         """Converts this key to a cryptography EllipticCurvePublicKey.
 
         Raises:
@@ -146,7 +149,8 @@ class KeysetKey(DataClassDictMixin):
     class Config(BaseConfig):
         serialize_by_alias = True
 
-    def get_public_key(self) -> "ec.EllipticCurvePublicKey":
+    @cached_property
+    def public_key(self) -> ec.EllipticCurvePublicKey:
         """Loads and returns the standard cryptography EllipticCurvePublicKey from key material.
 
         Raises:
@@ -159,6 +163,23 @@ class KeysetKey(DataClassDictMixin):
 
         public_key_proto = EcdsaPublicKey.deserialize(key_data_bytes)
         return public_key_proto.to_cryptography_key()
+
+    def verify(self, signature_bytes: bytes, raw_payload: bytes) -> None:
+        """Verify the signature against the raw payload using this key.
+
+        Raises:
+            SignatureVerificationError: If verification fails.
+        """
+        try:
+            self.public_key.verify(
+                signature_bytes,
+                raw_payload,
+                ec.ECDSA(hashes.SHA256()),
+            )
+        except Exception as e:
+            raise SignatureVerificationError(
+                "Signature verification failed: invalid signature"
+            ) from e
 
 
 @dataclass
@@ -179,14 +200,10 @@ class WebhookKeyset(DataClassDictMixin):
     class Config(BaseConfig):
         serialize_by_alias = True
 
-    @property
+    @cached_property
     def _enabled_keys(self) -> dict[int, KeysetKey]:
         """Returns a cached map from key ID to ENABLED KeysetKeys."""
-        if not hasattr(self, "_cached_enabled_keys"):
-            self._cached_enabled_keys = {
-                k.key_id: k for k in self.key if k.status == "ENABLED"
-            }
-        return self._cached_enabled_keys
+        return {k.key_id: k for k in self.key if k.status == "ENABLED"}
 
     def verify_signature(self, signature_header: str, raw_payload: bytes) -> None:
         """Verify the webhook signature against the raw payload.
@@ -202,6 +219,7 @@ class WebhookKeyset(DataClassDictMixin):
                 fails.
             KeysetError: If the keyset format is invalid or no matching key is
                 found.
+            ValueError: If the key status is invalid.
         """
         if not _HAS_CRYPTOGRAPHY:
             raise ImportError(
@@ -211,9 +229,8 @@ class WebhookKeyset(DataClassDictMixin):
             )
 
         parsed_sig = self._parse_signature_header(signature_header)
-        enabled_keys = self._enabled_keys
 
-        if parsed_sig.key_id not in enabled_keys:
+        if (matching_key := self._enabled_keys.get(parsed_sig.key_id)) is None:
             for k in self.key:
                 if k.key_id == parsed_sig.key_id:
                     raise KeysetError(
@@ -222,20 +239,8 @@ class WebhookKeyset(DataClassDictMixin):
             raise KeysetError(
                 f"No enabled key found in keyset for key ID {parsed_sig.key_id}"
             )
-        matching_key = enabled_keys[parsed_sig.key_id]
 
-        public_key = matching_key.get_public_key()
-
-        try:
-            public_key.verify(
-                parsed_sig.signature_bytes,
-                raw_payload,
-                ec.ECDSA(hashes.SHA256()),
-            )
-        except Exception as e:
-            raise SignatureVerificationError(
-                "Signature verification failed: invalid signature"
-            ) from e
+        matching_key.verify(parsed_sig.signature_bytes, raw_payload)
 
     def _parse_signature_header(self, signature_header: str) -> _TinkSignature:
         """Decodes base64 signature header and extracts key ID and raw signature bytes.

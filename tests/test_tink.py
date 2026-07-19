@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 import pytest
 
-from google_health_api.keyset import (
+from google_health_api.tink import (
     EcdsaPublicKey,
     KeysetError,
     SignatureVerificationError,
