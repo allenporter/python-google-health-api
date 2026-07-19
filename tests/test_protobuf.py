@@ -123,3 +123,12 @@ def test_parse_protobuf_errors(cls: type[Any], data: bytes, error_msg: str) -> N
     with pytest.raises(ProtobufParseError) as exc_info:
         deserialize_protobuf(cls, data)
     assert error_msg in str(exc_info.value)
+
+
+def test_parse_protobuf_payload_size_limit() -> None:
+    """Verify that deserialize_protobuf raises ProtobufParseError if payload exceeds limit."""
+    # Create payload that is larger than 64KB (65536 bytes)
+    huge_data = b"\x00" * 65537
+    with pytest.raises(ProtobufParseError) as exc_info:
+        deserialize_protobuf(SearchRequest, huge_data)
+    assert "exceeds maximum limit" in str(exc_info.value)

@@ -27,6 +27,21 @@ handled by a highly vetted, industry-standard library.
 
 For more details on signature verification, see the official documentation:
 https://developers.google.com/health/webhooks#how_to_verify_the_signature
+
+## Threat Model & Security Assumptions
+
+1. **Keyset Source Trust:** It is assumed that the JSON keyset data is retrieved
+   from Google's official public endpoint over a secure TLS connection
+   (https://www.gstatic.com/googlehealthapi/webhooks/webhooks_public_keyset.json)
+   and has not been altered prior to parsing.
+2. **Timing Attacks Protection:** Signature verification is fully delegated to
+   Python's `cryptography` library, utilizing OpenSSL's constant-time validation
+   routines to resist side-channel timing attacks.
+3. **Denial of Service (DoS) Prevention:** The low-level protobuf deserializer
+   strictly limits binary payload parsing size to 64 KB to mitigate resource
+   exhaustion attempts with large malicious payloads.
+4. **Key Configuration Safety:** Only keys explicitly marked as `"ENABLED"`
+   are allowed to verify signatures. Disabled keys are ignored.
 """
 
 import base64

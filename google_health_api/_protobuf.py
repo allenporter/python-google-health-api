@@ -56,6 +56,9 @@ _WIRE_TYPE_FIXED64 = 1
 _WIRE_TYPE_LENGTH_DELIMITED = 2
 _WIRE_TYPE_FIXED32 = 5
 
+# Security limit to prevent DoS from parsing excessively large payloads (64 KB)
+_MAX_PROTOBUF_PAYLOAD_SIZE = 65536
+
 # Dataclass field metadata keys used to map fields to protobuf definitions
 FIELD_NUMBER = "field_number"  # The integer field number in the protobuf definition
 PROTO_TYPE = "proto_type"  # The logical protobuf type name (e.g. TYPE_BIG_ENDIAN_INT)
@@ -164,6 +167,11 @@ def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
         ProtobufParseError: If parsing fails due to malformed wire tags, unsupported
             types, or missing required fields.
     """
+    if len(data) > _MAX_PROTOBUF_PAYLOAD_SIZE:
+        raise ProtobufParseError(
+            f"Protobuf payload size ({len(data)} bytes) exceeds maximum limit of {_MAX_PROTOBUF_PAYLOAD_SIZE} bytes"
+        )
+
     field_metadata = _extract_proto_metadata(cls)
 
     args = {}
