@@ -302,7 +302,7 @@ DAILY_RESTING_HEART_RATE = DataType(
     "daily-resting-heart-rate",
     "dailyRestingHeartRate",
     DailyRestingHeartRate,
-    "daily_resting_heart_rate.date.year",
+    "daily_resting_heart_rate.date",
     RestingHeartRatePersonalRangeRollupValue,
     read_scopes=[HealthApiScope.MEASUREMENTS_READ],
     write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
@@ -409,7 +409,7 @@ DAILY_HEART_RATE_VARIABILITY = DataType(
     "daily-heart-rate-variability",
     "dailyHeartRateVariability",
     DailyHeartRateVariability,
-    "daily_heart_rate_variability.date.year",
+    "daily_heart_rate_variability.date",
     HeartRateVariabilityPersonalRangeRollupValue,
     read_scopes=[HealthApiScope.MEASUREMENTS_READ],
     write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
@@ -627,6 +627,79 @@ RUN_VO2_MAX = DataType(
     RunVO2Max,
     "run_vo2_max.sample_time.physical_time",
     RunVO2MaxRollupValue,
+    read_scopes=[HealthApiScope.MEASUREMENTS_READ],
+    write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
+)
+
+
+@dataclass
+class OxygenSaturation(DataClassDictMixin):
+    """Instantaneous oxygen saturation measurement (SpO2)."""
+
+    percentage: float
+    sample_time: ObservationSampleTime = field(
+        metadata=field_options(alias="sampleTime")
+    )
+
+    @property
+    def start_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    @property
+    def end_time(self) -> str:
+        """Return the physical time (for compatibility)."""
+        return self.sample_time.physical_time
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+OXYGEN_SATURATION = DataType(
+    "oxygen-saturation",
+    "oxygenSaturation",
+    OxygenSaturation,
+    "oxygen_saturation.sample_time.physical_time",
+    read_scopes=[HealthApiScope.MEASUREMENTS_READ],
+    write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
+)
+
+
+@dataclass
+class DailyOxygenSaturation(DataClassDictMixin):
+    """Daily oxygen saturation (SpO2) summary, typically calculated during sleep."""
+
+    average_percentage: float = field(metadata=field_options(alias="averagePercentage"))
+    lower_bound_percentage: float = field(
+        metadata=field_options(alias="lowerBoundPercentage")
+    )
+    upper_bound_percentage: float = field(
+        metadata=field_options(alias="upperBoundPercentage")
+    )
+    date: Date
+    standard_deviation_percentage: float | None = field(
+        metadata=field_options(alias="standardDeviationPercentage"), default=None
+    )
+
+    @property
+    def start_time(self) -> str:
+        """Return ISO format string of date."""
+        return f"{self.date.year:04d}-{self.date.month:02d}-{self.date.day:02d}"
+
+    @property
+    def end_time(self) -> str:
+        """Return ISO format string of date."""
+        return f"{self.date.year:04d}-{self.date.month:02d}-{self.date.day:02d}"
+
+    class Config(BaseConfig):
+        serialize_by_alias = True
+
+
+DAILY_OXYGEN_SATURATION = DataType(
+    "daily-oxygen-saturation",
+    "dailyOxygenSaturation",
+    DailyOxygenSaturation,
+    "daily_oxygen_saturation.date",
     read_scopes=[HealthApiScope.MEASUREMENTS_READ],
     write_scopes=[HealthApiScope.MEASUREMENTS_WRITE],
 )

@@ -56,6 +56,8 @@ from .model import (
     CORE_BODY_TEMPERATURE,
     BODY_FAT,
     RUN_VO2_MAX,
+    OXYGEN_SATURATION,
+    DAILY_OXYGEN_SATURATION,
     ActiveEnergyBurned,
     BasalEnergyBurned,
     CivilDateTime,
@@ -106,6 +108,8 @@ from .model import (
     CoreBodyTemperature,
     BodyFat,
     RunVO2Max,
+    OxygenSaturation,
+    DailyOxygenSaturation,
     _ListDataPointsModel,
     _ListPairedDevicesModel,
     _ListReconciledDataPointsModel,
@@ -128,10 +132,13 @@ def _build_time_filter(
     """Build an AIP-160 compatible time filter expression."""
     filters = []
     is_civil = "civil" in time_field_path
+    is_date = time_field_path.endswith(".date")
 
     if start_time:
         if is_civil:
             iso_start = start_time.strftime("%Y-%m-%dT%H:%M:%S")
+        elif is_date:
+            iso_start = start_time.strftime("%Y-%m-%d")
         else:
             # Convert to UTC and format as ISO 8601 UTC string (z-normalized)
             utc_start = start_time.astimezone(timezone.utc)
@@ -140,6 +147,8 @@ def _build_time_filter(
     if end_time:
         if is_civil:
             iso_end = end_time.strftime("%Y-%m-%dT%H:%M:%S")
+        elif is_date:
+            iso_end = end_time.strftime("%Y-%m-%d")
         else:
             # Convert to UTC and format as ISO 8601 UTC string (z-normalized)
             utc_end = end_time.astimezone(timezone.utc)
@@ -984,6 +993,12 @@ class GoogleHealthApi:
     daily_heart_rate_variability: RollupDataPointSubApi[DailyHeartRateVariability]
     """Namespaced client for Daily heart rate variability data (`DailyHeartRateVariability` model)."""
 
+    oxygen_saturation: DataPointSubApi[OxygenSaturation]
+    """Namespaced client for Oxygen saturation data (`OxygenSaturation` model)."""
+
+    daily_oxygen_saturation: DataPointSubApi[DailyOxygenSaturation]
+    """Namespaced client for Daily oxygen saturation data (`DailyOxygenSaturation` model)."""
+
     altitude: RollupDataPointSubApi[Altitude]
     """Namespaced client for Altitude gain delta data (`Altitude` model)."""
 
@@ -1055,6 +1070,10 @@ class GoogleHealthApi:
         )
         self.daily_heart_rate_variability = RollupDataPointSubApi(
             self._session, DAILY_HEART_RATE_VARIABILITY
+        )
+        self.oxygen_saturation = DataPointSubApi(self._session, OXYGEN_SATURATION)
+        self.daily_oxygen_saturation = DataPointSubApi(
+            self._session, DAILY_OXYGEN_SATURATION
         )
         self.altitude = RollupDataPointSubApi(self._session, ALTITUDE)
         self.body_fat = RollupDataPointSubApi(self._session, BODY_FAT)

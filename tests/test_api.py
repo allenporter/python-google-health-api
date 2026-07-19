@@ -19,6 +19,8 @@ from google_health_api.model.health_metric import (
     VO2Max,
     Weight,
     Height,
+    OxygenSaturation,
+    DailyOxygenSaturation,
     ObservationSampleTime,
     DailyRestingHeartRate,
     DailyRestingHeartRateMetadata,
@@ -1055,3 +1057,66 @@ async def test_bmi_list(
     assert point2.data.bmi == 24.57
     assert point2.data.weight_grams == 85000.0
     assert point2.data.height_millimeters == 1860
+
+
+async def test_oxygen_saturation(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    create_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test oxygen_saturation sub-API."""
+    fake_payload = {
+        "name": "users/me/dataTypes/oxygen-saturation/dataPoints/spo2-1",
+        "oxygenSaturation": {
+            "percentage": 98.5,
+            "sampleTime": {"physicalTime": "2026-06-22T08:00:00Z"},
+        },
+    }
+    list_response.append({"dataPoints": [fake_payload]})
+    result = await api.oxygen_saturation.list()
+    assert len(result.data_points) == 1
+    assert result.data_points[0].data.percentage == 98.5
+
+    create_response.append(fake_payload)
+    new_point = OxygenSaturation(
+        percentage=98.5,
+        sample_time=ObservationSampleTime(physical_time="2026-06-22T08:00:00Z"),
+    )
+    await api.oxygen_saturation.create(DataPoint(data=new_point))
+    assert requests[-1]["body"]["oxygenSaturation"]["percentage"] == 98.5
+
+
+async def test_daily_oxygen_saturation(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    create_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test daily_oxygen_saturation sub-API."""
+    fake_payload = {
+        "name": "users/me/dataTypes/daily-oxygen-saturation/dataPoints/d-spo2-1",
+        "dailyOxygenSaturation": {
+            "averagePercentage": 97.4,
+            "lowerBoundPercentage": 95.0,
+            "upperBoundPercentage": 99.0,
+            "standardDeviationPercentage": 1.2,
+            "date": {"year": 2026, "month": 6, "day": 22},
+        },
+    }
+    list_response.append({"dataPoints": [fake_payload]})
+    result = await api.daily_oxygen_saturation.list()
+    assert len(result.data_points) == 1
+    assert result.data_points[0].data.average_percentage == 97.4
+    assert result.data_points[0].data.standard_deviation_percentage == 1.2
+
+    create_response.append(fake_payload)
+    new_point = DailyOxygenSaturation(
+        average_percentage=97.4,
+        lower_bound_percentage=95.0,
+        upper_bound_percentage=99.0,
+        standard_deviation_percentage=1.2,
+        date=Date(year=2026, month=6, day=22),
+    )
+    await api.daily_oxygen_saturation.create(DataPoint(data=new_point))
+    assert requests[-1]["body"]["dailyOxygenSaturation"]["averagePercentage"] == 97.4

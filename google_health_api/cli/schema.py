@@ -31,6 +31,8 @@ from google_health_api.model import (
     DailyRestingHeartRate,
     HeartRateVariability,
     DailyHeartRateVariability,
+    OxygenSaturation,
+    DailyOxygenSaturation,
 )
 
 
@@ -275,6 +277,20 @@ def get_command_schemas() -> dict[str, dict[str, Any]]:
         ("weight", "weight", Weight, "weight", False),
         ("height", "height", Height, "height", False),
         ("bmi", "bmi", Bmi, "bmi", False),
+        (
+            "oxygen-saturation",
+            "oxygenSaturation",
+            OxygenSaturation,
+            "oxygen saturation",
+            False,
+        ),
+        (
+            "daily-oxygen-saturation",
+            "dailyOxygenSaturation",
+            DailyOxygenSaturation,
+            "daily oxygen saturation",
+            False,
+        ),
         (
             "active-energy-burned",
             "activeEnergyBurned",

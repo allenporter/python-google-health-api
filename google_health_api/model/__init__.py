@@ -88,6 +88,10 @@ from .health_metric import (
     RunVO2Max,
     RunVO2MaxRollupValue,
     RUN_VO2_MAX,
+    OxygenSaturation,
+    OXYGEN_SATURATION,
+    DailyOxygenSaturation,
+    DAILY_OXYGEN_SATURATION,
 )
 from .hydration import (
     HYDRATION_LOG,
@@ -228,6 +232,10 @@ __all__ = [
     "RunVO2Max",
     "RunVO2MaxRollupValue",
     "RUN_VO2_MAX",
+    "OxygenSaturation",
+    "OXYGEN_SATURATION",
+    "DailyOxygenSaturation",
+    "DAILY_OXYGEN_SATURATION",
     # --- Sleep Models ---
     "Sleep",
     "SLEEP",
