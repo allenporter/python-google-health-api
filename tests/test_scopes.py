@@ -51,6 +51,18 @@ def test_sub_api_required_scopes() -> None:
     assert api.irregular_rhythm_notification.required_write_scopes == [
         HealthApiScope.MEASUREMENTS_WRITE
     ]
+    assert api.daily_respiratory_rate.required_read_scopes == [
+        HealthApiScope.MEASUREMENTS_READ
+    ]
+    assert api.daily_respiratory_rate.required_write_scopes == [
+        HealthApiScope.MEASUREMENTS_WRITE
+    ]
+    assert api.respiratory_rate_sleep_summary.required_read_scopes == [
+        HealthApiScope.MEASUREMENTS_READ
+    ]
+    assert api.respiratory_rate_sleep_summary.required_write_scopes == [
+        HealthApiScope.MEASUREMENTS_WRITE
+    ]
 
     # Sleep
     assert api.sleep.required_read_scopes == [HealthApiScope.SLEEP_READ]

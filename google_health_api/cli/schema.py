@@ -36,6 +36,8 @@ from google_health_api.model import (
     Exercise,
     Electrocardiogram,
     IrregularRhythmNotification,
+    DailyRespiratoryRate,
+    RespiratoryRateSleepSummary,
 )
 
 
@@ -281,6 +283,20 @@ def get_command_schemas() -> dict[str, dict[str, Any]]:
         ("height", "height", Height, "height", False),
         ("bmi", "bmi", Bmi, "bmi", False),
         ("exercise", "exercise", Exercise, "exercise", False),
+        (
+            "daily-respiratory-rate",
+            "dailyRespiratoryRate",
+            DailyRespiratoryRate,
+            "daily respiratory rate",
+            False,
+        ),
+        (
+            "respiratory-rate-sleep-summary",
+            "respiratoryRateSleepSummary",
+            RespiratoryRateSleepSummary,
+            "respiratory rate sleep summary",
+            False,
+        ),
         (
             "electrocardiogram",
             "electrocardiogram",

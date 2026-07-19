@@ -174,6 +174,18 @@ def main() -> None:
         subparsers, "exercise", "exercise", supports_rollup=False
     )
     add_standard_datapoint_commands(
+        subparsers,
+        "daily-respiratory-rate",
+        "daily respiratory rate",
+        supports_rollup=False,
+    )
+    add_standard_datapoint_commands(
+        subparsers,
+        "respiratory-rate-sleep-summary",
+        "respiratory rate sleep summary",
+        supports_rollup=False,
+    )
+    add_standard_datapoint_commands(
         subparsers, "electrocardiogram", "electrocardiogram", supports_rollup=False
     )
     add_standard_datapoint_commands(

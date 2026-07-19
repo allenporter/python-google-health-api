@@ -128,8 +128,17 @@ from google_health_api.model.heart import (
     AlertWindow,
 )
 
+from google_health_api.model.respiratory import (
+    DailyRespiratoryRate,
+    RespiratoryRateSleepSummary,
+    RespiratoryRateSleepSummaryStatistics,
+)
+
 # Mapping of Python classes to their corresponding schema names in the discovery document.
 CLASS_TO_SCHEMA = {
+    DailyRespiratoryRate: "DailyRespiratoryRate",
+    RespiratoryRateSleepSummary: "RespiratoryRateSleepSummary",
+    RespiratoryRateSleepSummaryStatistics: "RespiratoryRateSleepSummaryStatistics",
     Electrocardiogram: "Electrocardiogram",
     IrregularRhythmNotification: "IrregularRhythmNotification",
     MedicalDeviceInfo: "MedicalDeviceInfo",
