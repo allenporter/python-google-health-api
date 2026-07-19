@@ -146,6 +146,28 @@ class KeysetKey(DataClassDictMixin):
     class Config(BaseConfig):
         serialize_by_alias = True
 
+    def get_public_key(self) -> "ec.EllipticCurvePublicKey":
+        """Loads and returns the standard cryptography EllipticCurvePublicKey from key material.
+
+        Raises:
+            KeysetError: If key decoding or construction fails.
+        """
+        try:
+            key_data_bytes = base64.b64decode(self.key_data.value)
+        except ValueError as e:
+            raise KeysetError("Failed to Base64-decode key value") from e
+
+        public_key_proto = EcdsaPublicKey.deserialize(key_data_bytes)
+        return public_key_proto.to_cryptography_key()
+
+
+@dataclass
+class _TinkSignature:
+    """Represents a parsed Tink-prefixed signature."""
+
+    key_id: int
+    signature_bytes: bytes  # ASN.1 DER-encoded signature bytes
+
 
 @dataclass
 class WebhookKeyset(DataClassDictMixin):
@@ -156,6 +178,15 @@ class WebhookKeyset(DataClassDictMixin):
 
     class Config(BaseConfig):
         serialize_by_alias = True
+
+    @property
+    def _enabled_keys(self) -> dict[int, KeysetKey]:
+        """Returns a cached map from key ID to ENABLED KeysetKeys."""
+        if not hasattr(self, "_cached_enabled_keys"):
+            self._cached_enabled_keys = {
+                k.key_id: k for k in self.key if k.status == "ENABLED"
+            }
+        return self._cached_enabled_keys
 
     def verify_signature(self, signature_header: str, raw_payload: bytes) -> None:
         """Verify the webhook signature against the raw payload.
@@ -179,26 +210,42 @@ class WebhookKeyset(DataClassDictMixin):
                 "pip install google_health_api[security]"
             )
 
-        key_id, signature_der = self._parse_signature_header(signature_header)
-        matching_key = self._get_enabled_key(key_id)
+        parsed_sig = self._parse_signature_header(signature_header)
+        enabled_keys = self._enabled_keys
+
+        if parsed_sig.key_id not in enabled_keys:
+            for k in self.key:
+                if k.key_id == parsed_sig.key_id:
+                    raise KeysetError(
+                        f"Key ID {parsed_sig.key_id} is present in keyset but status is {k.status}"
+                    )
+            raise KeysetError(
+                f"No enabled key found in keyset for key ID {parsed_sig.key_id}"
+            )
+        matching_key = enabled_keys[parsed_sig.key_id]
+
+        public_key = matching_key.get_public_key()
 
         try:
-            key_data_bytes = base64.b64decode(matching_key.key_data.value)
-        except ValueError as e:
-            raise KeysetError("Failed to Base64-decode key value") from e
-
-        public_key_proto = EcdsaPublicKey.deserialize(key_data_bytes)
-        public_key = public_key_proto.to_cryptography_key()
-
-        try:
-            public_key.verify(signature_der, raw_payload, ec.ECDSA(hashes.SHA256()))
+            public_key.verify(
+                parsed_sig.signature_bytes,
+                raw_payload,
+                ec.ECDSA(hashes.SHA256()),
+            )
         except Exception as e:
             raise SignatureVerificationError(
                 "Signature verification failed: invalid signature"
             ) from e
 
-    def _parse_signature_header(self, signature_header: str) -> tuple[int, bytes]:
-        """Decodes base64 signature header and extracts key ID and raw signature bytes."""
+    def _parse_signature_header(self, signature_header: str) -> _TinkSignature:
+        """Decodes base64 signature header and extracts key ID and raw signature bytes.
+
+        The signature header format is defined by Google Tink binary format spec:
+        - 1-byte version prefix (0x01)
+        - 4-byte big-endian key ID
+        - The remaining bytes are the actual signature in ASN.1 DER-encoded format
+          (which is standard for ECDSA verification in Python's cryptography library).
+        """
         try:
             signature_bytes = base64.b64decode(signature_header)
         except ValueError as e:
@@ -213,17 +260,4 @@ class WebhookKeyset(DataClassDictMixin):
 
         key_id = int.from_bytes(signature_bytes[1:5], byteorder="big")
         signature_der = signature_bytes[5:]
-        return key_id, signature_der
-
-    def _get_enabled_key(self, key_id: int) -> KeysetKey:
-        """Finds the ENABLED key in the keyset with the specified key ID."""
-        for k in self.key:
-            if k.key_id != key_id:
-                continue
-            if k.status != "ENABLED":
-                raise KeysetError(
-                    f"Key ID {key_id} is present in keyset but status is {k.status}"
-                )
-            return k
-
-        raise KeysetError(f"No enabled key found in keyset for key ID {key_id}")
+        return _TinkSignature(key_id=key_id, signature_bytes=signature_der)
