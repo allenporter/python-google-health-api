@@ -10,6 +10,7 @@ import pytest
 from aiohttp.web import Application, Request, Response, json_response
 
 from google_health_api import model
+from google_health_api.exceptions import HealthApiException
 from google_health_api.tink import WebhookKeyset, _HAS_CRYPTOGRAPHY
 from google_health_api.webhook import WebhookData, WebhookNotification, WebhookVerifier
 
@@ -195,7 +196,7 @@ async def test_webhook_verifier_hard_expire(
     ) - datetime.timedelta(days=10)
 
     with pytest.raises(
-        RuntimeError, match="Failed to fetch Webhook Keyset and no valid cache exists"
+        HealthApiException, match="Failed to fetch Webhook Keyset from network."
     ):
         await verifier._get_keyset()
 
@@ -235,7 +236,7 @@ async def test_webhook_verifier_empty_cache(
     aiohttp_client: Callable[[Application], Awaitable[aiohttp.ClientSession]],
     keyset_json: dict,
 ) -> None:
-    """Verify that if the fetch returns no valid keyset, it raises RuntimeError."""
+    """Verify that if the fetch returns no valid keyset, it raises HealthApiException."""
     app = Application()
 
     async def handler(request: Request) -> Response:
@@ -251,5 +252,5 @@ async def test_webhook_verifier_empty_cache(
 
     # Mock from_dict to return None to simulate a failed parse that didn't raise
     with patch("google_health_api.tink.WebhookKeyset.from_dict", return_value=None):
-        with pytest.raises(RuntimeError, match="Keyset is not available"):
+        with pytest.raises(HealthApiException, match="Keyset is not available."):
             await verifier._get_keyset()

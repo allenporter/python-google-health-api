@@ -72,6 +72,7 @@ import aiohttp
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
+from google_health_api.exceptions import HealthApiException
 from google_health_api.model import DATATYPES
 from google_health_api.model.base import DataType
 from google_health_api.tink import WebhookKeyset
@@ -109,6 +110,26 @@ class WebhookVerifier:
         self._cached_keyset: WebhookKeyset | None = None
         self._last_fetched: datetime.datetime | None = None
 
+    async def _fetch_keyset_data(self) -> dict:
+        try:
+            async with self._websession.get(self._keyset_url) as response:
+                response.raise_for_status()
+                return await response.json()
+        except aiohttp.ClientError as e:
+            raise HealthApiException(
+                "Failed to fetch Webhook Keyset from network."
+            ) from e
+
+    def _should_refresh(self, now: datetime.datetime) -> bool:
+        if self._cached_keyset is None or self._last_fetched is None:
+            return True
+        return (now - self._last_fetched) > self._refresh_interval
+
+    def _can_use_cache(self, now: datetime.datetime) -> bool:
+        if self._cached_keyset is None or self._last_fetched is None:
+            return False
+        return (now - self._last_fetched) <= self._max_cache_lifetime
+
     async def _get_keyset(self) -> WebhookKeyset:
         """Returns the cached keyset or fetches a new one if the refresh interval has elapsed.
 
@@ -117,30 +138,17 @@ class WebhookVerifier:
         """
         now = datetime.datetime.now(datetime.timezone.utc)
 
-        needs_refresh = (
-            self._cached_keyset is None
-            or self._last_fetched is None
-            or (now - self._last_fetched) > self._refresh_interval
-        )
-
-        if needs_refresh:
+        if self._should_refresh(now):
             try:
-                async with self._websession.get(self._keyset_url) as response:
-                    response.raise_for_status()
-                    data = await response.json()
-                    self._cached_keyset = WebhookKeyset.from_dict(data)
-                    self._last_fetched = now
-            except aiohttp.ClientError as e:
-                # If we have a cached keyset that hasn't hit the hard limit, use it as a fallback.
-                if self._cached_keyset and self._last_fetched:
-                    if (now - self._last_fetched) <= self._max_cache_lifetime:
-                        return self._cached_keyset
-                raise RuntimeError(
-                    "Failed to fetch Webhook Keyset and no valid cache exists."
-                ) from e
+                data = await self._fetch_keyset_data()
+                self._cached_keyset = WebhookKeyset.from_dict(data)
+                self._last_fetched = now
+            except HealthApiException:
+                if not self._can_use_cache(now):
+                    raise
 
         if not self._cached_keyset:
-            raise RuntimeError("Keyset is not available.")
+            raise HealthApiException("Keyset is not available.")
 
         return self._cached_keyset
 
