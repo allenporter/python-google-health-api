@@ -65,7 +65,7 @@ elif notification.data:
 """
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
@@ -119,7 +119,7 @@ class WebhookNotification(DataClassDictMixin):
     """A Google Health API webhook notification container."""
 
     data: WebhookData | None = None
-    type: str | None = None
+    type: Literal["verification"] | None = None
 
     class Config(BaseConfig):
         serialize_by_alias = True
