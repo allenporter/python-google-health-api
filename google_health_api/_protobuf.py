@@ -118,18 +118,30 @@ def _extract_proto_metadata(cls: type[Any]) -> dict[int, _ProtoFieldMetadata]:
     for f in dataclasses.fields(cls):
         metadata = f.metadata
         if FIELD_NUMBER not in metadata:
-            continue
+            raise ProtobufParseError(
+                f"Field '{f.name}' in '{cls.__name__}' is missing required metadata '{FIELD_NUMBER}'"
+            )
+        if PROTO_TYPE not in metadata:
+            raise ProtobufParseError(
+                f"Field '{f.name}' in '{cls.__name__}' is missing required metadata '{PROTO_TYPE}'"
+            )
 
         field_num = metadata[FIELD_NUMBER]
+        proto_type = metadata[PROTO_TYPE]
         decoder = None
 
         # Map the logical proto_type to the hardcoded decoder function
-        if PROTO_TYPE in metadata:
-            proto_type = metadata[PROTO_TYPE]
-            if proto_type in _DECODERS:
-                decoder = _DECODERS[proto_type]
-            else:
-                raise ProtobufParseError(f"Unsupported proto type: {proto_type}")
+        if proto_type in _DECODERS:
+            decoder = _DECODERS[proto_type]
+        elif proto_type not in (
+            TYPE_INT32,
+            TYPE_INT64,
+            TYPE_UINT32,
+            TYPE_UINT64,
+        ):
+            raise ProtobufParseError(
+                f"Unsupported proto type '{proto_type}' on field '{f.name}'"
+            )
 
         field_metadata[field_num] = _ProtoFieldMetadata(
             field_name=f.name,
