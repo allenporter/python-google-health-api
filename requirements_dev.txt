@@ -1,4 +1,4 @@
--e .
+-e .[security]
 coverage==7.15.2
 ty==0.0.61
 pdoc==16.0.0

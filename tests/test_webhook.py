@@ -3,6 +3,7 @@
 import base64
 import datetime
 from collections.abc import Awaitable, Callable
+from unittest.mock import patch
 
 import aiohttp
 import pytest
@@ -10,7 +11,7 @@ from aiohttp.web import Application, Request, Response, json_response
 
 from google_health_api import model
 from google_health_api.tink import WebhookKeyset, _HAS_CRYPTOGRAPHY
-from google_health_api.webhook import WebhookNotification, WebhookVerifier
+from google_health_api.webhook import WebhookData, WebhookNotification, WebhookVerifier
 
 
 def test_parse_verification_request() -> None:
@@ -201,8 +202,6 @@ async def test_webhook_verifier_hard_expire(
 
 def test_webhook_data_type_none() -> None:
     """Verify that a missing data type string returns None."""
-    from google_health_api.webhook import WebhookData
-
     data = WebhookData(data_type_str=None)
     assert data.data_type is None
 
@@ -213,8 +212,6 @@ async def test_webhook_verifier_verify_method(
     keyset_json: dict,
 ) -> None:
     """Verify that verify() fetches the keyset and calls verify_signature."""
-    from unittest.mock import patch
-
     app = Application()
 
     async def handler(request: Request) -> Response:
@@ -239,8 +236,6 @@ async def test_webhook_verifier_empty_cache(
     keyset_json: dict,
 ) -> None:
     """Verify that if the fetch returns no valid keyset, it raises RuntimeError."""
-    from unittest.mock import patch
-
     app = Application()
 
     async def handler(request: Request) -> Response:
