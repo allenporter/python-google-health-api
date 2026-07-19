@@ -135,6 +135,16 @@ from .model import (
 
 T = TypeVar("T", bound=DataClassDictMixin)
 
+__all__ = [
+    "GoogleHealthApi",
+    "DataPointSubApi",
+    "RollupDataPointSubApi",
+    "BmiSubApi",
+    "PairedDevicesSubApi",
+    "SubscriptionsSubApi",
+    "SubscribersSubApi",
+]
+
 
 def _camel_to_snake(name: str) -> str:
     """Convert camelCase string to snake_case."""
