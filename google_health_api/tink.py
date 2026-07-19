@@ -231,8 +231,8 @@ class WebhookKeyset(DataClassDictMixin):
         if not _HAS_CRYPTOGRAPHY:
             raise ImportError(
                 "The 'cryptography' package is required for signature verification. "
-                "Please install google_health_api with the 'security' extra: "
-                "pip install google_health_api[security]"
+                "Please install google_health_api with the 'webhook' extra: "
+                "pip install google_health_api[webhook]"
             )
 
         parsed_sig = self._parse_signature_header(signature_header)

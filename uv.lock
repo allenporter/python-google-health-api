@@ -249,14 +249,14 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-security = [
+webhook = [
     { name = "cryptography" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.7.3" },
-    { name = "cryptography", marker = "extra == 'security'", specifier = ">=43.0.0" },
+    { name = "cryptography", marker = "extra == 'webhook'", specifier = ">=43.0.0" },
     { name = "mashumaro", specifier = ">=3.12" },
 ]
 
