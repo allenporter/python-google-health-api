@@ -10,12 +10,6 @@ from .base import DataType
 from .sleep import CivilDateTime, SessionTimeInterval
 
 
-class BaseConfig(BaseConfig):
-    """Base mashumaro configuration."""
-
-    serialize_by_alias = True
-
-
 @dataclass
 class MedicalDeviceInfo(DataClassDictMixin):
     """Software as Medical Device (SaMD) metadata."""
