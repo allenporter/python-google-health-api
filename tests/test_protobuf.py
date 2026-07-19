@@ -53,3 +53,48 @@ def test_parse_protobuf_truncated() -> None:
     with pytest.raises(ProtobufParseError) as exc_info:
         parse_protobuf(truncated_data)
     assert "Truncated length-delimited field" in str(exc_info.value)
+
+
+def test_parse_protobuf_fixed_types_and_decoders() -> None:
+    """Test that parse_protobuf correctly records fixed64/fixed32 types and runs decoders."""
+    # field 1: wire type 1 (fixed64) -> tag (1 << 3) | 1 = 9
+    # field 2: wire type 5 (fixed32) -> tag (2 << 3) | 5 = 21
+    fixed64_bytes = b"\x01\x02\x03\x04\x05\x06\x07\x08"
+    fixed32_bytes = b"\x0a\x0b\x0c\x0d"
+
+    data = b""
+    data += bytes([9]) + fixed64_bytes
+    data += bytes([21]) + fixed32_bytes
+
+    # Without decoders (returns raw bytes)
+    fields = parse_protobuf(data)
+    assert fields[1] == fixed64_bytes
+    assert fields[2] == fixed32_bytes
+
+    # With decoders
+    fields_decoded = parse_protobuf(
+        data,
+        decoders={
+            1: lambda b: int.from_bytes(b, byteorder="little"),
+            2: lambda b: int.from_bytes(b, byteorder="big"),
+        },
+    )
+    assert fields_decoded[1] == 0x0807060504030201
+    assert fields_decoded[2] == 0x0A0B0C0D
+
+    # Decoder error propagates
+    with pytest.raises(ProtobufParseError) as exc_info:
+        parse_protobuf(data, decoders={1: lambda b: int("invalid")})
+    assert "Failed to decode field 1" in str(exc_info.value)
+
+    # Truncated fixed64
+    truncated_fixed64 = bytes([9, 1, 2, 3])
+    with pytest.raises(ProtobufParseError) as exc_info:
+        parse_protobuf(truncated_fixed64)
+    assert "Truncated fixed64 field" in str(exc_info.value)
+
+    # Truncated fixed32
+    truncated_fixed32 = bytes([21, 1, 2])
+    with pytest.raises(ProtobufParseError) as exc_info:
+        parse_protobuf(truncated_fixed32)
+    assert "Truncated fixed32 field" in str(exc_info.value)

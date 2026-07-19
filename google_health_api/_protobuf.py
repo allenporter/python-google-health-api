@@ -5,8 +5,8 @@ binary wire format to extract key fields, avoiding a dependency on the full
 `protobuf` package.
 """
 
+from collections.abc import Callable
 from typing import Any
-
 
 # Varint decoding constants
 _VARINT_DATA_MASK = 0x7F
@@ -43,11 +43,15 @@ def _decode_varint(data: bytes, pos: int) -> tuple[int, int]:
     return val, pos
 
 
-def parse_protobuf(data: bytes) -> dict[int, Any]:
+def parse_protobuf(
+    data: bytes, decoders: dict[int, Callable[[Any], Any]] | None = None
+) -> dict[int, Any]:
     """Parse serialized protobuf bytes into a dict of {field_number: value}.
 
     This scans the serialized protobuf key-value wire format, reading fields
-    according to their wire type.
+    according to their wire type. Callers can pass a `decoders` dictionary to
+    automatically convert parsed values for specific fields (e.g. converting
+    raw bytes to integers or strings).
     """
     fields = {}
     pos = 0
@@ -56,9 +60,9 @@ def parse_protobuf(data: bytes) -> dict[int, Any]:
         tag, pos = _decode_varint(data, pos)
         field_num = tag >> _TAG_FIELD_NUM_SHIFT
         wire_type = tag & _TAG_WIRE_TYPE_MASK
+
         if wire_type == _WIRE_TYPE_VARINT:
             val, pos = _decode_varint(data, pos)
-            fields[field_num] = val
         elif wire_type == _WIRE_TYPE_LENGTH_DELIMITED:
             length, pos = _decode_varint(data, pos)
             val = data[pos : pos + length]
@@ -67,13 +71,29 @@ def parse_protobuf(data: bytes) -> dict[int, Any]:
                     f"Truncated length-delimited field (expected {length} bytes, got {len(val)})"
                 )
             pos += length
-            fields[field_num] = val
         elif wire_type == _WIRE_TYPE_FIXED64:
+            val = data[pos : pos + 8]
+            if len(val) < 8:
+                raise ProtobufParseError("Truncated fixed64 field")
             pos += 8
         elif wire_type == _WIRE_TYPE_FIXED32:
+            val = data[pos : pos + 4]
+            if len(val) < 4:
+                raise ProtobufParseError("Truncated fixed32 field")
             pos += 4
         else:
             raise ProtobufParseError(
                 f"Unsupported wire type {wire_type} in protobuf structure"
             )
+
+        if decoders and field_num in decoders:
+            try:
+                val = decoders[field_num](val)
+            except Exception as e:
+                raise ProtobufParseError(
+                    f"Failed to decode field {field_num}: {e}"
+                ) from e
+
+        fields[field_num] = val
+
     return fields

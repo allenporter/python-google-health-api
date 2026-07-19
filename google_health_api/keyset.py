@@ -76,7 +76,13 @@ class EcdsaPublicKey:
                 or truncated data (which raises an [IndexError]).
         """
         try:
-            fields = parse_protobuf(data)
+            fields = parse_protobuf(
+                data,
+                decoders={
+                    3: lambda b: int.from_bytes(b, byteorder="big"),
+                    4: lambda b: int.from_bytes(b, byteorder="big"),
+                },
+            )
         except (ProtobufParseError, IndexError) as e:
             raise KeysetError("Failed to parse key protobuf data") from e
 
@@ -85,16 +91,16 @@ class EcdsaPublicKey:
                 "Protobuf data missing X or Y coordinates (fields 3 and 4)"
             )
 
-        x_bytes = fields[3]
-        y_bytes = fields[4]
+        x = fields[3]
+        y = fields[4]
 
-        if not isinstance(x_bytes, bytes) or not isinstance(y_bytes, bytes):
-            raise KeysetError("Coordinates X and Y must be bytes")
+        if not isinstance(x, int) or not isinstance(y, int):
+            raise KeysetError("Coordinates X and Y must be integers")
 
         return cls(
             version=fields.get(1, 0),
-            x=int.from_bytes(x_bytes, byteorder="big"),
-            y=int.from_bytes(y_bytes, byteorder="big"),
+            x=x,
+            y=y,
         )
 
 
