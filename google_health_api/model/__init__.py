@@ -122,6 +122,15 @@ from .exercise import (
     ExerciseEvent,
     SplitSummary,
 )
+from .heart import (
+    ELECTROCARDIOGRAM,
+    IRREGULAR_RHYTHM_NOTIFICATION,
+    Electrocardiogram,
+    IrregularRhythmNotification,
+    MedicalDeviceInfo,
+    HeartBeat,
+    AlertWindow,
+)
 from .pagination import (
     ListDataPointResult,
     ListReconciledDataPointsResult,
@@ -246,6 +255,14 @@ __all__ = [
     "OXYGEN_SATURATION",
     "DailyOxygenSaturation",
     "DAILY_OXYGEN_SATURATION",
+    # --- Heart Models ---
+    "Electrocardiogram",
+    "ELECTROCARDIOGRAM",
+    "IrregularRhythmNotification",
+    "IRREGULAR_RHYTHM_NOTIFICATION",
+    "MedicalDeviceInfo",
+    "HeartBeat",
+    "AlertWindow",
     # --- Sleep Models ---
     "Sleep",
     "SLEEP",

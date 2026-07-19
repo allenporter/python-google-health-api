@@ -34,6 +34,8 @@ from google_health_api.model import (
     OxygenSaturation,
     DailyOxygenSaturation,
     Exercise,
+    Electrocardiogram,
+    IrregularRhythmNotification,
 )
 
 
@@ -279,6 +281,20 @@ def get_command_schemas() -> dict[str, dict[str, Any]]:
         ("height", "height", Height, "height", False),
         ("bmi", "bmi", Bmi, "bmi", False),
         ("exercise", "exercise", Exercise, "exercise", False),
+        (
+            "electrocardiogram",
+            "electrocardiogram",
+            Electrocardiogram,
+            "electrocardiogram",
+            False,
+        ),
+        (
+            "irregular-rhythm-notification",
+            "irregularRhythmNotification",
+            IrregularRhythmNotification,
+            "irregular rhythm notification",
+            False,
+        ),
         (
             "oxygen-saturation",
             "oxygenSaturation",

@@ -120,9 +120,21 @@ from google_health_api.model.exercise import (
     ExerciseEvent,
     SplitSummary,
 )
+from google_health_api.model.heart import (
+    Electrocardiogram,
+    IrregularRhythmNotification,
+    MedicalDeviceInfo,
+    HeartBeat,
+    AlertWindow,
+)
 
 # Mapping of Python classes to their corresponding schema names in the discovery document.
 CLASS_TO_SCHEMA = {
+    Electrocardiogram: "Electrocardiogram",
+    IrregularRhythmNotification: "IrregularRhythmNotification",
+    MedicalDeviceInfo: "MedicalDeviceInfo",
+    HeartBeat: "HeartBeat",
+    AlertWindow: "AlertWindow",
     Exercise: "Exercise",
     ExerciseMetadata: "ExerciseMetadata",
     TimeInHeartRateZones: "TimeInHeartRateZones",
@@ -305,7 +317,12 @@ def test_schema_conformance() -> None:
                     )
                 else:
                     # Primitive array (e.g. list[str])
-                    expected_type = "string" if item_type is str else None
+                    if item_type is str:
+                        expected_type = "string"
+                    elif item_type is int:
+                        expected_type = "integer"
+                    else:
+                        expected_type = None
                     assert items_def.get("type") == expected_type, (
                         f"Field '{field.name}' on {cls.__name__} has primitive items of type {item_type.__name__}, "
                         f"but schema items type is {items_def.get('type')} (expected: {expected_type})"

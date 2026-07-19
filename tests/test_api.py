@@ -27,6 +27,13 @@ from google_health_api.model.health_metric import (
 )
 from google_health_api.model.sleep import Sleep, SessionTimeInterval, SleepStage
 from google_health_api.model.hydration import HydrationLog, VolumeQuantity
+from google_health_api.model.heart import (
+    Electrocardiogram,
+    IrregularRhythmNotification,
+    MedicalDeviceInfo,
+    HeartBeat,
+    AlertWindow,
+)
 from google_health_api.model.exercise import (
     Exercise,
     ExerciseMetadata,
@@ -1180,3 +1187,134 @@ async def test_exercise(
     )
     await api.exercise.create(DataPoint(data=new_point))
     assert requests[-1]["body"]["exercise"]["displayName"] == "Afternoon Walk"
+
+
+async def test_electrocardiogram(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    create_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test electrocardiogram sub-API."""
+    fake_payload = {
+        "name": "users/me/dataTypes/electrocardiogram/dataPoints/ecg-1",
+        "electrocardiogram": {
+            "resultClassification": "NORMAL_SINUS_RHYTHM",
+            "samplingFrequencyHertz": 250,
+            "millivoltsScalingFactor": 1000,
+            "beatsPerMinuteAvg": "65",
+            "interval": {
+                "startTime": "2026-06-22T08:00:00Z",
+                "endTime": "2026-06-22T08:00:00Z",
+            },
+            "medicalDeviceInfo": {
+                "deviceModel": "Pixel Watch 2",
+            },
+            "waveformSamples": [10, 20, 30],
+        },
+    }
+    list_response.append({"dataPoints": [fake_payload]})
+    result = await api.electrocardiogram.list()
+    assert len(result.data_points) == 1
+    assert result.data_points[0].data.result_classification == "NORMAL_SINUS_RHYTHM"
+    assert result.data_points[0].data.beats_per_minute_avg == 65
+    assert (
+        result.data_points[0].data.medical_device_info.device_model == "Pixel Watch 2"
+    )
+
+    create_response.append(fake_payload)
+    new_point = Electrocardiogram(
+        result_classification="NORMAL_SINUS_RHYTHM",
+        sampling_frequency_hertz=250,
+        millivolts_scaling_factor=1000,
+        beats_per_minute_avg=65,
+        interval=SessionTimeInterval(
+            start_time="2026-06-22T08:00:00Z",
+            end_time="2026-06-22T08:00:00Z",
+        ),
+        medical_device_info=MedicalDeviceInfo(
+            device_model="Pixel Watch 2",
+        ),
+        waveform_samples=[10, 20, 30],
+    )
+    await api.electrocardiogram.create(DataPoint(data=new_point))
+    assert (
+        requests[-1]["body"]["electrocardiogram"]["resultClassification"]
+        == "NORMAL_SINUS_RHYTHM"
+    )
+
+
+async def test_irregular_rhythm_notification(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    create_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test irregular_rhythm_notification sub-API."""
+    fake_payload = {
+        "name": "users/me/dataTypes/irregular-rhythm-notification/dataPoints/irn-1",
+        "irregularRhythmNotification": {
+            "interval": {
+                "startTime": "2026-06-22T08:00:00Z",
+                "endTime": "2026-06-22T09:00:00Z",
+            },
+            "alertWindows": [
+                {
+                    "startTime": "2026-06-22T08:00:00Z",
+                    "startUtcOffset": "-25200s",
+                    "endTime": "2026-06-22T08:30:00Z",
+                    "endUtcOffset": "-25200s",
+                    "positive": True,
+                    "heartBeats": [
+                        {
+                            "physicalTime": "2026-06-22T08:15:00Z",
+                            "utcOffset": "-25200s",
+                            "beatsPerMinute": 80,
+                        }
+                    ],
+                }
+            ],
+            "medicalDeviceInfo": {
+                "deviceModel": "Pixel Watch 2",
+            },
+        },
+    }
+    list_response.append({"dataPoints": [fake_payload]})
+    result = await api.irregular_rhythm_notification.list()
+    assert len(result.data_points) == 1
+    assert len(result.data_points[0].data.alert_windows) == 1
+    assert result.data_points[0].data.alert_windows[0].positive is True
+    assert len(result.data_points[0].data.alert_windows[0].heart_beats) == 1
+    assert (
+        result.data_points[0].data.alert_windows[0].heart_beats[0].beats_per_minute
+        == 80
+    )
+
+    create_response.append(fake_payload)
+    new_point = IrregularRhythmNotification(
+        interval=SessionTimeInterval(
+            start_time="2026-06-22T08:00:00Z",
+            end_time="2026-06-22T09:00:00Z",
+        ),
+        alert_windows=[
+            AlertWindow(
+                start_time="2026-06-22T08:00:00Z",
+                start_utc_offset="-25200s",
+                end_time="2026-06-22T08:30:00Z",
+                end_utc_offset="-25200s",
+                positive=True,
+                heart_beats=[
+                    HeartBeat(
+                        physical_time="2026-06-22T08:15:00Z",
+                        utc_offset="-25200s",
+                        beats_per_minute=80,
+                    )
+                ],
+            )
+        ],
+        medical_device_info=MedicalDeviceInfo(
+            device_model="Pixel Watch 2",
+        ),
+    )
+    await api.irregular_rhythm_notification.create(DataPoint(data=new_point))
+    assert len(requests[-1]["body"]["irregularRhythmNotification"]["alertWindows"]) == 1

@@ -10,12 +10,6 @@ from .base import DataType
 from .sleep import SessionTimeInterval
 
 
-class BaseConfig(BaseConfig):
-    """Base mashumaro configuration."""
-
-    serialize_by_alias = True
-
-
 @dataclass
 class ExerciseMetadata(DataClassDictMixin):
     """Additional exercise metadata."""

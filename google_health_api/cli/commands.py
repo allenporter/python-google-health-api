@@ -320,6 +320,8 @@ async def setup_client(session: aiohttp.ClientSession) -> GoogleHealthApi:
     api.oxygen_saturation._session = api._session
     api.daily_oxygen_saturation._session = api._session
     api.exercise._session = api._session
+    api.electrocardiogram._session = api._session
+    api.irregular_rhythm_notification._session = api._session
     api.active_energy_burned._session = api._session
     api.total_calories._session = api._session
     api.floors._session = api._session
@@ -619,6 +621,36 @@ async def handle_exercise_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
     """Handle exercise subcommands."""
     await handle_datatype_cmd(
         args, api, api.exercise, "exercise", "exercise", "exercise", pretty
+    )
+
+
+async def handle_electrocardiogram_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle electrocardiogram subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.electrocardiogram,
+        "electrocardiogram",
+        "electrocardiogram",
+        "electrocardiogram",
+        pretty,
+    )
+
+
+async def handle_irregular_rhythm_notification_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle irregular rhythm notification subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.irregular_rhythm_notification,
+        "irregularRhythmNotification",
+        "irregular-rhythm-notification",
+        "irregular rhythm notification",
+        pretty,
     )
 
 
@@ -1211,6 +1243,10 @@ async def async_run_cmd(args) -> None:
                 await handle_bmi_cmd(args, api, pretty)
             elif cmd == "exercise":
                 await handle_exercise_cmd(args, api, pretty)
+            elif cmd == "electrocardiogram":
+                await handle_electrocardiogram_cmd(args, api, pretty)
+            elif cmd == "irregular-rhythm-notification":
+                await handle_irregular_rhythm_notification_cmd(args, api, pretty)
             elif cmd == "oxygen-saturation":
                 await handle_oxygen_saturation_cmd(args, api, pretty)
             elif cmd == "daily-oxygen-saturation":
