@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 import pytest
 
 from google_health_api.keyset import (
+    EcdsaPublicKey,
     KeysetError,
     SignatureVerificationError,
     WebhookKeyset,
@@ -132,3 +133,26 @@ def test_verify_signature_malformed_header(keyset_ctx: KeysetTestContext) -> Non
     with pytest.raises(SignatureVerificationError) as exc_info:
         keyset_ctx.keyset.verify_signature(too_short_header, keyset_ctx.payload)
     assert "too short" in str(exc_info.value)
+
+
+@pytest.mark.parametrize(
+    "base64_val,expected_x,expected_y,expected_version",
+    [
+        # Scenario 1: Real-world Google Tink ECDSA public key snapshot
+        (
+            "EgYIAxACGAIaIQBDWg3kaiabjtrVXbSSbcn6e3QqiCLD+B4GuhC/Z1C6miIhACarm0VQv9WjNZG/AB0itXCIGFW5ddInmBFUjK/8w0v3",
+            30464072971658236180623026012261445907865018865466996670004259804604043147930,
+            17491090733665198527707448657584605832598762999353660226629372998000048294903,
+            0,
+        ),
+    ],
+)
+def test_ecdsa_public_key_deserialization(
+    base64_val: str, expected_x: int, expected_y: int, expected_version: int
+) -> None:
+    """Test that EcdsaPublicKey.deserialize correctly decodes key payloads."""
+    raw_bytes = base64.b64decode(base64_val)
+    key = EcdsaPublicKey.deserialize(raw_bytes)
+    assert key.version == expected_version
+    assert key.x == expected_x
+    assert key.y == expected_y

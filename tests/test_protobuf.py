@@ -1,6 +1,5 @@
 """Tests for low-level private protobuf parser helper."""
 
-import base64
 from dataclasses import dataclass, field
 from typing import Any
 import pytest
@@ -14,7 +13,6 @@ from google_health_api._protobuf import (
     ProtobufParseError,
     deserialize_protobuf,
 )
-from google_health_api.keyset import EcdsaPublicKey
 
 
 @dataclass
@@ -31,6 +29,25 @@ class SearchRequest:
 
 
 @dataclass
+class PhoneNumber:
+    """A standard generic phone number protobuf class."""
+
+    number: str = field(metadata={FIELD_NUMBER: 1, PROTO_TYPE: TYPE_STRING})
+    type: int = field(metadata={FIELD_NUMBER: 2, PROTO_TYPE: TYPE_INT32}, default=0)
+
+
+@dataclass
+class SearchResult:
+    """A standard generic search result protobuf class."""
+
+    url: str = field(metadata={FIELD_NUMBER: 1, PROTO_TYPE: TYPE_STRING})
+    title: str = field(metadata={FIELD_NUMBER: 2, PROTO_TYPE: TYPE_STRING})
+    snippet_count: int = field(
+        metadata={FIELD_NUMBER: 3, PROTO_TYPE: TYPE_INT32}, default=0
+    )
+
+
+@dataclass
 class FixedTypesMessage:
     """A helper message to test fixed64/fixed32 wire type deserialization."""
 
@@ -38,42 +55,38 @@ class FixedTypesMessage:
     val32: bytes = field(metadata={FIELD_NUMBER: 2, PROTO_TYPE: TYPE_BYTES})
 
 
-def test_parse_protobuf_keyset_snapshot() -> None:
-    """Test that deserialize_protobuf correctly decodes a real-world Google Tink ECDSA key value."""
-    # Real base64 value from:
-    # https://www.gstatic.com/googlehealthapi/webhooks/webhooks_public_keyset.json
-    base64_val = (
-        "EgYIAxACGAIaIQBDWg3kaiabjtrVXbSSbcn6e3QqiCLD+B4GuhC/Z1C6miIhACarm0VQv9W"
-        "jNZG/AB0itXCIGFW5ddInmBFUjK/8w0v3"
-    )
-    raw_bytes = base64.b64decode(base64_val)
-
-    key = deserialize_protobuf(EcdsaPublicKey, raw_bytes)
-
-    # Expected key structures inside Tink EcdsaPublicKey:
-    assert key.version == 0
-    assert (
-        key.x
-        == 30464072971658236180623026012261445907865018865466996670004259804604043147930
-    )
-    assert (
-        key.y
-        == 17491090733665198527707448657584605832598762999353660226629372998000048294903
-    )
-
-
 @pytest.mark.parametrize(
-    "data,expected",
+    "cls,data,expected",
     [
-        # Scenario 1: Decode all fields
-        (b"\x0a\x04test\x10\x02\x18\x14", SearchRequest("test", 2, 20)),
-        # Scenario 2: Omitted fields fall back to dataclass defaults
-        (b"\x0a\x04test", SearchRequest("test", 1, 10)),
+        # Scenario 1: SearchRequest with all fields populated
+        (
+            SearchRequest,
+            b"\x0a\x04test\x10\x02\x18\x14",
+            SearchRequest("test", 2, 20),
+        ),
+        # Scenario 2: SearchRequest with multi-byte varint and default fallbacks
+        (
+            SearchRequest,
+            b"\x0a\x04test\x10\x96\x01",
+            SearchRequest("test", 150, 10),
+        ),
+        # Scenario 3: PhoneNumber with all fields populated
+        (
+            PhoneNumber,
+            b"\x0a\x0b+1-555-0100\x10\x01",
+            PhoneNumber("+1-555-0100", 1),
+        ),
+        # Scenario 4: SearchResult with all fields populated
+        (
+            SearchResult,
+            b"\x0a\x12http://example.com\x12\x0eExample Domain\x18\x05",
+            SearchResult("http://example.com", "Example Domain", 5),
+        ),
     ],
 )
-def test_parse_protobuf_decoding(data: bytes, expected: SearchRequest) -> None:
+def test_parse_protobuf_decoding(cls: type[Any], data: bytes, expected: Any) -> None:
     """Test that deserialize_protobuf correctly decodes valid protobuf payloads."""
-    assert deserialize_protobuf(SearchRequest, data) == expected
+    assert deserialize_protobuf(cls, data) == expected
 
 
 def test_parse_protobuf_fixed_types() -> None:
