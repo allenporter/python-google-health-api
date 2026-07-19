@@ -131,6 +131,13 @@ from .heart import (
     HeartBeat,
     AlertWindow,
 )
+from .respiratory import (
+    DAILY_RESPIRATORY_RATE,
+    RESPIRATORY_RATE_SLEEP_SUMMARY,
+    DailyRespiratoryRate,
+    RespiratoryRateSleepSummary,
+    RespiratoryRateSleepSummaryStatistics,
+)
 from .pagination import (
     ListDataPointResult,
     ListReconciledDataPointsResult,
@@ -263,6 +270,12 @@ __all__ = [
     "MedicalDeviceInfo",
     "HeartBeat",
     "AlertWindow",
+    # --- Respiratory Models ---
+    "DailyRespiratoryRate",
+    "DAILY_RESPIRATORY_RATE",
+    "RespiratoryRateSleepSummary",
+    "RESPIRATORY_RATE_SLEEP_SUMMARY",
+    "RespiratoryRateSleepSummaryStatistics",
     # --- Sleep Models ---
     "Sleep",
     "SLEEP",

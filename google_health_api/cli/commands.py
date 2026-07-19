@@ -322,6 +322,8 @@ async def setup_client(session: aiohttp.ClientSession) -> GoogleHealthApi:
     api.exercise._session = api._session
     api.electrocardiogram._session = api._session
     api.irregular_rhythm_notification._session = api._session
+    api.daily_respiratory_rate._session = api._session
+    api.respiratory_rate_sleep_summary._session = api._session
     api.active_energy_burned._session = api._session
     api.total_calories._session = api._session
     api.floors._session = api._session
@@ -621,6 +623,36 @@ async def handle_exercise_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
     """Handle exercise subcommands."""
     await handle_datatype_cmd(
         args, api, api.exercise, "exercise", "exercise", "exercise", pretty
+    )
+
+
+async def handle_daily_respiratory_rate_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle daily respiratory rate subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.daily_respiratory_rate,
+        "dailyRespiratoryRate",
+        "daily-respiratory-rate",
+        "daily respiratory rate",
+        pretty,
+    )
+
+
+async def handle_respiratory_rate_sleep_summary_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle respiratory rate sleep summary subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.respiratory_rate_sleep_summary,
+        "respiratoryRateSleepSummary",
+        "respiratory-rate-sleep-summary",
+        "respiratory rate sleep summary",
+        pretty,
     )
 
 
@@ -1243,6 +1275,10 @@ async def async_run_cmd(args) -> None:
                 await handle_bmi_cmd(args, api, pretty)
             elif cmd == "exercise":
                 await handle_exercise_cmd(args, api, pretty)
+            elif cmd == "daily-respiratory-rate":
+                await handle_daily_respiratory_rate_cmd(args, api, pretty)
+            elif cmd == "respiratory-rate-sleep-summary":
+                await handle_respiratory_rate_sleep_summary_cmd(args, api, pretty)
             elif cmd == "electrocardiogram":
                 await handle_electrocardiogram_cmd(args, api, pretty)
             elif cmd == "irregular-rhythm-notification":

@@ -34,6 +34,11 @@ from google_health_api.model.heart import (
     HeartBeat,
     AlertWindow,
 )
+from google_health_api.model.respiratory import (
+    DailyRespiratoryRate,
+    RespiratoryRateSleepSummary,
+    RespiratoryRateSleepSummaryStatistics,
+)
 from google_health_api.model.exercise import (
     Exercise,
     ExerciseMetadata,
@@ -1318,3 +1323,79 @@ async def test_irregular_rhythm_notification(
     )
     await api.irregular_rhythm_notification.create(DataPoint(data=new_point))
     assert len(requests[-1]["body"]["irregularRhythmNotification"]["alertWindows"]) == 1
+
+
+async def test_daily_respiratory_rate(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    create_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test daily_respiratory_rate sub-API."""
+    fake_payload = {
+        "name": "users/me/dataTypes/daily-respiratory-rate/dataPoints/drr-1",
+        "dailyRespiratoryRate": {
+            "breathsPerMinute": 14.5,
+            "date": {"year": 2026, "month": 6, "day": 22},
+        },
+    }
+    list_response.append({"dataPoints": [fake_payload]})
+    result = await api.daily_respiratory_rate.list()
+    assert len(result.data_points) == 1
+    assert result.data_points[0].data.breaths_per_minute == 14.5
+
+    create_response.append(fake_payload)
+    new_point = DailyRespiratoryRate(
+        breaths_per_minute=14.5,
+        date=Date(year=2026, month=6, day=22),
+    )
+    await api.daily_respiratory_rate.create(DataPoint(data=new_point))
+    assert requests[-1]["body"]["dailyRespiratoryRate"]["breathsPerMinute"] == 14.5
+
+
+async def test_respiratory_rate_sleep_summary(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    create_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test respiratory_rate_sleep_summary sub-API."""
+    fake_payload = {
+        "name": "users/me/dataTypes/respiratory-rate-sleep-summary/dataPoints/rrss-1",
+        "respiratoryRateSleepSummary": {
+            "sampleTime": {
+                "physicalTime": "2026-06-22T08:00:00Z",
+                "utcOffset": "-25200s",
+            },
+            "fullSleepStats": {
+                "breathsPerMinute": 15.2,
+                "standardDeviation": 1.1,
+                "signalToNoise": 2.5,
+            },
+        },
+    }
+    list_response.append({"dataPoints": [fake_payload]})
+    result = await api.respiratory_rate_sleep_summary.list()
+    assert len(result.data_points) == 1
+    assert result.data_points[0].data.full_sleep_stats.breaths_per_minute == 15.2
+    assert result.data_points[0].data.full_sleep_stats.standard_deviation == 1.1
+
+    create_response.append(fake_payload)
+    new_point = RespiratoryRateSleepSummary(
+        sample_time=ObservationSampleTime(
+            physical_time="2026-06-22T08:00:00Z",
+            utc_offset="-25200s",
+        ),
+        full_sleep_stats=RespiratoryRateSleepSummaryStatistics(
+            breaths_per_minute=15.2,
+            standard_deviation=1.1,
+            signal_to_noise=2.5,
+        ),
+    )
+    await api.respiratory_rate_sleep_summary.create(DataPoint(data=new_point))
+    assert (
+        requests[-1]["body"]["respiratoryRateSleepSummary"]["fullSleepStats"][
+            "breathsPerMinute"
+        ]
+        == 15.2
+    )
