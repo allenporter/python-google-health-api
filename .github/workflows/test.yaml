@@ -31,6 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv pip install -r requirements_dev.txt
+          uv pip install -e ".[security]"
       - name: Test with pytest
         run: |
           pytest --cov=google_health_api --cov-report=term-missing

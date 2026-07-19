@@ -77,7 +77,9 @@ from google_health_api.model.base import DataType
 from google_health_api.tink import WebhookKeyset
 
 # The standard public URL for Google Health API webhook keysets.
-GOOGLE_HEALTH_KEYSET_URL = "https://health.googleapis.com/health/v4/webhook/keyset"
+GOOGLE_HEALTH_KEYSET_URL = (
+    "https://www.gstatic.com/googlehealthapi/webhooks/webhooks_public_keyset.json"
+)
 
 # Keysets are cached in memory to avoid HTTP calls on every webhook payload.
 # A refresh is attempted periodically (once per day) to gracefully rotate keys.

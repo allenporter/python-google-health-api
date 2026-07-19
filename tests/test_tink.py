@@ -156,3 +156,48 @@ def test_ecdsa_public_key_deserialization(
     numbers = key.public_numbers()
     assert numbers.x == expected_x
     assert numbers.y == expected_y
+
+
+def test_verify_signature_malformed_base64(keyset_ctx: KeysetTestContext) -> None:
+    """Verify that signature validation fails gracefully with bad base64."""
+    with pytest.raises(SignatureVerificationError) as exc_info:
+        keyset_ctx.keyset.verify_signature("not-base64!", keyset_ctx.payload)
+    assert "Base64-decode" in str(exc_info.value)
+
+
+def test_keyset_key_malformed_base64() -> None:
+    """Verify that bad base64 in the key material raises gracefully."""
+    from google_health_api.tink import KeysetKey, KeyData
+
+    key = KeysetKey(
+        key_data=KeyData(type_url="", value="invalid_base64!!!", key_material_type=""),
+        status="ENABLED",
+        key_id=1,
+        output_prefix_type="",
+    )
+    with pytest.raises(KeysetError, match="Failed to Base64-decode key value"):
+        _ = key.public_key
+
+
+def test_ecdsa_public_key_deserialization_protobuf_error() -> None:
+    """Verify that bad protobuf data raises gracefully."""
+    # Provide garbage bytes that is not a valid protobuf
+    with pytest.raises(KeysetError, match="Failed to parse key protobuf data"):
+        EcdsaPublicKey.deserialize(b"garbage")
+
+
+def test_tink_no_cryptography() -> None:
+    """Verify behavior when cryptography is not installed."""
+    from unittest.mock import patch
+    from google_health_api import tink
+
+    with patch.object(tink, "_HAS_CRYPTOGRAPHY", False):
+        # 1. to_cryptography_key raises
+        key = EcdsaPublicKey(version=0, x=1, y=2)
+        with pytest.raises(KeysetError, match="cryptography library is not installed"):
+            key.to_cryptography_key()
+
+        # 2. verify_signature raises
+        keyset = WebhookKeyset(primary_key_id=1)
+        with pytest.raises(ImportError, match="cryptography' package is required"):
+            keyset.verify_signature("sig", b"payload")

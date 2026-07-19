@@ -197,3 +197,64 @@ async def test_webhook_verifier_hard_expire(
         RuntimeError, match="Failed to fetch Webhook Keyset and no valid cache exists"
     ):
         await verifier._get_keyset()
+
+
+def test_webhook_data_type_none() -> None:
+    """Verify that a missing data type string returns None."""
+    from google_health_api.webhook import WebhookData
+
+    data = WebhookData(data_type_str=None)
+    assert data.data_type is None
+
+
+@pytest.mark.skipif(not _HAS_CRYPTOGRAPHY, reason="Cryptography library required")
+async def test_webhook_verifier_verify_method(
+    aiohttp_client: Callable[[Application], Awaitable[aiohttp.ClientSession]],
+    keyset_json: dict,
+) -> None:
+    """Verify that verify() fetches the keyset and calls verify_signature."""
+    from unittest.mock import patch
+
+    app = Application()
+
+    async def handler(request: Request) -> Response:
+        return json_response(keyset_json)
+
+    app.router.add_get("/keyset", handler)
+    client = await aiohttp_client(app)
+
+    verifier = WebhookVerifier(
+        websession=client,
+        keyset_url="/keyset",
+    )
+
+    with patch("google_health_api.tink.WebhookKeyset.verify_signature") as mock_verify:
+        await verifier.verify("fake-sig", b"fake-payload")
+        mock_verify.assert_called_once_with("fake-sig", b"fake-payload")
+
+
+@pytest.mark.skipif(not _HAS_CRYPTOGRAPHY, reason="Cryptography library required")
+async def test_webhook_verifier_empty_cache(
+    aiohttp_client: Callable[[Application], Awaitable[aiohttp.ClientSession]],
+    keyset_json: dict,
+) -> None:
+    """Verify that if the fetch returns no valid keyset, it raises RuntimeError."""
+    from unittest.mock import patch
+
+    app = Application()
+
+    async def handler(request: Request) -> Response:
+        return json_response(keyset_json)
+
+    app.router.add_get("/keyset", handler)
+    client = await aiohttp_client(app)
+
+    verifier = WebhookVerifier(
+        websession=client,
+        keyset_url="/keyset",
+    )
+
+    # Mock from_dict to return None to simulate a failed parse that didn't raise
+    with patch("google_health_api.tink.WebhookKeyset.from_dict", return_value=None):
+        with pytest.raises(RuntimeError, match="Keyset is not available"):
+            await verifier._get_keyset()
