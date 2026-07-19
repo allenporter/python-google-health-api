@@ -324,6 +324,7 @@ async def setup_client(session: aiohttp.ClientSession) -> GoogleHealthApi:
     api.irregular_rhythm_notification._session = api._session
     api.daily_vo2_max._session = api._session
     api.daily_heart_rate_zones._session = api._session
+    api.daily_sleep_temperature_derivations._session = api._session
     api.daily_respiratory_rate._session = api._session
     api.respiratory_rate_sleep_summary._session = api._session
     api.active_energy_burned._session = api._session
@@ -652,6 +653,21 @@ async def handle_daily_heart_rate_zones_cmd(
         "dailyHeartRateZones",
         "daily-heart-rate-zones",
         "daily heart rate zones",
+        pretty,
+    )
+
+
+async def handle_daily_sleep_temperature_derivations_cmd(
+    args, api: GoogleHealthApi, pretty: bool
+) -> None:
+    """Handle daily sleep temperature derivations subcommands."""
+    await handle_datatype_cmd(
+        args,
+        api,
+        api.daily_sleep_temperature_derivations,
+        "dailySleepTemperatureDerivations",
+        "daily-sleep-temperature-derivations",
+        "daily sleep temperature derivations",
         pretty,
     )
 
@@ -1309,6 +1325,8 @@ async def async_run_cmd(args) -> None:
                 await handle_daily_vo2_max_cmd(args, api, pretty)
             elif cmd == "daily-heart-rate-zones":
                 await handle_daily_heart_rate_zones_cmd(args, api, pretty)
+            elif cmd == "daily-sleep-temperature-derivations":
+                await handle_daily_sleep_temperature_derivations_cmd(args, api, pretty)
             elif cmd == "daily-respiratory-rate":
                 await handle_daily_respiratory_rate_cmd(args, api, pretty)
             elif cmd == "respiratory-rate-sleep-summary":

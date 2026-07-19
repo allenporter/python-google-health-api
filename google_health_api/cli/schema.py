@@ -40,6 +40,7 @@ from google_health_api.model import (
     RespiratoryRateSleepSummary,
     DailyVO2Max,
     DailyHeartRateZones,
+    DailySleepTemperatureDerivations,
 )
 
 
@@ -285,6 +286,13 @@ def get_command_schemas() -> dict[str, dict[str, Any]]:
         ("height", "height", Height, "height", False),
         ("bmi", "bmi", Bmi, "bmi", False),
         ("exercise", "exercise", Exercise, "exercise", False),
+        (
+            "daily-sleep-temperature-derivations",
+            "dailySleepTemperatureDerivations",
+            DailySleepTemperatureDerivations,
+            "daily sleep temperature derivations",
+            False,
+        ),
         (
             "daily-vo2-max",
             "dailyVo2Max",

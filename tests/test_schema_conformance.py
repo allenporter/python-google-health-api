@@ -32,6 +32,7 @@ from google_health_api.model.subscription import (
 from google_health_api.model.sleep import (
     Sleep,
     SessionTimeInterval,
+    DailySleepTemperatureDerivations,
     CivilDateTime,
     CivilTimeInterval,
     DailyRollUpDataPointsRequest,
@@ -142,6 +143,7 @@ from google_health_api.model.fitness import (
 
 # Mapping of Python classes to their corresponding schema names in the discovery document.
 CLASS_TO_SCHEMA = {
+    DailySleepTemperatureDerivations: "DailySleepTemperatureDerivations",
     DailyVO2Max: "DailyVO2Max",
     DailyHeartRateZones: "DailyHeartRateZones",
     HeartRateZone: "HeartRateZone",
