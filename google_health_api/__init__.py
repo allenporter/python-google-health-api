@@ -3,7 +3,7 @@
 """
 
 from .api import GoogleHealthApi
-from . import api, auth, client, const, exceptions, model
+from . import api, auth, client, const, exceptions, model, webhook
 
 __all__ = [
     "GoogleHealthApi",
@@ -13,4 +13,5 @@ __all__ = [
     "const",
     "exceptions",
     "model",
+    "webhook",
 ]
