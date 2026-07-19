@@ -50,15 +50,13 @@ def test_parse_protobuf_keyset_snapshot() -> None:
     # Expected key structures inside Tink EcdsaPublicKey:
     assert key.version == 0
     assert key.params == b"\x08\x03\x10\x02\x18\x02"
-    assert key.x == int.from_bytes(
-        b'\x00CZ\r\xe4j&\x9b\x8e\xda\xd5]\xb4\x92m\xc9\xfa\x7bt*\x88"\xc3\xf8'
-        b"\x1e\x06\xba\x10\xbfgP\xba\x9a",
-        byteorder="big",
+    assert (
+        key.x
+        == 30464072971658236180623026012261445907865018865466996670004259804604043147930
     )
-    assert key.y == int.from_bytes(
-        b"\x00&\xab\x9bE\x50\xbf\xd5\xa3\x35\x91\xbf\x00\x1d\x22\xb5\x70\x88\x18"
-        b"\x55\xb9\x75\xd2\x27\x98\x11\x54\x8c\xaf\xfc\xc3\x4b\xf7",
-        byteorder="big",
+    assert (
+        key.y
+        == 17491090733665198527707448657584605832598762999353660226629372998000048294903
     )
 
 
