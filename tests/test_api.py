@@ -39,6 +39,11 @@ from google_health_api.model.respiratory import (
     RespiratoryRateSleepSummary,
     RespiratoryRateSleepSummaryStatistics,
 )
+from google_health_api.model.fitness import (
+    DailyVO2Max,
+    DailyHeartRateZones,
+    HeartRateZone,
+)
 from google_health_api.model.exercise import (
     Exercise,
     ExerciseMetadata,
@@ -1399,3 +1404,82 @@ async def test_respiratory_rate_sleep_summary(
         ]
         == 15.2
     )
+
+
+async def test_daily_vo2_max(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    create_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test daily_vo2_max sub-API."""
+    fake_payload = {
+        "name": "users/me/dataTypes/daily-vo2-max/dataPoints/dvm-1",
+        "dailyVo2Max": {
+            "vo2Max": 45.5,
+            "date": {"year": 2026, "month": 6, "day": 22},
+            "estimated": False,
+            "cardioFitnessLevel": "GOOD",
+            "vo2MaxCovariance": 0.5,
+        },
+    }
+    list_response.append({"dataPoints": [fake_payload]})
+    result = await api.daily_vo2_max.list()
+    assert len(result.data_points) == 1
+    assert result.data_points[0].data.vo2_max == 45.5
+    assert result.data_points[0].data.cardio_fitness_level == "GOOD"
+
+    create_response.append(fake_payload)
+    new_point = DailyVO2Max(
+        vo2_max=45.5,
+        date=Date(year=2026, month=6, day=22),
+        estimated=False,
+        cardio_fitness_level="GOOD",
+        vo2_max_covariance=0.5,
+    )
+    await api.daily_vo2_max.create(DataPoint(data=new_point))
+    assert requests[-1]["body"]["dailyVo2Max"]["vo2Max"] == 45.5
+
+
+async def test_daily_heart_rate_zones(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    create_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test daily_heart_rate_zones sub-API."""
+    fake_payload = {
+        "name": "users/me/dataTypes/daily-heart-rate-zones/dataPoints/dhrz-1",
+        "dailyHeartRateZones": {
+            "date": {"year": 2026, "month": 6, "day": 22},
+            "heartRateZones": [
+                {
+                    "heartRateZoneType": "LIGHT",
+                    "minBeatsPerMinute": "90",
+                    "maxBeatsPerMinute": "110",
+                }
+            ],
+        },
+    }
+    list_response.append({"dataPoints": [fake_payload]})
+    result = await api.daily_heart_rate_zones.list()
+    assert len(result.data_points) == 1
+    assert len(result.data_points[0].data.heart_rate_zones) == 1
+    assert (
+        result.data_points[0].data.heart_rate_zones[0].heart_rate_zone_type == "LIGHT"
+    )
+    assert result.data_points[0].data.heart_rate_zones[0].min_beats_per_minute == 90
+
+    create_response.append(fake_payload)
+    new_point = DailyHeartRateZones(
+        date=Date(year=2026, month=6, day=22),
+        heart_rate_zones=[
+            HeartRateZone(
+                heart_rate_zone_type="LIGHT",
+                min_beats_per_minute=90,
+                max_beats_per_minute=110,
+            )
+        ],
+    )
+    await api.daily_heart_rate_zones.create(DataPoint(data=new_point))
+    assert len(requests[-1]["body"]["dailyHeartRateZones"]["heartRateZones"]) == 1

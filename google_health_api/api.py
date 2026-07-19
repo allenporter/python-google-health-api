@@ -63,6 +63,8 @@ from .model import (
     IRREGULAR_RHYTHM_NOTIFICATION,
     DAILY_RESPIRATORY_RATE,
     RESPIRATORY_RATE_SLEEP_SUMMARY,
+    DAILY_VO2_MAX,
+    DAILY_HEART_RATE_ZONES,
     ActiveEnergyBurned,
     BasalEnergyBurned,
     CivilDateTime,
@@ -120,6 +122,8 @@ from .model import (
     IrregularRhythmNotification,
     DailyRespiratoryRate,
     RespiratoryRateSleepSummary,
+    DailyVO2Max,
+    DailyHeartRateZones,
     _ListDataPointsModel,
     _ListPairedDevicesModel,
     _ListReconciledDataPointsModel,
@@ -1024,6 +1028,12 @@ class GoogleHealthApi:
     respiratory_rate_sleep_summary: DataPointSubApi[RespiratoryRateSleepSummary]
     """Namespaced client for Respiratory rate sleep summary data (`RespiratoryRateSleepSummary` model)."""
 
+    daily_vo2_max: DataPointSubApi[DailyVO2Max]
+    """Namespaced client for Daily VO2 max data (`DailyVO2Max` model)."""
+
+    daily_heart_rate_zones: DataPointSubApi[DailyHeartRateZones]
+    """Namespaced client for Daily heart rate zones data (`DailyHeartRateZones` model)."""
+
     altitude: RollupDataPointSubApi[Altitude]
     """Namespaced client for Altitude gain delta data (`Altitude` model)."""
 
@@ -1110,6 +1120,10 @@ class GoogleHealthApi:
         )
         self.respiratory_rate_sleep_summary = DataPointSubApi(
             self._session, RESPIRATORY_RATE_SLEEP_SUMMARY
+        )
+        self.daily_vo2_max = DataPointSubApi(self._session, DAILY_VO2_MAX)
+        self.daily_heart_rate_zones = DataPointSubApi(
+            self._session, DAILY_HEART_RATE_ZONES
         )
         self.altitude = RollupDataPointSubApi(self._session, ALTITUDE)
         self.body_fat = RollupDataPointSubApi(self._session, BODY_FAT)
