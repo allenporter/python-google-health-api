@@ -64,15 +64,13 @@ def _decode_varint(data: bytes, pos: int) -> tuple[int, int]:
     return val, pos
 
 
-def parse_protobuf(
+def _parse_protobuf(
     data: bytes, decoders: dict[int, Callable[[bytes], Any]] | None = None
 ) -> dict[int, Any]:
     """Parse serialized protobuf bytes into a dict of {field_number: value}.
 
     This scans the serialized protobuf key-value wire format, reading fields
-    according to their wire type. Callers can pass a `decoders` dictionary to
-    automatically convert parsed values for specific fields (e.g. converting
-    raw bytes to integers or strings).
+    according to their wire type.
     """
     fields = {}
     pos = 0
@@ -157,7 +155,7 @@ def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
             elif f.default_factory is not dataclasses.MISSING:
                 default_vals[f.name] = f.default_factory()
 
-    parsed = parse_protobuf(data, decoders=decoders)
+    parsed = _parse_protobuf(data, decoders=decoders)
 
     args = {}
     for field_num, val in parsed.items():

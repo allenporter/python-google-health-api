@@ -3,11 +3,11 @@
 import base64
 import pytest
 
-from google_health_api._protobuf import ProtobufParseError, parse_protobuf
+from google_health_api._protobuf import ProtobufParseError, _parse_protobuf
 
 
 def test_parse_protobuf_keyset_snapshot() -> None:
-    """Test that parse_protobuf correctly decodes a real-world Google Tink ECDSA key value."""
+    """Test that _parse_protobuf correctly decodes a real-world Google Tink ECDSA key value."""
     # Real base64 value from:
     # https://www.gstatic.com/googlehealthapi/webhooks/webhooks_public_keyset.json
     base64_val = (
@@ -16,7 +16,7 @@ def test_parse_protobuf_keyset_snapshot() -> None:
     )
     raw_bytes = base64.b64decode(base64_val)
 
-    fields = parse_protobuf(raw_bytes)
+    fields = _parse_protobuf(raw_bytes)
 
     # Expected key structures inside Tink EcdsaPublicKey:
     # Field 2 (params): Represents serialized params EcdsaParams
@@ -36,27 +36,27 @@ def test_parse_protobuf_keyset_snapshot() -> None:
 
 
 def test_parse_protobuf_unsupported_wire_type() -> None:
-    """Verify that parse_protobuf raises ProtobufParseError on unsupported wire types."""
+    """Verify that _parse_protobuf raises ProtobufParseError on unsupported wire types."""
     # Create a tag with field_number 1 and wire type 3 (Groups - deprecated/unsupported wire type)
     # tag = (1 << 3) | 3 = 11
     data = bytes([11, 1, 2, 3])
     with pytest.raises(ProtobufParseError) as exc_info:
-        parse_protobuf(data)
+        _parse_protobuf(data)
     assert "Unsupported wire type" in str(exc_info.value)
 
 
 def test_parse_protobuf_truncated() -> None:
-    """Verify that parse_protobuf raises ProtobufParseError on truncated inputs."""
+    """Verify that _parse_protobuf raises ProtobufParseError on truncated inputs."""
     # tag 26 represents field 3 wire type 2 (length delimited).
     # Length specifies 32 bytes, but we provide only 5 bytes.
     truncated_data = bytes([26, 32, 1, 2, 3, 4, 5])
     with pytest.raises(ProtobufParseError) as exc_info:
-        parse_protobuf(truncated_data)
+        _parse_protobuf(truncated_data)
     assert "Truncated length-delimited field" in str(exc_info.value)
 
 
 def test_parse_protobuf_fixed_types_and_decoders() -> None:
-    """Test that parse_protobuf correctly records fixed64/fixed32 types and runs decoders."""
+    """Test that _parse_protobuf correctly records fixed64/fixed32 types and runs decoders."""
     # field 1: wire type 1 (fixed64) -> tag (1 << 3) | 1 = 9
     # field 2: wire type 5 (fixed32) -> tag (2 << 3) | 5 = 21
     fixed64_bytes = b"\x01\x02\x03\x04\x05\x06\x07\x08"
@@ -67,12 +67,12 @@ def test_parse_protobuf_fixed_types_and_decoders() -> None:
     data += bytes([21]) + fixed32_bytes
 
     # Without decoders (returns raw bytes)
-    fields = parse_protobuf(data)
+    fields = _parse_protobuf(data)
     assert fields[1] == fixed64_bytes
     assert fields[2] == fixed32_bytes
 
     # With decoders
-    fields_decoded = parse_protobuf(
+    fields_decoded = _parse_protobuf(
         data,
         decoders={
             1: lambda b: int.from_bytes(b, byteorder="little"),
@@ -84,17 +84,17 @@ def test_parse_protobuf_fixed_types_and_decoders() -> None:
 
     # Decoder error propagates
     with pytest.raises(ProtobufParseError) as exc_info:
-        parse_protobuf(data, decoders={1: lambda b: int("invalid")})
+        _parse_protobuf(data, decoders={1: lambda b: int("invalid")})
     assert "Failed to decode field 1" in str(exc_info.value)
 
     # Truncated fixed64
     truncated_fixed64 = bytes([9, 1, 2, 3])
     with pytest.raises(ProtobufParseError) as exc_info:
-        parse_protobuf(truncated_fixed64)
+        _parse_protobuf(truncated_fixed64)
     assert "Truncated fixed64 field" in str(exc_info.value)
 
     # Truncated fixed32
     truncated_fixed32 = bytes([21, 1, 2])
     with pytest.raises(ProtobufParseError) as exc_info:
-        parse_protobuf(truncated_fixed32)
+        _parse_protobuf(truncated_fixed32)
     assert "Truncated fixed32 field" in str(exc_info.value)
