@@ -5,16 +5,20 @@ The primary class is `GoogleHealthApi`, which exposes namespaced sub-APIs for va
 wearable data types (such as steps, sleep, distance, etc.), paired devices, and webhook subscribers.
 
 Example usage:
-    from google_health_api import GoogleHealthApi
-    from google_health_api.auth import ServiceAccountAuth
+```python
+from google_health_api import GoogleHealthApi
+from google_health_api.auth import ServiceAccountAuth
 
-    auth = ServiceAccountAuth("path/to/key.json")
-    api = GoogleHealthApi(auth)
+auth = ServiceAccountAuth("path/to/key.json")
+api = GoogleHealthApi(auth)
 
-    # Fetch steps
-    steps_result = await api.steps.list()
-    for point in steps_result.data_points:
-        print(f"Steps: {point.data.count} between {point.data.start_time} and {point.data.end_time}")
+# Fetch steps
+steps_result = await api.steps.list()
+for point in steps_result.data_points:
+    print(
+        f"Steps: {point.data.count} between {point.data.start_time} and {point.data.end_time}"
+    )
+```
 """
 
 import re
