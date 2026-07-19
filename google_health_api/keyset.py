@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
-from ._protobuf import ProtobufParseError, parse_protobuf
+from ._protobuf import ProtobufParseError, deserialize_protobuf
 
 
 try:
@@ -63,9 +63,19 @@ class EcdsaPublicKey:
     https://github.com/tink-crypto/tink-java/blob/main/proto/ecdsa.proto
     """
 
-    version: int
-    x: int
-    y: int
+    x: int = field(
+        metadata={
+            "field_number": 3,
+            "decoder": lambda b: int.from_bytes(b, byteorder="big"),
+        }
+    )
+    y: int = field(
+        metadata={
+            "field_number": 4,
+            "decoder": lambda b: int.from_bytes(b, byteorder="big"),
+        }
+    )
+    version: int = field(metadata={"field_number": 1}, default=0)
 
     @classmethod
     def deserialize(cls, data: bytes) -> "EcdsaPublicKey":
@@ -76,32 +86,9 @@ class EcdsaPublicKey:
                 or truncated data (which raises an [IndexError]).
         """
         try:
-            fields = parse_protobuf(
-                data,
-                decoders={
-                    3: lambda b: int.from_bytes(b, byteorder="big"),
-                    4: lambda b: int.from_bytes(b, byteorder="big"),
-                },
-            )
+            return deserialize_protobuf(cls, data)
         except (ProtobufParseError, IndexError) as e:
             raise KeysetError("Failed to parse key protobuf data") from e
-
-        if 3 not in fields or 4 not in fields:
-            raise KeysetError(
-                "Protobuf data missing X or Y coordinates (fields 3 and 4)"
-            )
-
-        x = fields[3]
-        y = fields[4]
-
-        if not isinstance(x, int) or not isinstance(y, int):
-            raise KeysetError("Coordinates X and Y must be integers")
-
-        return cls(
-            version=fields.get(1, 0),
-            x=x,
-            y=y,
-        )
 
 
 @dataclass

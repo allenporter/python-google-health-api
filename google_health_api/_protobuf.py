@@ -6,6 +6,7 @@ binary wire format to extract key fields, avoiding a dependency on the full
 """
 
 from collections.abc import Callable
+import dataclasses
 from typing import Any
 
 # Varint decoding constants
@@ -97,3 +98,43 @@ def parse_protobuf(
         fields[field_num] = val
 
     return fields
+
+
+def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
+    """Generic helper to parse protobuf bytes and instantiate a tagged dataclass.
+
+    Inspects dataclass fields for 'field_number' and 'decoder' metadata.
+    """
+    decoders = {}
+    field_map = {}
+    default_vals = {}
+
+    for f in dataclasses.fields(cls):
+        metadata = f.metadata
+        if "field_number" in metadata:
+            field_num = metadata["field_number"]
+            field_map[field_num] = f.name
+            if "decoder" in metadata:
+                decoders[field_num] = metadata["decoder"]
+            if f.default is not dataclasses.MISSING:
+                default_vals[f.name] = f.default
+            elif f.default_factory is not dataclasses.MISSING:
+                default_vals[f.name] = f.default_factory()
+
+    parsed = parse_protobuf(data, decoders=decoders)
+
+    args = {}
+    for field_num, val in parsed.items():
+        if field_num in field_map:
+            args[field_map[field_num]] = val
+
+    for field_name, default_val in default_vals.items():
+        if field_name not in args:
+            args[field_name] = default_val
+
+    try:
+        return cls(**args)
+    except TypeError as e:
+        raise ProtobufParseError(
+            f"Missing required fields for {cls.__name__}: {e}"
+        ) from e
