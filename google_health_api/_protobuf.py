@@ -5,6 +5,25 @@ binary wire format and map them directly into Python dataclasses using field
 metadata. This avoids a dependency on the full compiled `protobuf` package.
 
 Example:
+    Given the Protobuf definition:
+    ```proto
+    message MyProtoMessage {
+      uint32 version = 1;
+      bytes payload = 2;
+    }
+    ```
+
+    The corresponding Python dataclass:
+    ```python
+    from dataclasses import dataclass, field
+    from google_health_api._protobuf import (
+        FIELD_NUMBER,
+        PROTO_TYPE,
+        TYPE_BYTES,
+        TYPE_UINT32,
+        deserialize_protobuf,
+    )
+
     @dataclass
     class MyProtoMessage:
         version: int = field(
@@ -12,7 +31,9 @@ Example:
         )
         payload: bytes = field(metadata={FIELD_NUMBER: 2, PROTO_TYPE: TYPE_BYTES})
 
+    # Decode the message
     message = deserialize_protobuf(MyProtoMessage, serialized_bytes)
+    ```
 """
 
 from collections.abc import Callable
