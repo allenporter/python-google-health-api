@@ -133,12 +133,7 @@ def _extract_proto_metadata(cls: type[Any]) -> dict[int, _ProtoFieldMetadata]:
         # Map the logical proto_type to the hardcoded decoder function
         if proto_type in _DECODERS:
             decoder = _DECODERS[proto_type]
-        elif proto_type not in (
-            TYPE_INT32,
-            TYPE_INT64,
-            TYPE_UINT32,
-            TYPE_UINT64,
-        ):
+        else:
             raise ProtobufParseError(
                 f"Unsupported proto type '{proto_type}' on field '{f.name}'"
             )
