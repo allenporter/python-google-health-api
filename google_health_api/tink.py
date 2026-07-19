@@ -44,8 +44,6 @@ https://developers.google.com/health/webhooks#how_to_verify_the_signature
    are allowed to verify signatures. Disabled keys are ignored.
 """
 
-from __future__ import annotations
-
 import base64
 from dataclasses import dataclass, field
 from functools import cached_property
