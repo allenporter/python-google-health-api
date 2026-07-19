@@ -119,8 +119,8 @@ class EcdsaPublicKey:
     """
 
     version: int
-    x: bytes
-    y: bytes
+    x: int
+    y: int
 
     @classmethod
     def deserialize(cls, data: bytes) -> "EcdsaPublicKey":
@@ -143,8 +143,8 @@ class EcdsaPublicKey:
 
         return cls(
             version=fields.get(1, 0),
-            x=x_bytes,
-            y=y_bytes,
+            x=int.from_bytes(x_bytes, byteorder="big"),
+            y=int.from_bytes(y_bytes, byteorder="big"),
         )
 
 
@@ -248,8 +248,8 @@ class WebhookKeyset(DataClassDictMixin):
         # Load key coordinates and verify signature
         try:
             public_numbers = ec.EllipticCurvePublicNumbers(
-                x=int.from_bytes(public_key_proto.x, byteorder="big"),
-                y=int.from_bytes(public_key_proto.y, byteorder="big"),
+                x=public_key_proto.x,
+                y=public_key_proto.y,
                 curve=ec.SECP256R1(),
             )
             public_key = public_numbers.public_key()
