@@ -345,4 +345,12 @@ __all__ = [
     "_ListReconciledDataPointsModel",
     "_ListSubscribersModel",
     "_ListSubscriptionsModel",
+    "DATATYPES",
 ]
+
+# Build a package-wide registry of all defined DataType instances
+DATATYPES: dict[str, DataType] = {}
+for _attr in list(globals()):
+    _val = globals()[_attr]
+    if isinstance(_val, DataType):
+        DATATYPES[_val.key] = _val

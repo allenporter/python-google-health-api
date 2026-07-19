@@ -35,6 +35,10 @@ class DataType(Generic[T]):
         self.read_scopes = read_scopes or []
         self.write_scopes = write_scopes or []
 
+    def __repr__(self) -> str:
+        """Return the representation of DataType."""
+        return f"<DataType: {self.key}>"
+
 
 @dataclass
 class Application(DataClassDictMixin):
