@@ -1,8 +1,18 @@
 """Private, dependency-free protobuf parsing utilities.
 
 This module contains minimal, low-level functions to parse serialized protobuf
-binary wire format to extract key fields, avoiding a dependency on the full
-`protobuf` package.
+binary wire format and map them directly into Python dataclasses using field
+metadata. This avoids a dependency on the full compiled `protobuf` package.
+
+Example:
+    @dataclass
+    class MyProtoMessage:
+        version: int = field(
+            metadata={FIELD_NUMBER: 1, PROTO_TYPE: TYPE_UINT32}, default=0
+        )
+        payload: bytes = field(metadata={FIELD_NUMBER: 2, PROTO_TYPE: TYPE_BYTES})
+
+    message = deserialize_protobuf(MyProtoMessage, serialized_bytes)
 """
 
 from collections.abc import Callable
@@ -24,18 +34,20 @@ _WIRE_TYPE_FIXED64 = 1
 _WIRE_TYPE_LENGTH_DELIMITED = 2
 _WIRE_TYPE_FIXED32 = 5
 
-# Dataclass field metadata keys
-FIELD_NUMBER = "field_number"
-PROTO_TYPE = "proto_type"
+# Dataclass field metadata keys used to map fields to protobuf definitions
+FIELD_NUMBER = "field_number"  # The integer field number in the protobuf definition
+PROTO_TYPE = "proto_type"  # The logical protobuf type name (e.g. TYPE_BIG_ENDIAN_INT)
 
-# Protobuf logical field types
+# Protobuf logical field types supported by the parser
 TYPE_INT32 = "int32"
 TYPE_INT64 = "int64"
 TYPE_UINT32 = "uint32"
 TYPE_UINT64 = "uint64"
 TYPE_BYTES = "bytes"
 TYPE_STRING = "string"
-TYPE_BIG_ENDIAN_INT = "big_endian_int"
+TYPE_BIG_ENDIAN_INT = (
+    "big_endian_int"  # Decodes length-delimited bytes as a big-endian integer
+)
 
 # Hardcoded decoders for logical types that are stored as bytes on the wire
 _DECODERS: dict[str, Callable[[bytes], Any]] = {
@@ -102,9 +114,21 @@ def _extract_proto_metadata(
 def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
     """Generic helper to parse protobuf bytes and instantiate a tagged dataclass.
 
-    Inspects dataclass fields for 'field_number' and 'proto_type' metadata,
-    parses the binary wire format, and deserializes values directly into the
-    dataclass fields.
+    This function inspects the dataclass fields for `FIELD_NUMBER` and `PROTO_TYPE`
+    keys in their field metadata dictionary. It then parses the binary protobuf
+    wire format and applies the appropriate logical decoders (e.g. decoding
+    bytes to strings or coordinates to integers) before instantiating the class.
+
+    Args:
+        cls: The target dataclass type to instantiate.
+        data: The serialized protobuf bytes.
+
+    Returns:
+        An instance of the target dataclass `cls` populated with parsed values.
+
+    Raises:
+        ProtobufParseError: If parsing fails due to malformed wire tags, unsupported
+            types, or missing required fields.
     """
     field_map, decoders, default_vals = _extract_proto_metadata(cls)
 
