@@ -64,15 +64,42 @@ def _decode_varint(data: bytes, pos: int) -> tuple[int, int]:
     return val, pos
 
 
-def _parse_protobuf(
-    data: bytes, decoders: dict[int, Callable[[bytes], Any]] | None = None
-) -> dict[int, Any]:
-    """Parse serialized protobuf bytes into a dict of {field_number: value}.
+def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
+    """Generic helper to parse protobuf bytes and instantiate a tagged dataclass.
 
-    This scans the serialized protobuf key-value wire format, reading fields
-    according to their wire type.
+    Inspects dataclass fields for 'field_number' and 'proto_type' metadata,
+    parses the binary wire format, and deserializes values directly into the
+    dataclass fields.
     """
-    fields = {}
+    decoders = {}
+    field_map = {}
+    default_vals = {}
+
+    for f in dataclasses.fields(cls):
+        metadata = f.metadata
+        if FIELD_NUMBER in metadata:
+            field_num = metadata[FIELD_NUMBER]
+            field_map[field_num] = f.name
+
+            # Map the logical proto_type to the hardcoded decoder function
+            if PROTO_TYPE in metadata:
+                proto_type = metadata[PROTO_TYPE]
+                if proto_type in _DECODERS:
+                    decoders[field_num] = _DECODERS[proto_type]
+                elif proto_type not in (
+                    TYPE_INT32,
+                    TYPE_INT64,
+                    TYPE_UINT32,
+                    TYPE_UINT64,
+                ):
+                    raise ProtobufParseError(f"Unsupported proto type: {proto_type}")
+
+            if f.default is not dataclasses.MISSING:
+                default_vals[f.name] = f.default
+            elif f.default_factory is not dataclasses.MISSING:
+                default_vals[f.name] = f.default_factory()
+
+    args = {}
     pos = 0
     limit = len(data)
     while pos < limit:
@@ -105,62 +132,20 @@ def _parse_protobuf(
                 f"Unsupported wire type {wire_type} in protobuf structure"
             )
 
-        if decoders and field_num in decoders:
-            if not isinstance(val, bytes):
-                raise ProtobufParseError(
-                    f"Field {field_num} is not bytes but has a decoder configured"
-                )
-            try:
-                val = decoders[field_num](val)
-            except Exception as e:
-                raise ProtobufParseError(
-                    f"Failed to decode field {field_num}: {e}"
-                ) from e
-
-        fields[field_num] = val
-
-    return fields
-
-
-def deserialize_protobuf(cls: type[Any], data: bytes) -> Any:
-    """Generic helper to parse protobuf bytes and instantiate a tagged dataclass.
-
-    Inspects dataclass fields for 'field_number' and 'proto_type' metadata.
-    """
-    decoders = {}
-    field_map = {}
-    default_vals = {}
-
-    for f in dataclasses.fields(cls):
-        metadata = f.metadata
-        if FIELD_NUMBER in metadata:
-            field_num = metadata[FIELD_NUMBER]
-            field_map[field_num] = f.name
-
-            # Map the logical proto_type to the hardcoded decoder function
-            if PROTO_TYPE in metadata:
-                proto_type = metadata[PROTO_TYPE]
-                if proto_type in _DECODERS:
-                    decoders[field_num] = _DECODERS[proto_type]
-                elif proto_type not in (
-                    TYPE_INT32,
-                    TYPE_INT64,
-                    TYPE_UINT32,
-                    TYPE_UINT64,
-                ):
-                    raise ProtobufParseError(f"Unsupported proto type: {proto_type}")
-
-            if f.default is not dataclasses.MISSING:
-                default_vals[f.name] = f.default
-            elif f.default_factory is not dataclasses.MISSING:
-                default_vals[f.name] = f.default_factory()
-
-    parsed = _parse_protobuf(data, decoders=decoders)
-
-    args = {}
-    for field_num, val in parsed.items():
         if field_num in field_map:
-            args[field_map[field_num]] = val
+            field_name = field_map[field_num]
+            if field_num in decoders:
+                if not isinstance(val, bytes):
+                    raise ProtobufParseError(
+                        f"Field {field_num} is not bytes but has a decoder configured"
+                    )
+                try:
+                    val = decoders[field_num](val)
+                except Exception as e:
+                    raise ProtobufParseError(
+                        f"Failed to decode field {field_num}: {e}"
+                    ) from e
+            args[field_name] = val
 
     for field_name, default_val in default_vals.items():
         if field_name not in args:
