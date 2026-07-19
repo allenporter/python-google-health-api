@@ -2,6 +2,7 @@
 
 import base64
 from dataclasses import dataclass, field
+from typing import Any
 import pytest
 
 from google_health_api._protobuf import (
@@ -61,48 +62,18 @@ def test_parse_protobuf_keyset_snapshot() -> None:
     )
 
 
-def test_parse_protobuf_generic_decoding() -> None:
-    """Test standard decoding of query, varint parameters, and default values."""
-    # field 1 (query, length delimited): tag 10, length 4, value b"test" -> b"\x0a\x04test"
-    # field 2 (page_number, varint): tag 16, value 2 -> b"\x10\x02"
-    # field 3 (result_per_page, varint): tag 24, value 20 -> b"\x18\x14"
-    data = b"\x0a\x04test\x10\x02\x18\x14"
-
-    req = deserialize_protobuf(SearchRequest, data)
-    assert req.query == "test"
-    assert req.page_number == 2
-    assert req.result_per_page == 20
-
-
-def test_parse_protobuf_default_fallbacks() -> None:
-    """Verify that omitted message fields fallback to their standard dataclass defaults."""
-    # Only serialize the name/query field
-    data = b"\x0a\x04test"
-
-    req = deserialize_protobuf(SearchRequest, data)
-    assert req.query == "test"
-    assert req.page_number == 1
-    assert req.result_per_page == 10
-
-
-def test_parse_protobuf_unsupported_wire_type() -> None:
-    """Verify that deserialize_protobuf raises ProtobufParseError on unsupported wire types."""
-    # Create a tag with field_number 1 and wire type 3 (Groups - deprecated/unsupported wire type)
-    # tag = (1 << 3) | 3 = 11
-    data = bytes([11, 1, 2, 3])
-    with pytest.raises(ProtobufParseError) as exc_info:
-        deserialize_protobuf(SearchRequest, data)
-    assert "Unsupported wire type" in str(exc_info.value)
-
-
-def test_parse_protobuf_truncated() -> None:
-    """Verify that deserialize_protobuf raises ProtobufParseError on truncated inputs."""
-    # tag 10 represents field 1 wire type 2 (length delimited).
-    # Length specifies 4 bytes, but we provide only 2 bytes.
-    truncated_data = bytes([10, 4, 1, 2])
-    with pytest.raises(ProtobufParseError) as exc_info:
-        deserialize_protobuf(SearchRequest, truncated_data)
-    assert "Truncated length-delimited field" in str(exc_info.value)
+@pytest.mark.parametrize(
+    "data,expected",
+    [
+        # Scenario 1: Decode all fields
+        (b"\x0a\x04test\x10\x02\x18\x14", SearchRequest("test", 2, 20)),
+        # Scenario 2: Omitted fields fall back to dataclass defaults
+        (b"\x0a\x04test", SearchRequest("test", 1, 10)),
+    ],
+)
+def test_parse_protobuf_decoding(data: bytes, expected: SearchRequest) -> None:
+    """Test that deserialize_protobuf correctly decodes valid protobuf payloads."""
+    assert deserialize_protobuf(SearchRequest, data) == expected
 
 
 def test_parse_protobuf_fixed_types() -> None:
@@ -121,19 +92,21 @@ def test_parse_protobuf_fixed_types() -> None:
     assert obj.val32 == fixed32_bytes
 
 
-def test_parse_protobuf_fixed64_truncated() -> None:
-    """Verify that deserialize_protobuf raises ProtobufParseError on truncated fixed64 fields."""
-    # field 1: wire type 1 (fixed64) -> tag (1 << 3) | 1 = 9
-    truncated_fixed64 = bytes([9, 1, 2, 3])
+@pytest.mark.parametrize(
+    "cls,data,error_msg",
+    [
+        # Scenario 1: Unsupported wire type (group wire type 3)
+        (SearchRequest, bytes([11, 1, 2, 3]), "Unsupported wire type"),
+        # Scenario 2: Truncated length-delimited field
+        (SearchRequest, bytes([10, 4, 1, 2]), "Truncated length-delimited field"),
+        # Scenario 3: Truncated fixed64 field
+        (FixedTypesMessage, bytes([9, 1, 2, 3]), "Truncated fixed64 field"),
+        # Scenario 4: Truncated fixed32 field
+        (FixedTypesMessage, bytes([21, 1, 2]), "Truncated fixed32 field"),
+    ],
+)
+def test_parse_protobuf_errors(cls: type[Any], data: bytes, error_msg: str) -> None:
+    """Verify that deserialize_protobuf raises ProtobufParseError on malformed inputs."""
     with pytest.raises(ProtobufParseError) as exc_info:
-        deserialize_protobuf(FixedTypesMessage, truncated_fixed64)
-    assert "Truncated fixed64 field" in str(exc_info.value)
-
-
-def test_parse_protobuf_fixed32_truncated() -> None:
-    """Verify that deserialize_protobuf raises ProtobufParseError on truncated fixed32 fields."""
-    # field 2: wire type 5 (fixed32) -> tag (2 << 3) | 5 = 21
-    truncated_fixed32 = bytes([21, 1, 2])
-    with pytest.raises(ProtobufParseError) as exc_info:
-        deserialize_protobuf(FixedTypesMessage, truncated_fixed32)
-    assert "Truncated fixed32 field" in str(exc_info.value)
+        deserialize_protobuf(cls, data)
+    assert error_msg in str(exc_info.value)
