@@ -76,6 +76,7 @@ from google_health_api.model.activity import (
 from google_health_api.model.health_metric import (
     VO2Max,
     Weight,
+    Height,
     DailyRestingHeartRate,
     DailyRestingHeartRateMetadata,
     WeightRollupValue,
@@ -144,6 +145,7 @@ CLASS_TO_SCHEMA = {
     BasalEnergyBurned: "BasalEnergyBurned",
     VO2Max: "VO2Max",
     Weight: "Weight",
+    Height: "Height",
     ActiveEnergyBurned: "ActiveEnergyBurned",
     StepsRollupValue: "StepsRollupValue",
     DistanceRollupValue: "DistanceRollupValue",

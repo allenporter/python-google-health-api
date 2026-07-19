@@ -167,6 +167,10 @@ def main() -> None:
         subparsers, "weight", "weight", supports_rollup=True
     )
     add_standard_datapoint_commands(
+        subparsers, "height", "height", supports_rollup=False
+    )
+    add_standard_datapoint_commands(subparsers, "bmi", "BMI", supports_rollup=False)
+    add_standard_datapoint_commands(
         subparsers, "active-energy-burned", "active energy burned", supports_rollup=True
     )
     add_standard_datapoint_commands(

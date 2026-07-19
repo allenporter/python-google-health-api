@@ -316,6 +316,7 @@ async def setup_client(session: aiohttp.ClientSession) -> GoogleHealthApi:
     api.basal_energy_burned._session = api._session
     api.vo2_max._session = api._session
     api.weight._session = api._session
+    api.height._session = api._session
     api.active_energy_burned._session = api._session
     api.total_calories._session = api._session
     api.floors._session = api._session
@@ -597,6 +598,18 @@ async def handle_weight_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
     await handle_datatype_cmd(
         args, api, api.weight, "weight", "weight", "weight", pretty
     )
+
+
+async def handle_height_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle height subcommands."""
+    await handle_datatype_cmd(
+        args, api, api.height, "height", "height", "height", pretty
+    )
+
+
+async def handle_bmi_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle bmi subcommands."""
+    await handle_datatype_cmd(args, api, api.bmi, "bmi", "bmi", "BMI", pretty)
 
 
 async def handle_floors_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
@@ -1152,6 +1165,10 @@ async def async_run_cmd(args) -> None:
                 await handle_vo2_max_cmd(args, api, pretty)
             elif cmd == "weight":
                 await handle_weight_cmd(args, api, pretty)
+            elif cmd == "height":
+                await handle_height_cmd(args, api, pretty)
+            elif cmd == "bmi":
+                await handle_bmi_cmd(args, api, pretty)
             elif cmd == "active-energy-burned":
                 await handle_active_energy_burned_cmd(args, api, pretty)
             elif cmd == "total-calories":
