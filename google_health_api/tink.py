@@ -49,7 +49,6 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Self
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
@@ -64,11 +63,16 @@ from ._protobuf import (
 )
 
 try:
+    from cryptography.exceptions import InvalidSignature
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.asymmetric import ec
 
     _HAS_CRYPTOGRAPHY = True
 except ImportError:
+
+    class InvalidSignature(Exception):
+        pass
+
     _HAS_CRYPTOGRAPHY = False
 
 
@@ -93,16 +97,17 @@ class EcdsaPublicKey:
     version: int = field(metadata={FIELD_NUMBER: 1, PROTO_TYPE: TYPE_UINT32}, default=0)
 
     @classmethod
-    def deserialize(cls, data: bytes) -> Self:
-        """Deserialize from binary serialized Protobuf bytes.
+    def deserialize(cls, data: bytes) -> ec.EllipticCurvePublicKey:
+        """Deserialize key material and construct a cryptography public key.
 
         Raises:
-            KeysetError: If parsing fails due to [ProtobufParseError](file:///Users/allen/.gemini/antigravity/worktrees/python-google-health-api/review-webhook-signature-implementation/google_health_api/_protobuf.py#L11).
+            KeysetError: If parsing or construction fails.
         """
         try:
-            return deserialize_protobuf(cls, data)
+            proto = deserialize_protobuf(cls, data)
         except ProtobufParseError as e:
             raise KeysetError("Failed to parse key protobuf data") from e
+        return proto.to_cryptography_key()
 
     def to_cryptography_key(self) -> ec.EllipticCurvePublicKey:
         """Converts this key to a cryptography EllipticCurvePublicKey.
@@ -161,8 +166,7 @@ class KeysetKey(DataClassDictMixin):
         except ValueError as e:
             raise KeysetError("Failed to Base64-decode key value") from e
 
-        public_key_proto = EcdsaPublicKey.deserialize(key_data_bytes)
-        return public_key_proto.to_cryptography_key()
+        return EcdsaPublicKey.deserialize(key_data_bytes)
 
     def verify(self, signature_bytes: bytes, raw_payload: bytes) -> None:
         """Verify the signature against the raw payload using this key.
@@ -176,7 +180,7 @@ class KeysetKey(DataClassDictMixin):
                 raw_payload,
                 ec.ECDSA(hashes.SHA256()),
             )
-        except Exception as e:
+        except (InvalidSignature, ValueError) as e:
             raise SignatureVerificationError(
                 "Signature verification failed: invalid signature"
             ) from e

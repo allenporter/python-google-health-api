@@ -153,6 +153,6 @@ def test_ecdsa_public_key_deserialization(
     """Test that EcdsaPublicKey.deserialize correctly decodes key payloads."""
     raw_bytes = base64.b64decode(base64_val)
     key = EcdsaPublicKey.deserialize(raw_bytes)
-    assert key.version == expected_version
-    assert key.x == expected_x
-    assert key.y == expected_y
+    numbers = key.public_numbers()
+    assert numbers.x == expected_x
+    assert numbers.y == expected_y
