@@ -112,6 +112,16 @@ from .nutrition import (
     EnergyQuantityRollup,
     NutrientQuantityRollup,
 )
+from .exercise import (
+    EXERCISE,
+    Exercise,
+    ExerciseMetadata,
+    TimeInHeartRateZones,
+    MobilityMetrics,
+    MetricsSummary,
+    ExerciseEvent,
+    SplitSummary,
+)
 from .pagination import (
     ListDataPointResult,
     ListReconciledDataPointsResult,
@@ -239,6 +249,15 @@ __all__ = [
     # --- Sleep Models ---
     "Sleep",
     "SLEEP",
+    # --- Exercise Models ---
+    "Exercise",
+    "EXERCISE",
+    "ExerciseMetadata",
+    "TimeInHeartRateZones",
+    "MobilityMetrics",
+    "MetricsSummary",
+    "ExerciseEvent",
+    "SplitSummary",
     # --- Hydration Models ---
     "HydrationLog",
     "HYDRATION_LOG",

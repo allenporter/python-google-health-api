@@ -319,6 +319,7 @@ async def setup_client(session: aiohttp.ClientSession) -> GoogleHealthApi:
     api.height._session = api._session
     api.oxygen_saturation._session = api._session
     api.daily_oxygen_saturation._session = api._session
+    api.exercise._session = api._session
     api.active_energy_burned._session = api._session
     api.total_calories._session = api._session
     api.floors._session = api._session
@@ -612,6 +613,13 @@ async def handle_height_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
 async def handle_bmi_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
     """Handle bmi subcommands."""
     await handle_datatype_cmd(args, api, api.bmi, "bmi", "bmi", "BMI", pretty)
+
+
+async def handle_exercise_cmd(args, api: GoogleHealthApi, pretty: bool) -> None:
+    """Handle exercise subcommands."""
+    await handle_datatype_cmd(
+        args, api, api.exercise, "exercise", "exercise", "exercise", pretty
+    )
 
 
 async def handle_oxygen_saturation_cmd(
@@ -1201,6 +1209,8 @@ async def async_run_cmd(args) -> None:
                 await handle_height_cmd(args, api, pretty)
             elif cmd == "bmi":
                 await handle_bmi_cmd(args, api, pretty)
+            elif cmd == "exercise":
+                await handle_exercise_cmd(args, api, pretty)
             elif cmd == "oxygen-saturation":
                 await handle_oxygen_saturation_cmd(args, api, pretty)
             elif cmd == "daily-oxygen-saturation":

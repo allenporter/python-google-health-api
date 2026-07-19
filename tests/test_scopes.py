@@ -44,6 +44,10 @@ def test_sub_api_required_scopes() -> None:
     assert api.sleep.required_read_scopes == [HealthApiScope.SLEEP_READ]
     assert api.sleep.required_write_scopes == [HealthApiScope.SLEEP_WRITE]
 
+    # Exercise
+    assert api.exercise.required_read_scopes == [HealthApiScope.ACTIVITY_READ]
+    assert api.exercise.required_write_scopes == [HealthApiScope.ACTIVITY_WRITE]
+
     # Nutrition & Hydration
     assert api.nutrition_log.required_read_scopes == [HealthApiScope.NUTRITION_READ]
     assert api.nutrition_log.required_write_scopes == [HealthApiScope.NUTRITION_WRITE]
