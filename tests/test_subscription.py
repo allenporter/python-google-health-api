@@ -222,7 +222,7 @@ async def test_create_subscriber(
     )
 
     assert result.name == "projects/test-project/operations/op-123"
-    assert not result.done
+    assert not result.operation.done
 
     assert len(requests) == 1
     assert requests[0]["method"] == "POST"
@@ -267,9 +267,12 @@ async def test_patch_subscriber(
     )
 
     assert result.name == "projects/test-project/operations/op-456"
-    assert result.done
-    assert result.response is not None
-    assert result.response["name"] == "projects/test-project/subscribers/test-sub"
+    assert result.operation.done
+    assert result.operation.response is not None
+    assert (
+        result.operation.response["name"]
+        == "projects/test-project/subscribers/test-sub"
+    )
 
     assert len(requests) == 1
     assert requests[0]["method"] == "PATCH"
@@ -345,7 +348,7 @@ async def test_delete_subscriber(
     )
 
     assert result.name == "projects/test-project/operations/op-delete"
-    assert result.done
+    assert result.operation.done
 
     assert len(requests) == 1
     assert requests[0]["method"] == "DELETE"

@@ -21,6 +21,7 @@ for point in steps_result.data_points:
 ```
 """
 
+import asyncio
 import re
 from datetime import date, datetime, timezone, timedelta, tzinfo
 from typing import Any, Generic, List, TypeVar
@@ -31,6 +32,7 @@ from mashumaro import DataClassDictMixin
 from .auth import AbstractAuth
 from .client import GoogleHealthSession
 from .const import HealthApiScope
+from .exceptions import OperationError
 from .model import (
     ACTIVE_ENERGY_BURNED,
     BASAL_ENERGY_BURNED,
@@ -145,6 +147,8 @@ __all__ = [
     "RollupDataPointSubApi",
     "BmiSubApi",
     "PairedDevicesSubApi",
+    "OperationsSubApi",
+    "PendingOperation",
     "SubscriptionsSubApi",
     "SubscribersSubApi",
 ]
@@ -818,6 +822,152 @@ class SubscriptionsSubApi:
         await self._session.delete(f"v4/{name}")
 
 
+class OperationsSubApi:
+    """Client providing namespaced access to long-running operations.
+
+    Operations are returned by mutation endpoints (e.g., subscriber create,
+    patch, and delete) and represent work that may not have completed yet.
+
+    Example usage::
+
+        # Get the current status of an operation by name
+        op = await api.operations.get("projects/my-project/operations/op-123")
+        print(op.done, op.error)
+
+        # Wait for an operation to complete (polls until done)
+        final = await api.operations.wait(op)
+    """
+
+    def __init__(self, session: GoogleHealthSession) -> None:
+        """Initialize the operations client."""
+        self._session = session
+
+    async def get(self, name: str) -> Operation:
+        """Retrieve the current status of a long-running operation.
+
+        Args:
+            name: Full operation resource name, e.g.
+                ``"projects/my-project/operations/op-123"``.
+
+        Returns:
+            The current state of the Operation.
+        """
+        resp = await self._session.get(f"v4/{name}")
+        raw_json = await resp.json()
+        return Operation.from_dict(raw_json)
+
+    async def wait(
+        self,
+        operation: Operation,
+        *,
+        poll_interval: float = 2.0,
+        timeout: float = 60.0,
+    ) -> Operation:
+        """Poll an operation until it completes.
+
+        Repeatedly calls :meth:`get` until the operation's ``done`` field is
+        ``True``, sleeping for *poll_interval* seconds between each poll.
+
+        Args:
+            operation: The operation to wait on.
+            poll_interval: Seconds to sleep between polls (default 2.0).
+            timeout: Maximum seconds to wait before raising ``TimeoutError``
+                (default 60.0).
+
+        Returns:
+            The completed Operation.
+
+        Raises:
+            OperationError: If the operation completes with an error status.
+            TimeoutError: If the operation does not complete within *timeout*.
+        """
+        async with asyncio.timeout(timeout):
+            current = operation
+            while not current.done:
+                await asyncio.sleep(poll_interval)
+                current = await self.get(current.name)
+        if current.error is not None:
+            raise OperationError(current.error)
+        return current
+
+
+class PendingOperation:
+    """A long-running operation handle returned by mutation endpoints.
+
+    ``PendingOperation`` wraps an :class:`Operation` and provides a convenient
+    :meth:`wait` method to poll until the operation completes and return the
+    final :class:`Operation` result.
+
+    Typical usage::
+
+        # Start a mutation and wait for it to complete
+        pending = await api.subscribers.create(project="my-project", ...)
+        completed = await pending.wait()
+        print(f"Operation finished: {completed.response}")
+
+        # Custom poll interval and timeout
+        completed = await pending.wait(poll_interval=5.0, timeout=120.0)
+
+        # The operation name is available for logging
+        print(f"Waiting on {pending.name}")
+
+        # Access the initial Operation snapshot if needed
+        initial = pending.operation
+    """
+
+    def __init__(self, operation: Operation, operations: OperationsSubApi) -> None:
+        """Initialize the pending operation.
+
+        Args:
+            operation: The initial Operation resource.
+            operations: The OperationsSubApi used for polling.
+        """
+        self._operation = operation
+        self._operations = operations
+
+    @property
+    def operation(self) -> Operation:
+        """The initial Operation resource snapshot.
+
+        This reflects the state at the time the mutation endpoint was called.
+        To get the current state, use :meth:`wait` or call
+        ``api.operations.get(pending.name)``.
+        """
+        return self._operation
+
+    @property
+    def name(self) -> str:
+        """Full resource name of the operation (e.g. ``"projects/.../operations/..."``).
+
+        This is an immutable identifier useful for logging or passing to
+        ``api.operations.get()`` directly.
+        """
+        return self._operation.name
+
+    async def wait(
+        self,
+        *,
+        poll_interval: float = 2.0,
+        timeout: float = 60.0,
+    ) -> Operation:
+        """Poll until this operation completes.
+
+        Args:
+            poll_interval: Seconds to sleep between polls (default 2.0).
+            timeout: Maximum seconds to wait (default 60.0).
+
+        Returns:
+            The completed Operation with final state.
+
+        Raises:
+            OperationError: If the operation completes with an error status.
+            TimeoutError: If the operation does not complete within *timeout*.
+        """
+        return await self._operations.wait(
+            self._operation, poll_interval=poll_interval, timeout=timeout
+        )
+
+
 class SubscribersSubApi:
     """Client providing namespaced operations for subscribers."""
 
@@ -826,6 +976,7 @@ class SubscribersSubApi:
     def __init__(self, session: GoogleHealthSession) -> None:
         """Initialize the subscribers client."""
         self._session = session
+        self._operations = OperationsSubApi(session)
         self.subscriptions = SubscriptionsSubApi(session)
 
     @property
@@ -845,8 +996,11 @@ class SubscribersSubApi:
         endpoint_authorization_secret: str,
         subscriber_configs: List[SubscriberConfig] | None = None,
         subscriber_id: str | None = None,
-    ) -> Operation:
+    ) -> PendingOperation:
         """Create a new subscriber endpoint.
+
+        Returns a :class:`PendingOperation` that can be awaited for completion
+        via :meth:`PendingOperation.wait`.
 
         Args:
             project: Google Cloud project ID or "projects/my-project".
@@ -877,15 +1031,18 @@ class SubscribersSubApi:
             params=params,
         )
         raw_json = await resp.json()
-        return Operation.from_dict(raw_json)
+        return PendingOperation(Operation.from_dict(raw_json), self._operations)
 
     async def patch(
         self,
         name: str,
         subscriber: Subscriber,
         update_mask: str | None = None,
-    ) -> Operation:
+    ) -> PendingOperation:
         """Update a subscriber endpoint configuration.
+
+        Returns a :class:`PendingOperation` that can be awaited for completion
+        via :meth:`PendingOperation.wait`.
 
         Args:
             name: Full subscriber resource name, e.g. "projects/my-project/subscribers/my-sub".
@@ -902,7 +1059,7 @@ class SubscribersSubApi:
             params=params,
         )
         raw_json = await resp.json()
-        return Operation.from_dict(raw_json)
+        return PendingOperation(Operation.from_dict(raw_json), self._operations)
 
     async def list(
         self,
@@ -934,8 +1091,11 @@ class SubscribersSubApi:
         first_page = await fetch_page(page_token)
         return ListSubscribersResult(first_page, fetch_page)
 
-    async def delete(self, name: str, force: bool = False) -> Operation:
+    async def delete(self, name: str, force: bool = False) -> PendingOperation:
         """Delete a subscriber registration.
+
+        Returns a :class:`PendingOperation` that can be awaited for completion
+        via :meth:`PendingOperation.wait`.
 
         Args:
             name: Full subscriber resource name.
@@ -950,7 +1110,7 @@ class SubscribersSubApi:
             params=params,
         )
         raw_json = await resp.json()
-        return Operation.from_dict(raw_json)
+        return PendingOperation(Operation.from_dict(raw_json), self._operations)
 
 
 class GoogleHealthApi:
@@ -1086,6 +1246,9 @@ class GoogleHealthApi:
     subscribers: SubscribersSubApi
     """Namespaced client for managing webhook subscriber endpoints and subscriptions."""
 
+    operations: OperationsSubApi
+    """Namespaced client for retrieving and waiting on long-running operations."""
+
     def __init__(self, auth: AbstractAuth) -> None:
         """Initialize the client."""
         self._session = GoogleHealthSession(auth, auth._websession, auth._host)
@@ -1159,6 +1322,7 @@ class GoogleHealthApi:
             self._session, CALORIES_IN_HEART_RATE_ZONE
         )
         self.paired_devices = PairedDevicesSubApi(self._session)
+        self.operations = OperationsSubApi(self._session)
         self.subscribers = SubscribersSubApi(self._session)
 
     async def get_profile(self, user: str = "me") -> Profile:
