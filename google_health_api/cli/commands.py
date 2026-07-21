@@ -51,7 +51,9 @@ SCOPES = [
 ]
 
 
-fields_var = contextvars.ContextVar("fields", default=None)
+fields_var: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "fields", default=None
+)
 
 
 class CliHealthSession(GoogleHealthSession):
