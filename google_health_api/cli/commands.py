@@ -506,7 +506,7 @@ async def handle_datatype_cmd(
             args.dry_run, "POST" if sub == "create" else "PATCH", path, payload
         )
 
-        dp = DataPoint.from_api_dict(sub_api._data_type, payload)
+        dp = DataPoint.from_api_dict(sub_api.data_type, payload)
         if sub == "create":
             result = await sub_api.create(dp)
         else:

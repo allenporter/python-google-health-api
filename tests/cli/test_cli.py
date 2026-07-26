@@ -160,8 +160,8 @@ def test_cli_raw_json_input(mock_load, mock_setup, capsys) -> None:
 
     mock_steps_subapi = AsyncMock()
     mock_api.steps = mock_steps_subapi
-    mock_steps_subapi._data_type = MagicMock()
-    mock_steps_subapi._data_type.field_name = "steps"
+    mock_steps_subapi.data_type = MagicMock()
+    mock_steps_subapi.data_type.field_name = "steps"
 
     # Setup mock return value for create
     mock_res = MagicMock()
@@ -218,8 +218,8 @@ def test_cli_new_datapoints(mock_load, mock_setup, capsys) -> None:
     # Mock sleep subapi
     mock_sleep_subapi = AsyncMock()
     mock_api.sleep = mock_sleep_subapi
-    mock_sleep_subapi._data_type = MagicMock()
-    mock_sleep_subapi._data_type.field_name = "sleep"
+    mock_sleep_subapi.data_type = MagicMock()
+    mock_sleep_subapi.data_type.field_name = "sleep"
 
     # Setup mock return value for list sleep
     mock_sleep_res = MagicMock(spec=["to_dict"])
@@ -256,8 +256,8 @@ def test_cli_weight_rollup(mock_load, mock_setup, capsys) -> None:
 
     mock_weight_subapi = AsyncMock()
     mock_api.weight = mock_weight_subapi
-    mock_weight_subapi._data_type = MagicMock()
-    mock_weight_subapi._data_type.field_name = "weight"
+    mock_weight_subapi.data_type = MagicMock()
+    mock_weight_subapi.data_type.field_name = "weight"
 
     # Setup mock return value for weight daily_rollup
     mock_rollup_point = MagicMock()
@@ -1014,8 +1014,8 @@ def test_cli_additional_datatypes(mock_load, mock_setup, capsys) -> None:
     for attr_name, cmd_name in datatypes:
         subapi = AsyncMock()
         setattr(mock_api, attr_name, subapi)
-        subapi._data_type = MagicMock()
-        subapi._data_type.field_name = attr_name
+        subapi.data_type = MagicMock()
+        subapi.data_type.field_name = attr_name
         res_mock = MagicMock(
             spec=["data_points", "next_page_token"],
             data_points=[],
@@ -1038,8 +1038,8 @@ def test_cli_datatype_crud_and_options(mock_load, mock_setup, capsys) -> None:
 
     mock_steps_subapi = AsyncMock()
     mock_api.steps = mock_steps_subapi
-    mock_steps_subapi._data_type = MagicMock()
-    mock_steps_subapi._data_type.field_name = "steps"
+    mock_steps_subapi.data_type = MagicMock()
+    mock_steps_subapi.data_type.field_name = "steps"
 
     # get
     mock_dp = MagicMock()
@@ -1133,8 +1133,8 @@ def test_cli_execute_all_pages(mock_load, mock_setup, capsys) -> None:
 
     mock_steps_subapi = AsyncMock()
     mock_api.steps = mock_steps_subapi
-    mock_steps_subapi._data_type = MagicMock()
-    mock_steps_subapi._data_type.field_name = "steps"
+    mock_steps_subapi.data_type = MagicMock()
+    mock_steps_subapi.data_type.field_name = "steps"
     mock_steps_subapi.list.return_value = async_iter()
 
     with patch.object(sys, "argv", ["google-health-cli", "steps", "list", "--all"]):
