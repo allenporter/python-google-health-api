@@ -10,8 +10,8 @@ import pytest
 from aiohttp.web import Application, Request, Response, json_response
 
 from google_health_api import model
-from google_health_api.exceptions import HealthApiException
-from google_health_api.tink import WebhookKeyset
+from google_health_api.exceptions import HealthApiException, WebhookSignatureError
+from google_health_api.tink import KeysetError, WebhookKeyset
 from google_health_api.webhook import WebhookData, WebhookNotification, WebhookVerifier
 
 
@@ -231,9 +231,6 @@ async def test_webhook_verifier_verify_method_exception(
     keyset_json: dict,
 ) -> None:
     """Verify that verify() wraps KeysetError into WebhookSignatureError."""
-    from google_health_api.exceptions import WebhookSignatureError
-    from google_health_api.tink import KeysetError
-
     app = Application()
 
     async def handler(request: Request) -> Response:

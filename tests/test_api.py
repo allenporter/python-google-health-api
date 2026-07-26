@@ -1,14 +1,15 @@
 """Tests for Google Health library API."""
 
 from collections.abc import AsyncGenerator
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
+from datetime import timezone as dt_timezone
 from typing import Any
 
 import aiohttp
 import pytest
 
 from google_health_api.api import GoogleHealthApi
-from google_health_api.model import DataPoint, DataSource, Date
+from google_health_api.model import DataPoint, DataSource, Date, Settings
 from google_health_api.model.activity import (
     BasalEnergyBurned,
     Distance,
@@ -572,9 +573,6 @@ async def test_list_steps_timezone_conversion(
     """Test listing steps with timezone conversion to UTC."""
     list_response.append({"dataPoints": [FAKE_STEPS_PAYLOAD]})
 
-    from datetime import timedelta
-    from datetime import timezone as dt_timezone
-
     est = dt_timezone(timedelta(hours=-5))
     start = datetime(2026, 6, 22, 3, 0, 0, tzinfo=est)  # 08:00:00Z
     end = datetime(2026, 6, 22, 4, 0, 0, tzinfo=est)  # 09:00:00Z
@@ -978,7 +976,6 @@ async def test_timezone_caching(
 
     # Call update_settings: should update cache
     patch_response.append({"name": "users/me/settings", "timeZone": "Europe/London"})
-    from google_health_api.model import Settings
 
     await api.update_settings(
         Settings(name="users/me/settings", time_zone="Europe/London")

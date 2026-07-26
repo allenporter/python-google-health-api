@@ -1,6 +1,7 @@
 """Tests for the Google Health CLI."""
 
 import json
+import os
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -43,8 +44,6 @@ def test_validate_resource_name() -> None:
 
 def test_validate_safe_path(tmp_path) -> None:
     """Test local path sandboxing validation rules."""
-    import os
-
     # Sandbox to current directory
     cwd = os.path.abspath(os.getcwd())
 
