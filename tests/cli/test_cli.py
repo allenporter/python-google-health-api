@@ -1,8 +1,8 @@
 """Tests for the Google Health CLI."""
 
 import json
-import os
 import sys
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -55,7 +55,7 @@ def test_validate_resource_name_failure(name: str, match: str) -> None:
 def test_validate_safe_path(tmp_path) -> None:
     """Test local path sandboxing validation rules."""
     # Sandbox to current directory
-    cwd = os.path.abspath(os.getcwd())
+    cwd = Path.cwd().resolve()
 
     # Safe relative path resolving within cwd
     validate_safe_path("config.json")
@@ -66,7 +66,7 @@ def test_validate_safe_path(tmp_path) -> None:
         validate_safe_path("../../outside.json")
 
     # Reject absolute path pointing outside CWD
-    outside_dir = os.path.abspath(os.path.join(cwd, "..", "outside_root.json"))
+    outside_dir = str((cwd.parent / "outside_root.json").resolve())
     with pytest.raises(ValueError, match="falls outside"):
         validate_safe_path(outside_dir)
 
@@ -468,7 +468,8 @@ def test_cmd_login_not_tty(tmp_path, monkeypatch, capsys) -> None:
     assert "headless environment" in captured.out
 
 
-def test_cmd_login_web_flow(tmp_path, monkeypatch, capsys) -> None:
+@patch("google_health_api.cli.commands.Flow")
+def test_cmd_login_web_flow(mock_flow_cls, tmp_path, monkeypatch, capsys) -> None:
     """Test login web OAuth flow."""
 
     secret_file = tmp_path / "client_secret.json"
@@ -483,27 +484,28 @@ def test_cmd_login_web_flow(tmp_path, monkeypatch, capsys) -> None:
     )
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
 
-    mock_oauth_flow = MagicMock()
     mock_flow = MagicMock()
-    mock_oauth_flow.Flow.from_client_secrets_file.return_value = mock_flow
+    mock_flow_cls.from_client_secrets_file.return_value = mock_flow
     mock_flow.authorization_url.return_value = ("https://auth.example.com", "state")
     mock_creds = MagicMock()
     mock_creds.to_json.return_value = '{"token": "abc"}'
     mock_flow.credentials = mock_creds
 
-    with patch.dict("sys.modules", {"google_auth_oauthlib.flow": mock_oauth_flow}):
-        # Empty response -> error
-        monkeypatch.setattr("builtins.input", lambda prompt="": "")
-        with pytest.raises(SystemExit):
-            cmd_login(MagicMock())
-
-        # Valid auth code response
-        monkeypatch.setattr("builtins.input", lambda prompt="": "code=auth123")
+    # Empty response -> error
+    monkeypatch.setattr("builtins.input", lambda prompt="": "")
+    with pytest.raises(SystemExit):
         cmd_login(MagicMock())
-        assert mock_flow.fetch_token.called
+
+    # Valid auth code response
+    monkeypatch.setattr("builtins.input", lambda prompt="": "code=auth123")
+    cmd_login(MagicMock())
+    assert mock_flow.fetch_token.called
 
 
-def test_cmd_login_installed_app_flow(tmp_path, monkeypatch, capsys) -> None:
+@patch("google_health_api.cli.commands.InstalledAppFlow")
+def test_cmd_login_installed_app_flow(
+    mock_flow_cls, tmp_path, monkeypatch, capsys
+) -> None:
     """Test login installed app flow."""
 
     secret_file = tmp_path / "client_secret.json"
@@ -516,17 +518,15 @@ def test_cmd_login_installed_app_flow(tmp_path, monkeypatch, capsys) -> None:
     )
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
 
-    mock_oauth_flow = MagicMock()
     mock_flow = MagicMock()
-    mock_oauth_flow.InstalledAppFlow.from_client_secrets_file.return_value = mock_flow
+    mock_flow_cls.from_client_secrets_file.return_value = mock_flow
     mock_creds = MagicMock()
     mock_creds.to_json.return_value = '{"token": "abc"}'
     mock_flow.run_local_server.return_value = mock_creds
 
-    with patch.dict("sys.modules", {"google_auth_oauthlib.flow": mock_oauth_flow}):
-        cmd_login(MagicMock())
-        captured = capsys.readouterr()
-        assert "Logged in successfully" in captured.out
+    cmd_login(MagicMock())
+    captured = capsys.readouterr()
+    assert "Logged in successfully" in captured.out
 
 
 @patch("google_health_api.cli.commands.setup_client")
