@@ -19,8 +19,6 @@ from .model.base import ErrorResponse
 _LOGGER = logging.getLogger(__name__)
 AUTHORIZATION_HEADER = "Authorization"
 
-__all__ = ["GoogleHealthSession", "error_detail"]
-
 
 class GoogleHealthSession:
     """Session wrapper that handles authentication and network requests."""
