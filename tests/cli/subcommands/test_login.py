@@ -1,8 +1,9 @@
 """Tests for login and auth flow CLI commands."""
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -13,6 +14,25 @@ from google_health_api.cli.auth import (
 )
 from google_health_api.cli.subcommands.login import cmd_login
 from tests.cli.conftest import run_cli
+
+
+def run_test_login(
+    args: MagicMock | None = None,
+    client_secret_file: str | None = None,
+    token_file: str | None = None,
+    is_tty: bool = True,
+    input_func: Callable[[str], str] | None = None,
+) -> None:
+    """Helper wrapper to run cmd_login with default test settings."""
+    if args is None:
+        args = MagicMock()
+    cmd_login(
+        args,
+        client_secret_file=client_secret_file,
+        token_file=token_file,
+        is_tty=is_tty,
+        input_func=input_func,
+    )
 
 
 @pytest.mark.asyncio
@@ -78,10 +98,7 @@ def test_cmd_login_missing_client_secret(
 ) -> None:
     """Test login failure when client secret file is missing."""
     with pytest.raises(SystemExit):
-        cmd_login(
-            MagicMock(),
-            client_secret_file=str(tmp_path / "nonexistent.json"),
-        )
+        run_test_login(client_secret_file=str(tmp_path / "nonexistent.json"))
     captured = capsys.readouterr()
     assert "not found" in captured.out
 
@@ -92,11 +109,7 @@ def test_cmd_login_not_tty(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
     secret_file.write_text(json.dumps({"web": {}}))
 
     with pytest.raises(SystemExit):
-        cmd_login(
-            MagicMock(),
-            client_secret_file=str(secret_file),
-            is_tty=False,
-        )
+        run_test_login(client_secret_file=str(secret_file), is_tty=False)
     captured = capsys.readouterr()
     assert "headless environment" in captured.out
 
@@ -125,20 +138,16 @@ def test_cmd_login_web_flow(
 
     # Empty response -> error
     with pytest.raises(SystemExit):
-        cmd_login(
-            MagicMock(),
+        run_test_login(
             client_secret_file=str(secret_file),
             token_file=str(token_file),
-            is_tty=True,
             input_func=lambda prompt="": "",
         )
 
     # Valid auth code response
-    cmd_login(
-        MagicMock(),
+    run_test_login(
         client_secret_file=str(secret_file),
         token_file=str(token_file),
-        is_tty=True,
         input_func=lambda prompt="": "code=auth123",
     )
     assert mock_flow.fetch_token.called
@@ -160,28 +169,21 @@ def test_cmd_login_installed_app_flow(
     mock_creds.to_json.return_value = '{"token": "abc"}'
     mock_flow.run_local_server.return_value = mock_creds
 
-    cmd_login(
-        MagicMock(),
+    run_test_login(
         client_secret_file=str(secret_file),
         token_file=str(token_file),
-        is_tty=True,
     )
     captured = capsys.readouterr()
     assert "Logged in successfully" in captured.out
 
 
-def test_unauthenticated_cli_setup(capsys: pytest.CaptureFixture[str]) -> None:
+def test_unauthenticated_cli_setup(
+    mock_load_credentials: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
     """Test error when setup_client finds no auth token/credentials."""
-    with (
-        patch.dict(
-            "os.environ",
-            {
-                "GOOGLE_HEALTH_CLI_TOKEN_FILE": "non_existent_token.json",
-            },
-            clear=True,
-        ),
-        pytest.raises(SystemExit),
-    ):
+    mock_load_credentials.return_value = None
+
+    with pytest.raises(SystemExit):
         run_cli(["userinfo"])
     captured = capsys.readouterr()
     assert "Not logged in" in captured.out
