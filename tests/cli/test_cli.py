@@ -11,35 +11,34 @@ from google_health_api.cli.validation import validate_resource_name, validate_sa
 from google_health_api.client import GoogleHealthSession
 
 
-def test_validate_resource_name() -> None:
-    """Test resource name input validation rules."""
-    # Safe names should pass without exceptions
-    validate_resource_name("safe-id-123")
-    validate_resource_name("users/me/profile")
+@pytest.mark.parametrize(
+    "name",
+    [
+        "safe-id-123",
+        "users/me/profile",
+    ],
+)
+def test_validate_resource_name_success(name: str) -> None:
+    """Test resource name input validation with valid inputs."""
+    validate_resource_name(name)
 
-    # Reject control characters (ASCII < 32)
-    with pytest.raises(ValueError, match="control characters"):
-        validate_resource_name("device\x00id")
 
-    with pytest.raises(ValueError, match="control characters"):
-        validate_resource_name("device\x1fid")
-
-    # Reject forbidden injection characters
-    with pytest.raises(ValueError, match="forbidden characters"):
-        validate_resource_name("id?fields=name")
-
-    with pytest.raises(ValueError, match="forbidden characters"):
-        validate_resource_name("sub#delete")
-
-    with pytest.raises(ValueError, match="forbidden characters"):
-        validate_resource_name("escape%2e")
-
-    # Reject path traversals
-    with pytest.raises(ValueError, match="path traversal"):
-        validate_resource_name("../parent")
-
-    with pytest.raises(ValueError, match="path traversal"):
-        validate_resource_name("sub\\path")
+@pytest.mark.parametrize(
+    ("name", "match"),
+    [
+        ("device\x00id", "control characters"),
+        ("device\x1fid", "control characters"),
+        ("id?fields=name", "forbidden characters"),
+        ("sub#delete", "forbidden characters"),
+        ("escape%2e", "forbidden characters"),
+        ("../parent", "path traversal"),
+        ("sub\\path", "path traversal"),
+    ],
+)
+def test_validate_resource_name_failure(name: str, match: str) -> None:
+    """Test resource name input validation with invalid inputs raising ValueError."""
+    with pytest.raises(ValueError, match=match):
+        validate_resource_name(name)
 
 
 def test_validate_safe_path(tmp_path) -> None:
