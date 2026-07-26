@@ -8,7 +8,7 @@ import pytest
 from aiohttp import ClientError, ClientResponseError
 
 from google_health_api.auth import AbstractAuth
-from google_health_api.client import GoogleHealthSession, error_detail
+from google_health_api.client import GoogleHealthSession, _error_detail
 from google_health_api.exceptions import (
     HealthApiException,
     HealthApiForbiddenException,
@@ -195,19 +195,19 @@ async def test_raise_for_status_generic_client_error(
 
 @pytest.mark.asyncio
 async def test_error_detail_status_less_than_400() -> None:
-    """Test that error_detail returns None for success status codes (< 400)."""
+    """Test that _error_detail returns None for success status codes (< 400)."""
     resp = AsyncMock(spec=aiohttp.ClientResponse)
     resp.status = 200
-    assert await error_detail(resp) is None
+    assert await _error_detail(resp) is None
 
 
 @pytest.mark.asyncio
 async def test_error_detail_text_raises_client_error() -> None:
-    """Test that error_detail returns None when retrieving response text raises ClientError."""
+    """Test that _error_detail returns None when retrieving response text raises ClientError."""
     resp = AsyncMock(spec=aiohttp.ClientResponse)
     resp.status = 400
     resp.text.side_effect = ClientError("Stream closed")
-    assert await error_detail(resp) is None
+    assert await _error_detail(resp) is None
 
 
 @pytest.mark.parametrize(
@@ -230,8 +230,8 @@ async def test_error_detail_text_raises_client_error() -> None:
 async def test_error_detail_json_variations(
     status: int, payload: str, expected: str | None
 ) -> None:
-    """Test error_detail parsing with various JSON structures and invalid payloads."""
+    """Test _error_detail parsing with various JSON structures and invalid payloads."""
     resp = AsyncMock(spec=aiohttp.ClientResponse)
     resp.status = status
     resp.text.return_value = payload
-    assert await error_detail(resp) == expected
+    assert await _error_detail(resp) == expected

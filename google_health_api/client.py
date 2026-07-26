@@ -84,7 +84,7 @@ class GoogleHealthSession:
         cls, resp: aiohttp.ClientResponse
     ) -> aiohttp.ClientResponse:
         """Raise exceptions on failure methods."""
-        detail = await error_detail(resp)
+        detail = await _error_detail(resp)
         try:
             resp.raise_for_status()
         except aiohttp.ClientResponseError as err:
@@ -101,7 +101,7 @@ class GoogleHealthSession:
         return resp
 
 
-async def error_detail(resp: aiohttp.ClientResponse) -> str | None:
+async def _error_detail(resp: aiohttp.ClientResponse) -> str | None:
     """Returns an error message string from the API response."""
     if resp.status < 400:
         return None
