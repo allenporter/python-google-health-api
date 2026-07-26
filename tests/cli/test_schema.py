@@ -1,10 +1,12 @@
 """Unit tests for CLI schema introspection in google_health_api/cli/schema.py."""
 
+import json
 import sys
 import typing
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -17,6 +19,19 @@ from google_health_api.cli.schema import (
     get_type_name,
 )
 from google_health_api.model import Steps
+
+
+def run_cli(args: list[str]) -> None:
+    """Helper to run the CLI with specific arguments."""
+    with patch.object(sys, "argv", ["google-health-cli", *args]):
+        main()
+
+
+@pytest.fixture
+def mock_load_credentials() -> Generator[MagicMock]:
+    """Fixture to mock load_credentials_or_env."""
+    with patch("google_health_api.cli.commands.load_credentials_or_env") as mock:
+        yield mock
 
 
 def test_get_type_name_union_multi_non_none() -> None:
@@ -155,14 +170,36 @@ def test_get_command_schemas() -> None:
     assert "subscriptions.list" in schemas
 
 
-def test_cli_schema_unknown_command_error(capsys) -> None:
+def test_cli_schema_list(
+    mock_load_credentials: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test listing all schemas via CLI."""
+    run_cli(["schema"])
+    captured = capsys.readouterr()
+    schemas = json.loads(captured.out)
+    assert "steps.list" in schemas
+    assert "profile.get" in schemas
+    assert "userinfo" in schemas
+
+
+def test_cli_schema_details(
+    mock_load_credentials: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test retrieving a specific command schema via CLI."""
+    run_cli(["schema", "steps.list"])
+    captured = capsys.readouterr()
+    schema_details = json.loads(captured.out)
+    assert schema_details["method"] == "GET"
+    assert schema_details["endpoint"] == "v4/users/{user}/dataTypes/steps/dataPoints"
+
+
+def test_cli_schema_unknown_command_error(
+    mock_load_credentials: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
     """Test CLI error handling when introspecting an unknown schema command name."""
-    with patch.object(
-        sys, "argv", ["google-health-cli", "schema", "nonexistent.command"]
-    ):
-        with pytest.raises(SystemExit) as exit_info:
-            main()
-        assert exit_info.value.code == 1
+    with pytest.raises(SystemExit) as exit_info:
+        run_cli(["schema", "nonexistent.command"])
+    assert exit_info.value.code == 1
 
     captured = capsys.readouterr()
     assert "Unknown command for schema lookup: nonexistent.command" in captured.err

@@ -115,29 +115,6 @@ def test_validate_safe_path(tmp_path: Path) -> None:
         validate_safe_path(outside_dir)
 
 
-def test_cli_schema_list(
-    mock_load_credentials: MagicMock, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """Test listing all schemas."""
-    run_cli(["schema"])
-    captured = capsys.readouterr()
-    schemas = json.loads(captured.out)
-    assert "steps.list" in schemas
-    assert "profile.get" in schemas
-    assert "userinfo" in schemas
-
-
-def test_cli_schema_details(
-    mock_load_credentials: MagicMock, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """Test retrieving a specific command schema."""
-    run_cli(["schema", "steps.list"])
-    captured = capsys.readouterr()
-    schema_details = json.loads(captured.out)
-    assert schema_details["method"] == "GET"
-    assert schema_details["endpoint"] == "v4/users/{user}/dataTypes/steps/dataPoints"
-
-
 def test_cli_validation_rejection(
     mock_load_credentials: MagicMock, capsys: pytest.CaptureFixture[str]
 ) -> None:
