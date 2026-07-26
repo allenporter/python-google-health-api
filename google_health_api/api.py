@@ -1258,9 +1258,15 @@ class GoogleHealthApi:
     operations: OperationsSubApi
     """Namespaced client for retrieving and waiting on long-running operations."""
 
-    def __init__(self, auth: AbstractAuth) -> None:
+    def __init__(
+        self,
+        auth: AbstractAuth,
+        session: GoogleHealthSession | None = None,
+    ) -> None:
         """Initialize the client."""
-        self._session = GoogleHealthSession(auth, auth._websession, auth._host)
+        self._session = session or GoogleHealthSession(
+            auth, auth._websession, auth._host
+        )
         self.steps = RollupDataPointSubApi(self._session, STEPS)
         self.heart_rate = RollupDataPointSubApi(self._session, HEART_RATE)
         self.sleep = DataPointSubApi(self._session, SLEEP)

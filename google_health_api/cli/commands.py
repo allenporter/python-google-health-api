@@ -168,45 +168,13 @@ async def setup_client(session: aiohttp.ClientSession) -> GoogleHealthApi:
     else:
         auth = CredentialsAuth(session, auth_data[1], host=host)
 
-    api = GoogleHealthApi(auth)
-    # Inject CliHealthSession
-    api._session = CliHealthSession(
+    cli_session = CliHealthSession(
         auth,
         session,
         host,
         user_info_url=os.environ.get("GOOGLE_HEALTH_USERINFO_URL"),
     )
-    # Update nested api classes with the new session
-    api.steps._session = api._session
-    api.heart_rate._session = api._session
-    api.sleep._session = api._session
-    api.distance._session = api._session
-    api.basal_energy_burned._session = api._session
-    api.vo2_max._session = api._session
-    api.weight._session = api._session
-    api.height._session = api._session
-    api.oxygen_saturation._session = api._session
-    api.daily_oxygen_saturation._session = api._session
-    api.exercise._session = api._session
-    api.electrocardiogram._session = api._session
-    api.irregular_rhythm_notification._session = api._session
-    api.daily_vo2_max._session = api._session
-    api.daily_heart_rate_zones._session = api._session
-    api.daily_sleep_temperature_derivations._session = api._session
-    api.daily_respiratory_rate._session = api._session
-    api.respiratory_rate_sleep_summary._session = api._session
-    api.active_energy_burned._session = api._session
-    api.total_calories._session = api._session
-    api.floors._session = api._session
-    api.hydration_log._session = api._session
-    api.daily_resting_heart_rate._session = api._session
-    api.heart_rate_variability._session = api._session
-    api.daily_heart_rate_variability._session = api._session
-    api.nutrition_log._session = api._session
-    api.paired_devices._session = api._session
-    api.subscribers._session = api._session
-    api.subscribers.subscriptions._session = api._session
-    return api
+    return GoogleHealthApi(auth, session=cli_session)
 
 
 async def handle_datatype_cmd(
