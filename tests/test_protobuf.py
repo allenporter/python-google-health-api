@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from typing import Any
+
 import pytest
 
 from google_health_api._protobuf import (

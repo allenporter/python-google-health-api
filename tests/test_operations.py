@@ -9,6 +9,7 @@ import pytest
 from google_health_api.api import GoogleHealthApi, PendingOperation
 from google_health_api.exceptions import OperationError
 from google_health_api.model import Operation
+
 from .conftest import AuthCallback
 
 
@@ -32,7 +33,7 @@ async def mock_api(
     auth_cb: AuthCallback,
     requests: list[dict[str, Any]],
     api_responses: dict[str, list[dict[str, Any]]],
-) -> AsyncGenerator[GoogleHealthApi, None]:
+) -> AsyncGenerator[GoogleHealthApi]:
     """Fixture to create the mock GoogleHealthApi client with operation endpoints."""
 
     async def get_operation_handler(

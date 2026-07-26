@@ -32,7 +32,7 @@ class OperationError(GoogleHealthApiError):
             the error code, message, and optional details.
     """
 
-    def __init__(self, status: "Status") -> None:
+    def __init__(self, status: Status) -> None:
         """Initialize the operation error.
 
         Args:

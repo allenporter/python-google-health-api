@@ -187,9 +187,9 @@ async def test_webhook_verifier_hard_expire(
     )
 
     verifier._cached_keyset = WebhookKeyset.from_dict(keyset_json)
-    verifier._last_fetched = datetime.datetime.now(
-        datetime.timezone.utc
-    ) - datetime.timedelta(days=10)
+    verifier._last_fetched = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
+        days=10
+    )
 
     with pytest.raises(
         HealthApiException, match="Failed to fetch Webhook Keyset from network."
@@ -258,7 +258,7 @@ async def test_webhook_verifier_verify_method_exception(
 def test_can_use_cache_none() -> None:
     """Verify that _can_use_cache returns False if keyset is empty."""
     verifier = WebhookVerifier(websession=None)  # type: ignore
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.UTC)
     assert not verifier._can_use_cache(now)
 
 
@@ -280,7 +280,8 @@ async def test_webhook_verifier_empty_cache(
         keyset_url="/keyset",
     )
 
-    # Mock from_dict to return None to simulate a failed parse that didn't raise
-    with patch("google_health_api.tink.WebhookKeyset.from_dict", return_value=None):
-        with pytest.raises(HealthApiException, match="Keyset is not available."):
-            await verifier._get_keyset()
+    with (
+        patch("google_health_api.tink.WebhookKeyset.from_dict", return_value=None),
+        pytest.raises(HealthApiException, match="Keyset is not available."),
+    ):
+        await verifier._get_keyset()

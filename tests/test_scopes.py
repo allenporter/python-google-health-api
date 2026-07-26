@@ -1,6 +1,7 @@
 """Tests for the OAuth scope querying and mapping properties in the SDK."""
 
 from unittest.mock import MagicMock
+
 import aiohttp
 
 from google_health_api.api import GoogleHealthApi

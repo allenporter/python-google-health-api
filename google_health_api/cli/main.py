@@ -4,7 +4,7 @@ import argparse
 import asyncio
 import sys
 
-from .commands import cmd_login, async_run_cmd, print_json
+from .commands import async_run_cmd, cmd_login, print_json
 from .schema import get_command_schemas
 
 

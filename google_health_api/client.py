@@ -2,10 +2,10 @@
 
 import logging
 from http import HTTPStatus
-from typing import Any, TypeVar
+from typing import Any
+
 import aiohttp
 from aiohttp.client_exceptions import ClientError
-from mashumaro.mixins.json import DataClassJSONMixin
 
 from .auth import AbstractAuth
 from .const import HEALTH_API_URL
@@ -18,8 +18,6 @@ from .model.base import ErrorResponse
 
 _LOGGER = logging.getLogger(__name__)
 AUTHORIZATION_HEADER = "Authorization"
-
-_T = TypeVar("_T", bound=DataClassJSONMixin)
 
 
 class GoogleHealthSession:
@@ -55,7 +53,7 @@ class GoogleHealthSession:
         if AUTHORIZATION_HEADER not in headers:
             headers[AUTHORIZATION_HEADER] = f"Bearer {access_token}"
 
-        if not (url.startswith("http://") or url.startswith("https://")):
+        if not url.startswith(("http://", "https://")):
             url = f"{self._host}/{url}"
 
         _LOGGER.debug("request[%s]=%s %s", method, url, kwargs.get("params"))

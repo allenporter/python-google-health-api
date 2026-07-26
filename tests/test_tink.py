@@ -3,10 +3,11 @@
 import base64
 import json
 from dataclasses import dataclass
+
+import pytest
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
-import pytest
 
 from google_health_api.tink import (
     EcdsaPublicKey,
@@ -167,7 +168,7 @@ def test_verify_signature_malformed_base64(keyset_ctx: KeysetTestContext) -> Non
 
 def test_keyset_key_malformed_base64() -> None:
     """Verify that bad base64 in the key material raises gracefully."""
-    from google_health_api.tink import KeysetKey, KeyData
+    from google_health_api.tink import KeyData, KeysetKey
 
     key = KeysetKey(
         key_data=KeyData(type_url="", value="invalid_base64!!!", key_material_type=""),
@@ -189,6 +190,7 @@ def test_ecdsa_public_key_deserialization_protobuf_error() -> None:
 def test_tink_no_cryptography_to_cryptography_key() -> None:
     """Verify that to_cryptography_key raises when cryptography is missing."""
     from unittest.mock import patch
+
     from google_health_api import tink
 
     with patch.object(tink, "_HAS_CRYPTOGRAPHY", False):
@@ -200,6 +202,7 @@ def test_tink_no_cryptography_to_cryptography_key() -> None:
 def test_tink_no_cryptography_verify_signature() -> None:
     """Verify that verify_signature raises when cryptography is missing."""
     from unittest.mock import patch
+
     from google_health_api import tink
 
     with patch.object(tink, "_HAS_CRYPTOGRAPHY", False):

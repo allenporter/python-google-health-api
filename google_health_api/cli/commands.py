@@ -5,28 +5,28 @@ import contextvars
 import json
 import os
 import sys
-from datetime import date, datetime, timezone, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, NoReturn
 from zoneinfo import ZoneInfo
+
 import aiohttp
 
 from google_health_api.api import GoogleHealthApi
 from google_health_api.auth import AbstractAuth
 from google_health_api.client import GoogleHealthSession
-from google_health_api.const import HealthApiScope, HEALTH_API_URL
+from google_health_api.const import HEALTH_API_URL, HealthApiScope
 from google_health_api.exceptions import HealthApiException
 from google_health_api.model import (
+    DataPoint,
     Profile,
+    ReconciledDataPoint,
     Settings,
     Subscriber,
     SubscriberConfig,
     Subscription,
-    DataPoint,
-    ReconciledDataPoint,
 )
 
-
-from .validation import validate_resource_name, check_dry_run
+from .validation import check_dry_run, validate_resource_name
 
 TOKEN_FILE = "token.json"
 CLIENT_SECRET_FILE = "client_secret.json"
@@ -132,7 +132,7 @@ def load_credentials_or_env():
         else:
             dt = datetime.fromisoformat(expiry_str)
             if dt.tzinfo is not None:
-                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+                dt = dt.astimezone(UTC).replace(tzinfo=None)
             expiry = dt
 
     creds = Credentials(
@@ -413,7 +413,7 @@ async def handle_datatype_cmd(
         if "startTime" in params:
             start_time = datetime.fromisoformat(params["startTime"])
         else:
-            end_time = datetime.now(timezone.utc)
+            end_time = datetime.now(UTC)
             start_time = end_time - timedelta(days=days)
 
         if "endTime" in params:
@@ -1397,6 +1397,6 @@ async def async_run_cmd(args) -> None:
                 await handle_subscriptions_cmd(args, api, pretty)
         except HealthApiException as err:
             print_error_json(str(err))
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001
             # Trap unexpected crashes to return standard JSON errors for agents
             print_error_json(f"Unexpected error: {err}")

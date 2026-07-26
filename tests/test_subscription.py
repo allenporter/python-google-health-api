@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncGenerator
 from typing import Any
+
 import aiohttp
 import pytest
 
@@ -12,6 +13,7 @@ from google_health_api.model import (
     SubscriberConfig,
     Subscription,
 )
+
 from .conftest import AuthCallback
 
 
@@ -41,7 +43,7 @@ async def mock_api(
     auth_cb: AuthCallback,
     requests: list[dict[str, Any]],
     api_responses: dict[str, list[dict[str, Any]]],
-) -> AsyncGenerator[GoogleHealthApi, None]:
+) -> AsyncGenerator[GoogleHealthApi]:
     """Fixture to create the mock GoogleHealthApi client with subscriber/subscription endpoints."""
 
     async def create_subscriber_handler(

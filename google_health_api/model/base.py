@@ -1,7 +1,7 @@
 """Base classes and registry structures for Google Health API data models."""
 
 from dataclasses import dataclass, field
-from typing import Any, Generic, TypeVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, TypeVar
 
 if TYPE_CHECKING:
     from .sleep import CivilDateTime
@@ -13,7 +13,7 @@ from mashumaro.mixins.json import DataClassJSONMixin
 T = TypeVar("T", bound=DataClassDictMixin)
 
 
-class DataType(Generic[T]):
+class DataType[T: DataClassDictMixin]:
     """Represents a Google Health data type and carries its serialization metadata."""
 
     def __init__(
@@ -84,7 +84,7 @@ class DataSource(DataClassDictMixin):
 
 
 @dataclass
-class DataPoint(Generic[T]):
+class DataPoint[T: DataClassDictMixin]:
     """Generic DataPoint containing typed metadata and payload."""
 
     data: T
@@ -114,7 +114,7 @@ class DataPoint(Generic[T]):
 
 
 @dataclass
-class ReconciledDataPoint(Generic[T]):
+class ReconciledDataPoint[T: DataClassDictMixin]:
     """Generic ReconciledDataPoint representing consolidated data points."""
 
     data_point: DataPoint[T]
@@ -152,7 +152,7 @@ R = TypeVar("R", bound=DataClassDictMixin)
 
 
 @dataclass
-class DailyRollupDataPoint(Generic[R]):
+class DailyRollupDataPoint[R: DataClassDictMixin]:
     """Generic DailyRollupDataPoint representing consolidated rollup data points."""
 
     data: R

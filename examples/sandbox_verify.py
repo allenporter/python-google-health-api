@@ -7,14 +7,15 @@ import asyncio
 import os
 import sys
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
+
 import aiohttp
 
 from google_health_api.api import GoogleHealthApi
 from google_health_api.auth import AbstractAuth
+from google_health_api.exceptions import GoogleHealthApiError
 from google_health_api.model import DataPoint, DataSource
 from google_health_api.model.activity import ObservationTimeInterval, Steps
-from google_health_api.exceptions import GoogleHealthApiError
 
 
 class EnvAuth(AbstractAuth):
@@ -73,7 +74,7 @@ async def verify_steps(api: GoogleHealthApi) -> None:
     """Verify listing and creating/deleting step count records."""
     print("\n=== STEPS VERIFICATION ===")
     print("1. Listing steps for the past 7 days...")
-    end = datetime.now(timezone.utc)
+    end = datetime.now(UTC)
     start = end - timedelta(days=7)
 
     list_res = await api.steps.list(start_time=start, end_time=end, page_size=5)
@@ -92,11 +93,9 @@ async def verify_steps(api: GoogleHealthApi) -> None:
 
     # 3. Create, Get, and Delete a temporary data point
     print("\n3. Creating temporary step record (120 steps)...")
-    now_str = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    now_str = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     future_str = (
-        (datetime.now(timezone.utc) + timedelta(minutes=15))
-        .isoformat()
-        .replace("+00:00", "Z")
+        (datetime.now(UTC) + timedelta(minutes=15)).isoformat().replace("+00:00", "Z")
     )
 
     steps_payload = Steps(
@@ -134,7 +133,7 @@ async def verify_heart_rate(api: GoogleHealthApi) -> None:
     """Verify listing heart rate records."""
     print("\n=== HEART RATE VERIFICATION ===")
     print("1. Listing heart rate records for the past 7 days...")
-    end = datetime.now(timezone.utc)
+    end = datetime.now(UTC)
     start = end - timedelta(days=7)
 
     list_res = await api.heart_rate.list(start_time=start, end_time=end, page_size=5)
@@ -158,7 +157,7 @@ async def main() -> None:
             await verify_steps(api)
             await verify_heart_rate(api)
             print("\nVerification completed successfully!")
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001
             print(f"\nVerification failed with unexpected error: {err}")
             sys.exit(1)
 

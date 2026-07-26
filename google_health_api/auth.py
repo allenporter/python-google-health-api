@@ -1,6 +1,7 @@
 """API for Google Health OAuth."""
 
 from abc import ABC, abstractmethod
+
 import aiohttp
 
 from .const import HEALTH_API_URL

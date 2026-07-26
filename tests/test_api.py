@@ -1,61 +1,62 @@
 """Tests for Google Health library API."""
 
 from collections.abc import AsyncGenerator
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
+
 import aiohttp
 import pytest
+
 from google_health_api.api import GoogleHealthApi
-from google_health_api.model import DataPoint, DataSource
-from google_health_api.model import Date
+from google_health_api.model import DataPoint, DataSource, Date
 from google_health_api.model.activity import (
+    BasalEnergyBurned,
+    Distance,
+    Floors,
     ObservationTimeInterval,
     Steps,
-    Distance,
-    BasalEnergyBurned,
-    Floors,
-)
-from google_health_api.model.health_metric import (
-    VO2Max,
-    Weight,
-    Height,
-    OxygenSaturation,
-    DailyOxygenSaturation,
-    ObservationSampleTime,
-    DailyRestingHeartRate,
-    DailyRestingHeartRateMetadata,
-)
-from google_health_api.model.sleep import (
-    Sleep,
-    SessionTimeInterval,
-    SleepStage,
-    DailySleepTemperatureDerivations,
-)
-from google_health_api.model.hydration import HydrationLog, VolumeQuantity
-from google_health_api.model.heart import (
-    Electrocardiogram,
-    IrregularRhythmNotification,
-    MedicalDeviceInfo,
-    HeartBeat,
-    AlertWindow,
-)
-from google_health_api.model.respiratory import (
-    DailyRespiratoryRate,
-    RespiratoryRateSleepSummary,
-    RespiratoryRateSleepSummaryStatistics,
-)
-from google_health_api.model.fitness import (
-    DailyVO2Max,
-    DailyHeartRateZones,
-    HeartRateZone,
 )
 from google_health_api.model.exercise import (
     Exercise,
     ExerciseMetadata,
     MetricsSummary,
 )
-from .conftest import AuthCallback
+from google_health_api.model.fitness import (
+    DailyHeartRateZones,
+    DailyVO2Max,
+    HeartRateZone,
+)
+from google_health_api.model.health_metric import (
+    DailyOxygenSaturation,
+    DailyRestingHeartRate,
+    DailyRestingHeartRateMetadata,
+    Height,
+    ObservationSampleTime,
+    OxygenSaturation,
+    VO2Max,
+    Weight,
+)
+from google_health_api.model.heart import (
+    AlertWindow,
+    Electrocardiogram,
+    HeartBeat,
+    IrregularRhythmNotification,
+    MedicalDeviceInfo,
+)
+from google_health_api.model.hydration import HydrationLog, VolumeQuantity
+from google_health_api.model.respiratory import (
+    DailyRespiratoryRate,
+    RespiratoryRateSleepSummary,
+    RespiratoryRateSleepSummaryStatistics,
+)
+from google_health_api.model.sleep import (
+    DailySleepTemperatureDerivations,
+    SessionTimeInterval,
+    Sleep,
+    SleepStage,
+)
 
+from .conftest import AuthCallback
 
 FAKE_STEPS_PAYLOAD = {
     "name": "users/me/dataTypes/steps/dataPoints/point-1",
@@ -125,7 +126,7 @@ async def mock_api(
     get_response: list[dict[str, Any]],
     create_response: list[dict[str, Any]],
     patch_response: list[dict[str, Any]],
-) -> AsyncGenerator[GoogleHealthApi, None]:
+) -> AsyncGenerator[GoogleHealthApi]:
     """Fixture to create the mock GoogleHealthApi client."""
 
     async def list_handler(request: aiohttp.web.Request) -> aiohttp.web.Response:
@@ -242,8 +243,8 @@ async def test_list_steps(
         {"dataPoints": [FAKE_STEPS_PAYLOAD], "nextPageToken": "token-xyz"}
     )
 
-    start = datetime(2026, 6, 22, 8, 0, 0, tzinfo=timezone.utc)
-    end = datetime(2026, 6, 22, 9, 0, 0, tzinfo=timezone.utc)
+    start = datetime(2026, 6, 22, 8, 0, 0, tzinfo=UTC)
+    end = datetime(2026, 6, 22, 9, 0, 0, tzinfo=UTC)
 
     result = await api.steps.list(start_time=start, end_time=end, page_size=50)
     assert len(result.data_points) == 1
@@ -571,7 +572,8 @@ async def test_list_steps_timezone_conversion(
     """Test listing steps with timezone conversion to UTC."""
     list_response.append({"dataPoints": [FAKE_STEPS_PAYLOAD]})
 
-    from datetime import timezone as dt_timezone, timedelta
+    from datetime import timedelta
+    from datetime import timezone as dt_timezone
 
     est = dt_timezone(timedelta(hours=-5))
     start = datetime(2026, 6, 22, 3, 0, 0, tzinfo=est)  # 08:00:00Z
@@ -622,8 +624,8 @@ async def test_sleep_crud(
 
     # 1. List
     list_response.append({"dataPoints": [fake_sleep_payload]})
-    start = datetime(2026, 6, 22, 22, 0, 0, tzinfo=timezone.utc)
-    end = datetime(2026, 6, 23, 6, 0, 0, tzinfo=timezone.utc)
+    start = datetime(2026, 6, 22, 22, 0, 0, tzinfo=UTC)
+    end = datetime(2026, 6, 23, 6, 0, 0, tzinfo=UTC)
     result = await api.sleep.list(start_time=start, end_time=end)
     assert len(result.data_points) == 1
     assert result.data_points[0].data.start_time == "2026-06-22T22:00:00Z"
@@ -1057,8 +1059,8 @@ async def test_bmi_list(
     list_response.append(fake_heights_payload)
 
     # 3. Call api.bmi.list()
-    start_time = datetime(2026, 7, 18, tzinfo=timezone.utc)
-    end_time = datetime(2026, 7, 20, tzinfo=timezone.utc)
+    start_time = datetime(2026, 7, 18, tzinfo=UTC)
+    end_time = datetime(2026, 7, 20, tzinfo=UTC)
     result = await api.bmi.list(start_time=start_time, end_time=end_time)
 
     # 4. Assert requests were made properly

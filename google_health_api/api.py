@@ -22,9 +22,11 @@ for point in steps_result.data_points:
 """
 
 import asyncio
+import builtins
 import re
-from datetime import date, datetime, timezone, timedelta, tzinfo
-from typing import Any, Generic, List, TypeVar
+from collections.abc import Sequence
+from datetime import UTC, date, datetime, timedelta, tzinfo
+from typing import Any, TypeVar
 from zoneinfo import ZoneInfo
 
 from mashumaro import DataClassDictMixin
@@ -35,103 +37,103 @@ from .const import HealthApiScope
 from .exceptions import OperationError
 from .model import (
     ACTIVE_ENERGY_BURNED,
+    ACTIVE_MINUTES,
+    ACTIVE_ZONE_MINUTES,
+    ACTIVITY_LEVEL,
+    ALTITUDE,
     BASAL_ENERGY_BURNED,
+    BLOOD_GLUCOSE,
+    BODY_FAT,
+    CALORIES_IN_HEART_RATE_ZONE,
+    CORE_BODY_TEMPERATURE,
     DAILY_HEART_RATE_VARIABILITY,
+    DAILY_HEART_RATE_ZONES,
+    DAILY_OXYGEN_SATURATION,
+    DAILY_RESPIRATORY_RATE,
     DAILY_RESTING_HEART_RATE,
+    DAILY_SLEEP_TEMPERATURE_DERIVATIONS,
+    DAILY_VO2_MAX,
     DISTANCE,
+    ELECTROCARDIOGRAM,
+    EXERCISE,
     FLOORS,
     HEART_RATE,
     HEART_RATE_VARIABILITY,
+    HEIGHT,
     HYDRATION_LOG,
+    IRREGULAR_RHYTHM_NOTIFICATION,
     NUTRITION_LOG,
+    OXYGEN_SATURATION,
+    RESPIRATORY_RATE_SLEEP_SUMMARY,
+    RUN_VO2_MAX,
+    SEDENTARY_PERIOD,
     SLEEP,
     STEPS,
+    SWIM_LENGTHS_DATA,
+    TIME_IN_HEART_RATE_ZONE,
     TOTAL_CALORIES,
     VO2_MAX,
     WEIGHT,
-    HEIGHT,
-    ALTITUDE,
-    ACTIVE_MINUTES,
-    ACTIVE_ZONE_MINUTES,
-    SEDENTARY_PERIOD,
-    SWIM_LENGTHS_DATA,
-    ACTIVITY_LEVEL,
-    TIME_IN_HEART_RATE_ZONE,
-    CALORIES_IN_HEART_RATE_ZONE,
-    BLOOD_GLUCOSE,
-    CORE_BODY_TEMPERATURE,
-    BODY_FAT,
-    RUN_VO2_MAX,
-    OXYGEN_SATURATION,
-    DAILY_OXYGEN_SATURATION,
-    EXERCISE,
-    ELECTROCARDIOGRAM,
-    IRREGULAR_RHYTHM_NOTIFICATION,
-    DAILY_RESPIRATORY_RATE,
-    RESPIRATORY_RATE_SLEEP_SUMMARY,
-    DAILY_VO2_MAX,
-    DAILY_HEART_RATE_ZONES,
-    DAILY_SLEEP_TEMPERATURE_DERIVATIONS,
     ActiveEnergyBurned,
+    ActiveMinutes,
+    ActiveZoneMinutes,
+    ActivityLevel,
+    Altitude,
     BasalEnergyBurned,
+    BloodGlucose,
+    Bmi,
+    BodyFat,
     CivilDateTime,
     CivilTimeInterval,
-    DailyRollUpDataPointsRequest,
-    DailyRollupDataPoint,
-    DailyRestingHeartRate,
+    CoreBodyTemperature,
     DailyHeartRateVariability,
+    DailyHeartRateZones,
+    DailyOxygenSaturation,
+    DailyRespiratoryRate,
+    DailyRestingHeartRate,
+    DailyRollupDataPoint,
+    DailyRollUpDataPointsRequest,
+    DailySleepTemperatureDerivations,
+    DailyVO2Max,
     DataPoint,
     DataType,
     Date,
     Distance,
+    Electrocardiogram,
+    Exercise,
     Floors,
     HeartRate,
     HeartRateVariability,
+    Height,
     HydrationLog,
-    NutritionLog,
     Identity,
     IrnProfile,
-    ListPairedDevicesResult,
+    IrregularRhythmNotification,
     ListDataPointResult,
+    ListPairedDevicesResult,
     ListReconciledDataPointsResult,
     ListSubscribersResult,
     ListSubscriptionsResult,
+    NutritionLog,
     Operation,
+    OxygenSaturation,
     PairedDevice,
     Profile,
     ReconciledDataPoint,
+    RespiratoryRateSleepSummary,
+    RunVO2Max,
+    SedentaryPeriod,
     Settings,
     Sleep,
     Steps,
     Subscriber,
     SubscriberConfig,
     Subscription,
+    SwimLengthsData,
+    TimeInHeartRateZone,
     UserInfo,
     VO2Max,
     Weight,
-    Height,
-    Bmi,
-    Altitude,
-    ActiveMinutes,
-    ActiveZoneMinutes,
-    SedentaryPeriod,
-    SwimLengthsData,
-    ActivityLevel,
-    TimeInHeartRateZone,
-    BloodGlucose,
-    CoreBodyTemperature,
-    BodyFat,
-    RunVO2Max,
-    OxygenSaturation,
-    DailyOxygenSaturation,
-    Exercise,
-    Electrocardiogram,
-    IrregularRhythmNotification,
-    DailyRespiratoryRate,
-    RespiratoryRateSleepSummary,
-    DailyVO2Max,
-    DailyHeartRateZones,
-    DailySleepTemperatureDerivations,
     _ListDataPointsModel,
     _ListPairedDevicesModel,
     _ListReconciledDataPointsModel,
@@ -142,15 +144,15 @@ from .model import (
 T = TypeVar("T", bound=DataClassDictMixin)
 
 __all__ = [
-    "GoogleHealthApi",
-    "DataPointSubApi",
-    "RollupDataPointSubApi",
     "BmiSubApi",
-    "PairedDevicesSubApi",
+    "DataPointSubApi",
+    "GoogleHealthApi",
     "OperationsSubApi",
+    "PairedDevicesSubApi",
     "PendingOperation",
-    "SubscriptionsSubApi",
+    "RollupDataPointSubApi",
     "SubscribersSubApi",
+    "SubscriptionsSubApi",
 ]
 
 
@@ -175,7 +177,7 @@ def _build_time_filter(
             iso_start = start_time.strftime("%Y-%m-%d")
         else:
             # Convert to UTC and format as ISO 8601 UTC string (z-normalized)
-            utc_start = start_time.astimezone(timezone.utc)
+            utc_start = start_time.astimezone(UTC)
             iso_start = utc_start.isoformat().replace("+00:00", "Z")
         filters.append(f'{time_field_path} >= "{iso_start}"')
     if end_time and "electrocardiogram" not in time_field_path:
@@ -185,13 +187,13 @@ def _build_time_filter(
             iso_end = end_time.strftime("%Y-%m-%d")
         else:
             # Convert to UTC and format as ISO 8601 UTC string (z-normalized)
-            utc_end = end_time.astimezone(timezone.utc)
+            utc_end = end_time.astimezone(UTC)
             iso_end = utc_end.isoformat().replace("+00:00", "Z")
         filters.append(f'{time_field_path} < "{iso_end}"')
     return " AND ".join(filters) if filters else None
 
 
-class DataPointSubApi(Generic[T]):
+class DataPointSubApi[T: DataClassDictMixin]:
     """Generic client providing namespaced operations for a specific DataType."""
 
     def __init__(self, session: GoogleHealthSession, data_type: DataType[T]) -> None:
@@ -200,12 +202,12 @@ class DataPointSubApi(Generic[T]):
         self._data_type = data_type
 
     @property
-    def required_read_scopes(self) -> List[str]:
+    def required_read_scopes(self) -> Sequence[str]:
         """Return the list of scopes required to read from this API."""
         return self._data_type.read_scopes
 
     @property
-    def required_write_scopes(self) -> List[str]:
+    def required_write_scopes(self) -> Sequence[str]:
         """Return the list of scopes required to write to this API."""
         return self._data_type.write_scopes
 
@@ -376,7 +378,9 @@ class DataPointSubApi(Generic[T]):
         """
         await self.batch_delete([data_point_id], user=user)
 
-    async def batch_delete(self, data_point_ids: List[str], user: str = "me") -> None:
+    async def batch_delete(
+        self, data_point_ids: builtins.list[str], user: str = "me"
+    ) -> None:
         """Batch delete multiple data points in a single request.
 
         Args:
@@ -408,7 +412,7 @@ class RollupDataPointSubApi(DataPointSubApi[T]):
         end_date: date,
         window_size_days: int = 1,
         user: str = "me",
-    ) -> List[DailyRollupDataPoint[Any]]:
+    ) -> list[DailyRollupDataPoint[Any]]:
         """Fetch daily rollup values for this data type.
 
         Args:
@@ -525,12 +529,12 @@ class BmiSubApi:
         self._api = api
 
     @property
-    def required_read_scopes(self) -> List[str]:
+    def required_read_scopes(self) -> Sequence[str]:
         """Return the list of scopes required to read from this API."""
         return [HealthApiScope.MEASUREMENTS_READ]
 
     @property
-    def required_write_scopes(self) -> List[str]:
+    def required_write_scopes(self) -> Sequence[str]:
         """Return the list of scopes required to write to this API."""
         return []
 
@@ -639,12 +643,12 @@ class PairedDevicesSubApi:
         self._session = session
 
     @property
-    def required_read_scopes(self) -> List[str]:
+    def required_read_scopes(self) -> Sequence[str]:
         """Return the list of scopes required to read from this API."""
         return [HealthApiScope.SETTINGS_READ]
 
     @property
-    def required_write_scopes(self) -> List[str]:
+    def required_write_scopes(self) -> Sequence[str]:
         """Return the list of scopes required to write to this API."""
         return []
 
@@ -711,12 +715,12 @@ class SubscriptionsSubApi:
         self._session = session
 
     @property
-    def required_read_scopes(self) -> List[str]:
+    def required_read_scopes(self) -> Sequence[str]:
         """Return the list of scopes required to read from this API."""
         return ["https://www.googleapis.com/auth/cloud-platform"]
 
     @property
-    def required_write_scopes(self) -> List[str]:
+    def required_write_scopes(self) -> Sequence[str]:
         """Return the list of scopes required to write to this API."""
         return ["https://www.googleapis.com/auth/cloud-platform"]
 
@@ -724,7 +728,7 @@ class SubscriptionsSubApi:
         self,
         parent_subscriber: str,
         user: str,
-        data_types: List[str] | None = None,
+        data_types: Sequence[str] | None = None,
         subscription_id: str | None = None,
     ) -> Subscription:
         """Create a user subscription under a parent subscriber.
@@ -980,12 +984,12 @@ class SubscribersSubApi:
         self.subscriptions = SubscriptionsSubApi(session)
 
     @property
-    def required_read_scopes(self) -> List[str]:
+    def required_read_scopes(self) -> Sequence[str]:
         """Return the list of scopes required to read from this API."""
         return ["https://www.googleapis.com/auth/cloud-platform"]
 
     @property
-    def required_write_scopes(self) -> List[str]:
+    def required_write_scopes(self) -> Sequence[str]:
         """Return the list of scopes required to write to this API."""
         return ["https://www.googleapis.com/auth/cloud-platform"]
 
@@ -994,7 +998,7 @@ class SubscribersSubApi:
         project: str,
         endpoint_uri: str,
         endpoint_authorization_secret: str,
-        subscriber_configs: List[SubscriberConfig] | None = None,
+        subscriber_configs: Sequence[SubscriberConfig] | None = None,
         subscriber_id: str | None = None,
     ) -> PendingOperation:
         """Create a new subscriber endpoint.
