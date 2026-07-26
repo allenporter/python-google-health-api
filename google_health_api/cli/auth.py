@@ -63,17 +63,22 @@ class CredentialsAuth(AbstractAuth):
     """Auth wrapper that uses google-auth credentials."""
 
     def __init__(
-        self, websession: aiohttp.ClientSession, credentials, host: str | None = None
+        self,
+        websession: aiohttp.ClientSession,
+        credentials,
+        host: str | None = None,
+        token_file: str | None = None,
     ) -> None:
         super().__init__(websession, host)
         self._credentials = credentials
+        self._token_file = token_file
 
     async def async_get_access_token(self) -> str:
         if not self._credentials.valid:
             loop = asyncio.get_running_loop()
             req = Request()
             await loop.run_in_executor(None, self._credentials.refresh, req)
-            save_credentials(self._credentials)
+            save_credentials(self._credentials, token_file=self._token_file)
         return self._credentials.token
 
 
@@ -90,22 +95,28 @@ class EnvAuth(AbstractAuth):
         return self._token
 
 
-def save_credentials(credentials) -> None:
+def save_credentials(credentials, token_file: str | None = None) -> None:
     """Save credentials to local token file."""
-    with open(TOKEN_FILE, "w") as f:
+    path = token_file or os.environ.get("GOOGLE_HEALTH_CLI_TOKEN_FILE") or TOKEN_FILE
+    with open(path, "w") as f:
         f.write(credentials.to_json())
 
 
-def load_credentials_or_env():
+def load_credentials_or_env(
+    token_file: str | None = None,
+    environ: dict[str, str] | None = None,
+):
     """Load credentials from environment or token.json."""
-    token_env = os.environ.get("GOOGLE_HEALTH_CLI_TOKEN")
+    env = environ if environ is not None else os.environ
+    token_env = env.get("GOOGLE_HEALTH_CLI_TOKEN")
     if token_env:
         return ("env", token_env)
 
-    if not os.path.exists(TOKEN_FILE):
+    path = token_file or env.get("GOOGLE_HEALTH_CLI_TOKEN_FILE") or TOKEN_FILE
+    if not os.path.exists(path):
         return None
 
-    with open(TOKEN_FILE, "r") as f:
+    with open(path, "r") as f:
         data = json.load(f)
 
     expiry_str = data.get("expiry")

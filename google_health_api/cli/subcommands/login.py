@@ -3,6 +3,7 @@
 import json
 import os
 import sys
+from collections.abc import Callable
 
 from google_auth_oauthlib.flow import Flow, InstalledAppFlow
 
@@ -10,21 +11,29 @@ from ..auth import CLIENT_SECRET_FILE, SCOPES, save_credentials
 from ..utils import print_error_json, print_json
 
 
-def cmd_login(args) -> None:
+def cmd_login(
+    args,
+    client_secret_file: str | None = None,
+    token_file: str | None = None,
+    is_tty: bool | None = None,
+    input_func: Callable[[str], str] | None = None,
+) -> None:
     """Execute interactive OAuth login flow."""
-    if not os.path.exists(CLIENT_SECRET_FILE):
+    secret_path = client_secret_file or CLIENT_SECRET_FILE
+    if not os.path.exists(secret_path):
         print_error_json(
-            f"Client secrets file '{CLIENT_SECRET_FILE}' not found.",
+            f"Client secrets file '{secret_path}' not found.",
             status="NOT_FOUND",
         )
 
-    if not sys.stdin.isatty():
+    tty = is_tty if is_tty is not None else sys.stdin.isatty()
+    if not tty:
         print_error_json(
             "Cannot run interactive login in a headless environment.",
             status="FAILED_PRECONDITION",
         )
 
-    with open(CLIENT_SECRET_FILE, "r") as f:
+    with open(secret_path, "r") as f:
         client_secrets_data = json.load(f)
 
     is_web = "web" in client_secrets_data
@@ -34,7 +43,7 @@ def cmd_login(args) -> None:
         redirect_uri = redirect_uris[0] if redirect_uris else "http://localhost:8080/"
 
         flow = Flow.from_client_secrets_file(
-            CLIENT_SECRET_FILE,
+            secret_path,
             scopes=SCOPES,
             redirect_uri=redirect_uri,
         )
@@ -44,7 +53,8 @@ def cmd_login(args) -> None:
         )
         print("Web-based authentication flow:")
         print(f"URL: {authorization_url}")
-        redirect_response = input("Redirected URL or auth code: ").strip()
+        inp = input_func or input
+        redirect_response = inp("Redirected URL or auth code: ").strip()
 
         if not redirect_response:
             print_error_json(
@@ -61,10 +71,10 @@ def cmd_login(args) -> None:
         credentials = flow.credentials
     else:
         flow = InstalledAppFlow.from_client_secrets_file(
-            CLIENT_SECRET_FILE,
+            secret_path,
             scopes=SCOPES,
         )
         credentials = flow.run_local_server(port=0)
 
-    save_credentials(credentials)
+    save_credentials(credentials, token_file=token_file)
     print_json({"status": "SUCCESS", "message": "Logged in successfully."})
