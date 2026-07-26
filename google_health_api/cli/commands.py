@@ -1,8 +1,9 @@
 """Command implementations for Google Health CLI."""
 
+from datetime import UTC, date, datetime, timedelta
 import os
 import sys
-from datetime import UTC, date, datetime, timedelta
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import aiohttp
@@ -10,6 +11,7 @@ import aiohttp
 from google_health_api.api import GoogleHealthApi
 from google_health_api.const import HEALTH_API_URL
 from google_health_api.exceptions import HealthApiException
+from google_health_api.model import DataPoint
 
 from .auth import (
     CliHealthSession,
@@ -320,10 +322,11 @@ async def handle_datatype_cmd(
             payload,
         )
 
+        dp = DataPoint.from_api_dict(sub_api.data_type, payload)
         if sub == "create":
-            result = await sub_api.create(payload)
+            result = await sub_api.create(dp)
         else:
-            result = await sub_api.patch(args.data_point_id, payload)
+            result = await sub_api.patch(args.data_point_id, dp)
         print_json(serialize_datapoint(result, field_name), pretty)
 
     elif sub == "delete":
@@ -348,7 +351,10 @@ async def async_run_cmd(args) -> None:
     # Set fields context variable
     fields_var.set(args.fields)
 
-    pretty = (args.output == "pretty" and sys.stdout.isatty()) or args.output == "json"
+    pretty = (
+        (args.output == "pretty" and sys.stdout.isatty())
+        or args.output == "json"
+    )
 
     async with aiohttp.ClientSession() as session:
         try:
