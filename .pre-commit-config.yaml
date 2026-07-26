@@ -25,7 +25,7 @@ repos:
           - pyi
       - id: ty
         name: ty check
-        entry: uv run ty check . --ignore unresolved-import --ignore unresolved-attribute
+        entry: uv run --no-project ty check . --ignore unresolved-import --ignore unresolved-attribute
         language: system
         pass_filenames: false
   - repo: https://github.com/codespell-project/codespell

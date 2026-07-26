@@ -3,6 +3,7 @@
 from datetime import UTC, date, datetime
 from typing import Any
 
+import aiohttp
 import pytest
 
 from google_health_api.api import GoogleHealthApi
@@ -93,8 +94,6 @@ async def mock_api(
     create_response: list[dict[str, Any]],
     patch_response: list[dict[str, Any]],
 ) -> Any:
-    import aiohttp
-
     async def list_handler(request: aiohttp.web.Request) -> aiohttp.web.Response:
         requests.append({"method": "GET", "url": str(request.url)})
         return aiohttp.web.json_response(list_response.pop(0))

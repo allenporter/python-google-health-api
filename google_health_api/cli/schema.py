@@ -1,6 +1,7 @@
 """Dynamic schema introspection for Google Health CLI."""
 
 import dataclasses
+import types
 import typing
 from typing import Any
 
@@ -46,8 +47,6 @@ from google_health_api.model import (
 
 def get_type_name(t: Any) -> str:
     """Return a string representation of a type."""
-    import types
-
     origin = typing.get_origin(t)
     if origin is typing.Union or (
         hasattr(types, "UnionType") and origin is types.UnionType
