@@ -23,6 +23,7 @@ for point in steps_result.data_points:
 
 import asyncio
 import builtins
+import os
 import re
 from collections.abc import Sequence
 from datetime import UTC, date, datetime, timedelta, tzinfo
@@ -1428,6 +1429,10 @@ class GoogleHealthApi:
 
     async def get_user_info(self) -> UserInfo:
         """Retrieve the authenticated user's Google OAuth2 userinfo."""
-        resp = await self._session.get("https://www.googleapis.com/oauth2/v3/userinfo")
+        url = (
+            os.environ.get("GOOGLE_HEALTH_USERINFO_URL")
+            or "https://www.googleapis.com/oauth2/v3/userinfo"
+        )
+        resp = await self._session.get(url)
         raw_json = await resp.json()
         return UserInfo.from_dict(raw_json)

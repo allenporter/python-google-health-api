@@ -11,7 +11,6 @@ import pytest
 
 from google_health_api.cli.commands import async_run_cmd
 from google_health_api.cli.main import build_parser, main
-from google_health_api.client import GoogleHealthSession
 from tests.conftest import PATH_PREFIX, AuthCallback
 
 
@@ -75,29 +74,19 @@ def run_cli_against_server(
         auth = await auth_cb(handlers)
         server_url = str(auth._websession.make_url(PATH_PREFIX))
 
-        # Intercept external calls to googleapis.com and redirect to test server
-        original_request = GoogleHealthSession.request
-
-        async def mock_request(
-            self: GoogleHealthSession,
-            method: str,
-            url: str,
-            *args: Any,
-            **kwargs: Any,
-        ) -> Any:
-            if url.startswith("https://www.googleapis.com/"):
-                relative_path = url.replace("https://www.googleapis.com/", "")
-                url = f"{server_url}/{relative_path}"
-            return await original_request(self, method, url, *args, **kwargs)
-
         # Direct setup_client to the mock server and stub credentials
         with (
-            patch.dict(os.environ, {"GOOGLE_HEALTH_API_URL": server_url}),
+            patch.dict(
+                os.environ,
+                {
+                    "GOOGLE_HEALTH_API_URL": server_url,
+                    "GOOGLE_HEALTH_USERINFO_URL": f"{server_url}/oauth2/v3/userinfo",
+                },
+            ),
             patch(
                 "google_health_api.cli.commands.load_credentials_or_env",
                 return_value=("env", "fake-token"),
             ),
-            patch.object(GoogleHealthSession, "request", mock_request),
         ):
             await async_run_cli(args)
 
