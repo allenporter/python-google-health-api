@@ -1,18 +1,19 @@
 """Tests for Google Health library HRV APIs."""
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
+
 import pytest
+
 from google_health_api.api import GoogleHealthApi
 from google_health_api.model.health_metric import (
-    HeartRateVariability,
     DailyHeartRateVariability,
+    HeartRateVariability,
     HeartRateVariabilityPersonalRangeRollupValue,
 )
 
 # Reuse fixtures from conftest
 from .conftest import AuthCallback
-
 
 FAKE_HRV_PAYLOAD = {
     "name": "users/me/dataTypes/heart-rate-variability/dataPoints/point-hrv-1",
@@ -154,8 +155,8 @@ async def test_list_hrv(
     )
 
     result = await api.heart_rate_variability.list(
-        start_time=datetime(2026, 6, 22, 8, 0, 0, tzinfo=timezone.utc),
-        end_time=datetime(2026, 6, 22, 9, 0, 0, tzinfo=timezone.utc),
+        start_time=datetime(2026, 6, 22, 8, 0, 0, tzinfo=UTC),
+        end_time=datetime(2026, 6, 22, 9, 0, 0, tzinfo=UTC),
     )
 
     assert len(result.data_points) == 1

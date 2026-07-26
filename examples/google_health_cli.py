@@ -7,7 +7,8 @@ import argparse
 import asyncio
 import os
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
+
 import aiohttp
 
 from google_health_api.api import GoogleHealthApi
@@ -37,6 +38,7 @@ class CredentialsAuth(AbstractAuth):
         """Return a valid access token, refreshing if necessary."""
         if not self._credentials.valid:
             import asyncio
+
             from google.auth.transport.requests import Request
 
             loop = asyncio.get_running_loop()
@@ -51,6 +53,7 @@ def load_credentials():
     if not os.path.exists(TOKEN_FILE):
         return None
     import json
+
     from google.oauth2.credentials import Credentials
 
     with open(TOKEN_FILE, "r") as f:
@@ -162,7 +165,7 @@ async def run_steps_list(args) -> None:
         auth = CredentialsAuth(session, creds)
         api = GoogleHealthApi(auth)
 
-        end_time = datetime.now(timezone.utc)
+        end_time = datetime.now(UTC)
         start_time = end_time - timedelta(days=args.days)
 
         print(f"Fetching steps from the last {args.days} days...")
@@ -194,7 +197,7 @@ async def run_heart_rate_list(args) -> None:
         auth = CredentialsAuth(session, creds)
         api = GoogleHealthApi(auth)
 
-        end_time = datetime.now(timezone.utc)
+        end_time = datetime.now(UTC)
         start_time = end_time - timedelta(days=args.days)
 
         print(f"Fetching heart rate records from the last {args.days} days...")

@@ -4,9 +4,41 @@ import dataclasses
 import json
 import os
 import types
-from typing import Any, get_args, get_origin, Union
+from typing import Any, Union, get_args, get_origin
 
-from google_health_api.model.activity import ObservationTimeInterval, Steps
+from google_health_api.model.activity import (
+    ActiveEnergyBurned,
+    ActiveEnergyBurnedRollupValue,
+    ActiveMinutes,
+    ActiveMinutesByActivityLevel,
+    ActiveMinutesRollupByActivityLevel,
+    ActiveMinutesRollupValue,
+    ActiveZoneMinutes,
+    ActiveZoneMinutesRollupValue,
+    ActivityLevel,
+    ActivityLevelRollupByActivityLevelType,
+    ActivityLevelRollupValue,
+    Altitude,
+    AltitudeRollupValue,
+    BasalEnergyBurned,
+    CaloriesInHeartRateZoneRollupValue,
+    CaloriesInHeartRateZoneValue,
+    Distance,
+    DistanceRollupValue,
+    Floors,
+    FloorsRollupValue,
+    ObservationTimeInterval,
+    SedentaryPeriod,
+    SedentaryPeriodRollupValue,
+    Steps,
+    StepsRollupValue,
+    SwimLengthsData,
+    SwimLengthsDataRollupValue,
+    TimeInHeartRateZone,
+    TimeInHeartRateZoneRollupValue,
+    TimeInHeartRateZoneValue,
+    TotalCaloriesRollupValue,
+)
 from google_health_api.model.base import (
     Application,
     DailyRollupDataPoint,
@@ -16,84 +48,50 @@ from google_health_api.model.base import (
     ReconciledDataPoint,
 )
 from google_health_api.model.device import PairedDevice
-from google_health_api.model.health_metric import (
-    HeartRate,
-    HeartRateMetadata,
-    ObservationSampleTime,
+from google_health_api.model.exercise import (
+    Exercise,
+    ExerciseEvent,
+    ExerciseMetadata,
+    MetricsSummary,
+    MobilityMetrics,
+    SplitSummary,
+    TimeInHeartRateZones,
 )
-from google_health_api.model.profile import Date, Identity, IrnProfile, Profile
-from google_health_api.model.settings import Settings
-from google_health_api.model.subscription import (
-    EndpointAuthorization,
-    Subscriber,
-    SubscriberConfig,
-    Subscription,
-)
-from google_health_api.model.sleep import (
-    Sleep,
-    SessionTimeInterval,
-    DailySleepTemperatureDerivations,
-    CivilDateTime,
-    CivilTimeInterval,
-    DailyRollUpDataPointsRequest,
-    TimeOfDay,
-    SleepStage,
-    OutOfBedSegment,
-    SleepSummary,
-    StageSummary,
-    SleepMetadata,
-)
-from google_health_api.model.activity import (
-    Distance,
-    BasalEnergyBurned,
-    ActiveEnergyBurned,
-    StepsRollupValue,
-    DistanceRollupValue,
-    ActiveEnergyBurnedRollupValue,
-    TotalCaloriesRollupValue,
-    Floors,
-    FloorsRollupValue,
-    Altitude,
-    AltitudeRollupValue,
-    ActiveMinutesByActivityLevel,
-    ActiveMinutesRollupByActivityLevel,
-    ActiveMinutes,
-    ActiveMinutesRollupValue,
-    ActiveZoneMinutes,
-    ActiveZoneMinutesRollupValue,
-    SedentaryPeriod,
-    SedentaryPeriodRollupValue,
-    SwimLengthsData,
-    SwimLengthsDataRollupValue,
-    ActivityLevelRollupByActivityLevelType,
-    ActivityLevel,
-    ActivityLevelRollupValue,
-    TimeInHeartRateZoneValue,
-    TimeInHeartRateZoneRollupValue,
-    TimeInHeartRateZone,
-    CaloriesInHeartRateZoneValue,
-    CaloriesInHeartRateZoneRollupValue,
+from google_health_api.model.fitness import (
+    DailyHeartRateZones,
+    DailyVO2Max,
+    HeartRateZone,
 )
 from google_health_api.model.health_metric import (
-    VO2Max,
-    Weight,
-    Height,
-    OxygenSaturation,
+    BloodGlucose,
+    BloodGlucoseRollupValue,
+    BodyFat,
+    BodyFatRollupValue,
+    CoreBodyTemperature,
+    CoreBodyTemperatureRollupValue,
     DailyOxygenSaturation,
     DailyRestingHeartRate,
     DailyRestingHeartRateMetadata,
-    WeightRollupValue,
-    RestingHeartRatePersonalRangeRollupValue,
+    HeartRate,
+    HeartRateMetadata,
     HeartRateRollupValue,
     HeartRateVariabilityPersonalRangeRollupValue,
-    BloodGlucose,
-    BloodGlucoseRollupValue,
-    CoreBodyTemperature,
-    CoreBodyTemperatureRollupValue,
-    BodyFat,
-    BodyFatRollupValue,
+    Height,
+    ObservationSampleTime,
+    OxygenSaturation,
+    RestingHeartRatePersonalRangeRollupValue,
     RunVO2Max,
     RunVO2MaxRollupValue,
+    VO2Max,
+    Weight,
+    WeightRollupValue,
+)
+from google_health_api.model.heart import (
+    AlertWindow,
+    Electrocardiogram,
+    HeartBeat,
+    IrregularRhythmNotification,
+    MedicalDeviceInfo,
 )
 from google_health_api.model.hydration import (
     HydrationLog,
@@ -102,43 +100,42 @@ from google_health_api.model.hydration import (
     VolumeQuantityRollup,
 )
 from google_health_api.model.nutrition import (
+    EnergyQuantity,
+    EnergyQuantityRollup,
+    NutrientQuantity,
+    NutrientQuantityRollup,
     NutritionLog,
     NutritionLogRollupValue,
-    WeightQuantity,
-    EnergyQuantity,
     Serving,
-    NutrientQuantity,
+    WeightQuantity,
     WeightQuantityRollup,
-    EnergyQuantityRollup,
-    NutrientQuantityRollup,
 )
-from google_health_api.model.exercise import (
-    Exercise,
-    ExerciseMetadata,
-    TimeInHeartRateZones,
-    MobilityMetrics,
-    MetricsSummary,
-    ExerciseEvent,
-    SplitSummary,
-)
-from google_health_api.model.heart import (
-    Electrocardiogram,
-    IrregularRhythmNotification,
-    MedicalDeviceInfo,
-    HeartBeat,
-    AlertWindow,
-)
-
+from google_health_api.model.profile import Date, Identity, IrnProfile, Profile
 from google_health_api.model.respiratory import (
     DailyRespiratoryRate,
     RespiratoryRateSleepSummary,
     RespiratoryRateSleepSummaryStatistics,
 )
-
-from google_health_api.model.fitness import (
-    DailyVO2Max,
-    DailyHeartRateZones,
-    HeartRateZone,
+from google_health_api.model.settings import Settings
+from google_health_api.model.sleep import (
+    CivilDateTime,
+    CivilTimeInterval,
+    DailyRollUpDataPointsRequest,
+    DailySleepTemperatureDerivations,
+    OutOfBedSegment,
+    SessionTimeInterval,
+    Sleep,
+    SleepMetadata,
+    SleepStage,
+    SleepSummary,
+    StageSummary,
+    TimeOfDay,
+)
+from google_health_api.model.subscription import (
+    EndpointAuthorization,
+    Subscriber,
+    SubscriberConfig,
+    Subscription,
 )
 
 # Mapping of Python classes to their corresponding schema names in the discovery document.

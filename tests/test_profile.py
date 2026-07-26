@@ -3,9 +3,9 @@
 from collections.abc import AsyncGenerator
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import aiohttp
 import pytest
-
 
 from google_health_api.api import GoogleHealthApi
 from google_health_api.model import (
@@ -13,8 +13,8 @@ from google_health_api.model import (
     Profile,
     Settings,
 )
-from .conftest import AuthCallback
 
+from .conftest import AuthCallback
 
 FAKE_PROFILE_PAYLOAD = {
     "name": "users/me/profile",
@@ -82,7 +82,7 @@ async def mock_api(
     auth_cb: AuthCallback,
     requests: list[dict[str, Any]],
     api_responses: dict[str, list[dict[str, Any]]],
-) -> AsyncGenerator[GoogleHealthApi, None]:
+) -> AsyncGenerator[GoogleHealthApi]:
     """Fixture to create the mock GoogleHealthApi client with profile endpoints."""
 
     async def get_profile_handler(request: aiohttp.web.Request) -> aiohttp.web.Response:

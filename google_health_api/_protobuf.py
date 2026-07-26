@@ -36,8 +36,8 @@ Example:
     ```
 """
 
-from collections.abc import Callable
 import dataclasses
+from collections.abc import Callable
 from functools import cache
 from typing import Any
 

@@ -2,7 +2,7 @@
 
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Generic, Self, TypeVar
+from typing import Self, TypeVar
 
 from .base import DataClassDictMixin, DataPoint, ReconciledDataPoint
 
@@ -10,14 +10,14 @@ T = TypeVar("T", bound=DataClassDictMixin)
 
 
 @dataclass
-class _ListDataPointsModel(Generic[T]):
+class _ListDataPointsModel[T: DataClassDictMixin]:
     """Generic raw model representing a page of DataPoints."""
 
     data_points: list[DataPoint[T]] = field(default_factory=list)
     next_page_token: str | None = None
 
 
-class ListDataPointResult(Generic[T]):
+class ListDataPointResult[T: DataClassDictMixin]:
     """Response containing a list of data points and allowing paginated iteration."""
 
     def __init__(
@@ -53,14 +53,14 @@ class ListDataPointResult(Generic[T]):
 
 
 @dataclass
-class _ListReconciledDataPointsModel(Generic[T]):
+class _ListReconciledDataPointsModel[T: DataClassDictMixin]:
     """Generic raw model representing a page of ReconciledDataPoints."""
 
     reconciled_data_points: list[ReconciledDataPoint[T]] = field(default_factory=list)
     next_page_token: str | None = None
 
 
-class ListReconciledDataPointsResult(Generic[T]):
+class ListReconciledDataPointsResult[T: DataClassDictMixin]:
     """Response containing a list of reconciled data points and allowing pagination."""
 
     def __init__(

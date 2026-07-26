@@ -189,7 +189,7 @@ class WebhookVerifier:
         If a fetch fails, falls back to the cached keyset as long as it is within
         the max_cache_lifetime.
         """
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.UTC)
         if self._should_refresh(now):
             try:
                 data = await self._fetch_keyset_data()
