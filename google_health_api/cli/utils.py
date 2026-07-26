@@ -4,6 +4,7 @@ import json
 import sys
 from typing import Any, NoReturn
 
+from google_health_api.api import PendingOperation
 from google_health_api.model import DataPoint, ReconciledDataPoint
 
 
@@ -50,6 +51,9 @@ def serialize_reconciled_datapoint(
 
 def serialize_response(result: Any, field_name: str | None = None) -> Any:
     """Convert API response object/paginated result to JSON-serializable structure."""
+    if isinstance(result, PendingOperation):
+        result = result.operation
+
     if hasattr(result, "to_dict"):
         return result.to_dict()
     if hasattr(result, "data_points"):
