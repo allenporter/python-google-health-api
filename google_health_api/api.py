@@ -202,6 +202,11 @@ class DataPointSubApi[T: DataClassDictMixin]:
         self._data_type = data_type
 
     @property
+    def data_type(self) -> DataType[T]:
+        """Return the underlying DataType definition."""
+        return self._data_type
+
+    @property
     def required_read_scopes(self) -> Sequence[str]:
         """Return the list of scopes required to read from this API."""
         return self._data_type.read_scopes

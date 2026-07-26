@@ -84,13 +84,13 @@ class GoogleHealthSession:
         cls, resp: aiohttp.ClientResponse
     ) -> aiohttp.ClientResponse:
         """Raise exceptions on failure methods."""
-        error_detail = await cls._error_detail(resp)
+        detail = await error_detail(resp)
         try:
             resp.raise_for_status()
         except aiohttp.ClientResponseError as err:
             error_message = f"{err.message} response from API ({resp.status})"
-            if error_detail:
-                error_message += f": {error_detail}"
+            if detail:
+                error_message += f": {detail}"
             if err.status == HTTPStatus.FORBIDDEN:
                 raise HealthApiForbiddenException(error_message)
             if err.status == HTTPStatus.UNAUTHORIZED:
@@ -100,32 +100,32 @@ class GoogleHealthSession:
             raise HealthApiException(f"Error from API: {err}") from err
         return resp
 
-    @classmethod
-    async def _error_detail(cls, resp: aiohttp.ClientResponse) -> str | None:
-        """Returns an error message string from the API response."""
-        if resp.status < 400:
-            return None
-        try:
-            result = await resp.text()
-        except ClientError:
-            return None
 
-        try:
-            error_response = ErrorResponse.from_json(result)
-            if error_response and error_response.error:
-                error_obj = error_response.error
-                msg = error_obj.message
-                status = error_obj.status
-                code = error_obj.code
-                parts = []
-                if status:
-                    parts.append(status)
-                if code:
-                    parts.append(f"({code})")
-                if msg:
-                    parts.append(msg)
-                if parts:
-                    return ": ".join(parts)
-        except (ValueError, TypeError):
-            pass
+async def error_detail(resp: aiohttp.ClientResponse) -> str | None:
+    """Returns an error message string from the API response."""
+    if resp.status < 400:
         return None
+    try:
+        result = await resp.text()
+    except ClientError:
+        return None
+
+    try:
+        error_response = ErrorResponse.from_json(result)
+        if error_response and error_response.error:
+            error_obj = error_response.error
+            msg = error_obj.message
+            status = error_obj.status
+            code = error_obj.code
+            parts = []
+            if status:
+                parts.append(status)
+            if code:
+                parts.append(f"({code})")
+            if msg:
+                parts.append(msg)
+            if parts:
+                return ": ".join(parts)
+    except (ValueError, TypeError):
+        pass
+    return None

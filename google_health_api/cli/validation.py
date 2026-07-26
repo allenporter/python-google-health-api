@@ -1,8 +1,8 @@
 """Input validation and dry-run mechanism for Google Health CLI."""
 
 import json
-import os
 import sys
+from pathlib import Path
 from typing import Any
 
 
@@ -50,11 +50,11 @@ def validate_safe_path(path: str) -> None:
     if ".." in path:
         raise ValueError("Path traversal sequence '..' is forbidden.")
 
-    cwd = os.path.abspath(os.getcwd())
-    abs_path = os.path.abspath(path)
+    cwd = Path.cwd().resolve()
+    abs_path = Path(path).resolve()
 
     # Check if the absolute path falls outside the current working directory
-    if not abs_path.startswith(cwd):
+    if not abs_path.is_relative_to(cwd):
         raise ValueError(
             f"Path '{path}' resolves to '{abs_path}', which falls outside the sandboxed directory '{cwd}'."
         )
