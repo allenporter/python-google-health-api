@@ -55,8 +55,7 @@ def serialize_response(result: Any, field_name: str | None = None) -> Any:
     if hasattr(result, "data_points"):
         return {
             "dataPoints": [
-                serialize_datapoint(dp, field_name or "")
-                for dp in result.data_points
+                serialize_datapoint(dp, field_name or "") for dp in result.data_points
             ],
             "nextPageToken": result.next_page_token,
         }

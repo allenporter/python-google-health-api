@@ -1,9 +1,8 @@
 """Command implementations for Google Health CLI."""
 
-from datetime import UTC, date, datetime, timedelta
 import os
 import sys
-from typing import Any
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import aiohttp
@@ -351,10 +350,7 @@ async def async_run_cmd(args) -> None:
     # Set fields context variable
     fields_var.set(args.fields)
 
-    pretty = (
-        (args.output == "pretty" and sys.stdout.isatty())
-        or args.output == "json"
-    )
+    pretty = (args.output == "pretty" and sys.stdout.isatty()) or args.output == "json"
 
     async with aiohttp.ClientSession() as session:
         try:
