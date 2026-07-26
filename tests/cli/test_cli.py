@@ -2,6 +2,7 @@
 
 import json
 import sys
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -22,28 +23,71 @@ from google_health_api.client import GoogleHealthSession
 from google_health_api.exceptions import HealthApiException
 
 
+def run_cli(args: list[str]) -> None:
+    """Helper to run the CLI with specific arguments."""
+    with patch.object(sys, "argv", ["google-health-cli", *args]):
+        main()
+
+
+@pytest.fixture
+def mock_load_credentials() -> Generator[MagicMock]:
+    """Fixture to mock load_credentials_or_env."""
+    with patch("google_health_api.cli.commands.load_credentials_or_env") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_setup_client() -> Generator[MagicMock]:
+    """Fixture to mock setup_client."""
+    with patch("google_health_api.cli.commands.setup_client") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_flow_cls() -> Generator[MagicMock]:
+    """Fixture to mock google_auth_oauthlib.flow.Flow."""
+    with patch("google_health_api.cli.commands.Flow") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_installed_flow_cls() -> Generator[MagicMock]:
+    """Fixture to mock google_auth_oauthlib.flow.InstalledAppFlow."""
+    with patch("google_health_api.cli.commands.InstalledAppFlow") as mock:
+        yield mock
+
+
 @pytest.mark.parametrize(
     "name",
     [
-        "safe-id-123",
         "users/me/profile",
+        "users/me/settings",
+        "users/me/dataTypes/steps/dataPoints/p123",
+        "users/me/dataTypes/weight/dataPoints/w_456-789",
+        "projects/my-project/subscribers/sub-123",
+        "projects/my-project/subscribers/sub-123/subscriptions/sub_id_456",
+        "simple-id",
+        "id_with_dash-123",
+        "",
     ],
 )
 def test_validate_resource_name_success(name: str) -> None:
     """Test resource name input validation with valid inputs."""
+    # Should not raise any exception
     validate_resource_name(name)
 
 
 @pytest.mark.parametrize(
     ("name", "match"),
     [
-        ("device\x00id", "control characters"),
-        ("device\x1fid", "control characters"),
-        ("id?fields=name", "forbidden characters"),
-        ("sub#delete", "forbidden characters"),
-        ("escape%2e", "forbidden characters"),
-        ("../parent", "path traversal"),
-        ("sub\\path", "path traversal"),
+        ("users/me/dataTypes/steps/dataPoints/p123\n", "control characters"),
+        ("users/me/dataTypes/steps/dataPoints/p123\x00", "control characters"),
+        ("users/me/dataTypes/steps/dataPoints/p123\r", "control characters"),
+        ("users/me/dataTypes/steps/dataPoints/p123?", "forbidden characters"),
+        ("users/me/dataTypes/steps/dataPoints/p123#", "forbidden characters"),
+        ("users/me/dataTypes/steps/dataPoints/p123%", "forbidden characters"),
+        ("users/me/dataTypes/steps/dataPoints/../../p123", "path traversal"),
+        ("users/me\\dataPoints", "path traversal"),
     ],
 )
 def test_validate_resource_name_failure(name: str, match: str) -> None:
@@ -52,7 +96,7 @@ def test_validate_resource_name_failure(name: str, match: str) -> None:
         validate_resource_name(name)
 
 
-def test_validate_safe_path(tmp_path) -> None:
+def test_validate_safe_path(tmp_path: Path) -> None:
     """Test local path sandboxing validation rules."""
     # Sandbox to current directory
     cwd = Path.cwd().resolve()
@@ -71,37 +115,39 @@ def test_validate_safe_path(tmp_path) -> None:
         validate_safe_path(outside_dir)
 
 
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_schema(mock_load, capsys) -> None:
-    """Test schema introspection commands."""
-    # Test listing all schemas
-    with patch.object(sys, "argv", ["google-health-cli", "schema"]):
-        main()
+def test_cli_schema_list(
+    mock_load_credentials: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test listing all schemas."""
+    run_cli(["schema"])
     captured = capsys.readouterr()
     schemas = json.loads(captured.out)
     assert "steps.list" in schemas
     assert "profile.get" in schemas
     assert "userinfo" in schemas
 
-    # Test retrieving a specific command schema
-    with patch.object(sys, "argv", ["google-health-cli", "schema", "steps.list"]):
-        main()
+
+def test_cli_schema_details(
+    mock_load_credentials: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test retrieving a specific command schema."""
+    run_cli(["schema", "steps.list"])
     captured = capsys.readouterr()
     schema_details = json.loads(captured.out)
     assert schema_details["method"] == "GET"
     assert schema_details["endpoint"] == "v4/users/{user}/dataTypes/steps/dataPoints"
 
 
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_validation_rejection(mock_load, capsys) -> None:
+def test_cli_validation_rejection(
+    mock_load_credentials: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
     """Test that CLI validation errors are captured and output as JSON errors."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
 
     # Pass an invalid device ID containing forbidden character "?"
-    with patch.object(sys, "argv", ["google-health-cli", "devices", "get", "dev?id"]):
-        with pytest.raises(SystemExit) as exit_info:
-            main()
-        assert exit_info.value.code == 1
+    with pytest.raises(SystemExit) as exit_info:
+        run_cli(["devices", "get", "dev?id"])
+    assert exit_info.value.code == 1
 
     captured = capsys.readouterr()
     err_json = json.loads(captured.out)
@@ -110,10 +156,11 @@ def test_cli_validation_rejection(mock_load, capsys) -> None:
     assert "forbidden characters" in err_json["error"]["message"]
 
 
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_dry_run_mutations(mock_load, capsys) -> None:
+def test_cli_dry_run_mutations(
+    mock_load_credentials: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
     """Test dry-run intercepting mutating operations."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
 
     # Test dry run for steps create
     payload = {
@@ -125,21 +172,17 @@ def test_cli_dry_run_mutations(mock_load, capsys) -> None:
             },
         }
     }
-    with patch.object(
-        sys,
-        "argv",
-        [
-            "google-health-cli",
-            "--dry-run",
-            "--json",
-            json.dumps(payload),
-            "steps",
-            "create",
-        ],
-    ):
-        with pytest.raises(SystemExit) as exit_info:
-            main()
-        assert exit_info.value.code == 0
+    with pytest.raises(SystemExit) as exit_info:
+        run_cli(
+            [
+                "--dry-run",
+                "--json",
+                json.dumps(payload),
+                "steps",
+                "create",
+            ]
+        )
+    assert exit_info.value.code == 0
 
     captured = capsys.readouterr()
     dry_run_out = json.loads(captured.out)
@@ -148,15 +191,17 @@ def test_cli_dry_run_mutations(mock_load, capsys) -> None:
     assert dry_run_out["payload"] == payload
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_raw_json_input(mock_load, mock_setup, capsys) -> None:
+def test_cli_raw_json_input(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test passing raw --json input payload is correctly processed."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
 
     # Setup mock API
     mock_api = MagicMock()
-    mock_setup.return_value = mock_api
+    mock_setup_client.return_value = mock_api
 
     mock_steps_subapi = AsyncMock()
     mock_api.steps = mock_steps_subapi
@@ -186,18 +231,14 @@ def test_cli_raw_json_input(mock_load, mock_setup, capsys) -> None:
         }
     }
 
-    with patch.object(
-        sys,
-        "argv",
+    run_cli(
         [
-            "google-health-cli",
             "--json",
             json.dumps(payload),
             "steps",
             "create",
-        ],
-    ):
-        main()
+        ]
+    )
 
     captured = capsys.readouterr()
     res_json = json.loads(captured.out)
@@ -206,14 +247,16 @@ def test_cli_raw_json_input(mock_load, mock_setup, capsys) -> None:
     mock_steps_subapi.create.assert_called_once()
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_new_datapoints(mock_load, mock_setup, capsys) -> None:
+def test_cli_new_datapoints(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test that the new datapoint commands are correctly routed in the CLI."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
 
     mock_api = MagicMock()
-    mock_setup.return_value = mock_api
+    mock_setup_client.return_value = mock_api
 
     # Mock sleep subapi
     mock_sleep_subapi = AsyncMock()
@@ -229,30 +272,28 @@ def test_cli_new_datapoints(mock_load, mock_setup, capsys) -> None:
     }
     mock_sleep_subapi.list.return_value = mock_sleep_res
 
-    with patch.object(
-        sys,
-        "argv",
+    run_cli(
         [
-            "google-health-cli",
             "sleep",
             "list",
             "--days",
             "5",
-        ],
-    ):
-        main()
+        ]
+    )
 
     mock_sleep_subapi.list.assert_called_once()
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_weight_rollup(mock_load, mock_setup, capsys) -> None:
+def test_cli_weight_rollup(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test that the weight rollup command is correctly routed and executed in the CLI."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
 
     mock_api = MagicMock()
-    mock_setup.return_value = mock_api
+    mock_setup_client.return_value = mock_api
 
     mock_weight_subapi = AsyncMock()
     mock_api.weight = mock_weight_subapi
@@ -276,20 +317,16 @@ def test_cli_weight_rollup(mock_load, mock_setup, capsys) -> None:
 
     mock_weight_subapi.daily_rollup.return_value = [mock_rollup_point]
 
-    with patch.object(
-        sys,
-        "argv",
+    run_cli(
         [
-            "google-health-cli",
             "weight",
             "rollup",
             "--start-date",
             "2026-06-22",
             "--end-date",
             "2026-06-23",
-        ],
-    ):
-        main()
+        ]
+    )
 
     mock_weight_subapi.daily_rollup.assert_called_once()
 
@@ -300,14 +337,16 @@ def test_cli_weight_rollup(mock_load, mock_setup, capsys) -> None:
     assert res_json["rollupDataPoints"][0]["weight"]["weightGramsAvg"] == 75000.0
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_userinfo(mock_load, mock_setup, capsys) -> None:
+def test_cli_userinfo(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test that the userinfo command is correctly routed and executed in the CLI."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
 
     mock_api = MagicMock()
-    mock_setup.return_value = mock_api
+    mock_setup_client.return_value = mock_api
 
     mock_userinfo = MagicMock(spec=["to_dict"])
     mock_userinfo.to_dict.return_value = {
@@ -317,8 +356,7 @@ def test_cli_userinfo(mock_load, mock_setup, capsys) -> None:
     }
     mock_api.get_user_info = AsyncMock(return_value=mock_userinfo)
 
-    with patch.object(sys, "argv", ["google-health-cli", "userinfo"]):
-        main()
+    run_cli(["userinfo"])
 
     mock_api.get_user_info.assert_called_once()
     captured = capsys.readouterr()
@@ -377,7 +415,9 @@ async def test_cli_health_session_fields_injection() -> None:
 
 
 @pytest.mark.asyncio
-async def test_credentials_auth_refresh(tmp_path, monkeypatch) -> None:
+async def test_credentials_auth_refresh(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test CredentialsAuth refreshing expired credentials."""
 
     token_file = tmp_path / "token.json"
@@ -407,7 +447,9 @@ async def test_env_auth() -> None:
     assert token == "env-secret-token"
 
 
-def test_load_credentials_or_env(tmp_path, monkeypatch) -> None:
+def test_load_credentials_or_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test loading credentials from env vs token file."""
 
     # 1. Test env var set
@@ -429,6 +471,7 @@ def test_load_credentials_or_env(tmp_path, monkeypatch) -> None:
     }
     token_file.write_text(json.dumps(token_data))
     res_file = load_credentials_or_env()
+    assert res_file is not None
     assert res_file[0] == "file"
     assert res_file[1].token == "file-tok"
 
@@ -436,10 +479,13 @@ def test_load_credentials_or_env(tmp_path, monkeypatch) -> None:
     token_data["expiry"] = "2026-12-31T23:59:59+00:00"
     token_file.write_text(json.dumps(token_data))
     res_file2 = load_credentials_or_env()
+    assert res_file2 is not None
     assert res_file2[0] == "file"
 
 
-def test_cmd_login_missing_client_secret(tmp_path, monkeypatch, capsys) -> None:
+def test_cmd_login_missing_client_secret(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     """Test login failure when client secret file is missing."""
 
     monkeypatch.setattr(
@@ -452,7 +498,9 @@ def test_cmd_login_missing_client_secret(tmp_path, monkeypatch, capsys) -> None:
     assert "not found" in captured.out
 
 
-def test_cmd_login_not_tty(tmp_path, monkeypatch, capsys) -> None:
+def test_cmd_login_not_tty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     """Test login failure in non-interactive environment."""
 
     secret_file = tmp_path / "client_secret.json"
@@ -468,8 +516,12 @@ def test_cmd_login_not_tty(tmp_path, monkeypatch, capsys) -> None:
     assert "headless environment" in captured.out
 
 
-@patch("google_health_api.cli.commands.Flow")
-def test_cmd_login_web_flow(mock_flow_cls, tmp_path, monkeypatch, capsys) -> None:
+def test_cmd_login_web_flow(
+    mock_flow_cls: MagicMock,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test login web OAuth flow."""
 
     secret_file = tmp_path / "client_secret.json"
@@ -502,9 +554,11 @@ def test_cmd_login_web_flow(mock_flow_cls, tmp_path, monkeypatch, capsys) -> Non
     assert mock_flow.fetch_token.called
 
 
-@patch("google_health_api.cli.commands.InstalledAppFlow")
 def test_cmd_login_installed_app_flow(
-    mock_flow_cls, tmp_path, monkeypatch, capsys
+    mock_installed_flow_cls: MagicMock,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Test login installed app flow."""
 
@@ -519,7 +573,7 @@ def test_cmd_login_installed_app_flow(
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
 
     mock_flow = MagicMock()
-    mock_flow_cls.from_client_secrets_file.return_value = mock_flow
+    mock_installed_flow_cls.from_client_secrets_file.return_value = mock_flow
     mock_creds = MagicMock()
     mock_creds.to_json.return_value = '{"token": "abc"}'
     mock_flow.run_local_server.return_value = mock_creds
@@ -529,13 +583,15 @@ def test_cmd_login_installed_app_flow(
     assert "Logged in successfully" in captured.out
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_profile_commands(mock_load, mock_setup, capsys) -> None:
+def test_cli_profile_commands(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test profile CLI subcommands."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
     mock_api = MagicMock()
-    mock_setup.return_value = mock_api
+    mock_setup_client.return_value = mock_api
 
     # profile get
     mock_prof = MagicMock(spec=["to_dict"])
@@ -545,113 +601,97 @@ def test_cli_profile_commands(mock_load, mock_setup, capsys) -> None:
     }
     mock_api.get_profile = AsyncMock(return_value=mock_prof)
 
-    with patch.object(sys, "argv", ["google-health-cli", "profile", "get"]):
-        main()
+    run_cli(["profile", "get"])
     captured = capsys.readouterr()
     assert json.loads(captured.out)["displayName"] == "Alice"
 
     # profile update with json & update-mask & dry-run
     payload = {"name": "users/me/profile", "displayName": "Bob"}
-    with patch.object(
-        sys,
-        "argv",
-        [
-            "google-health-cli",
-            "--dry-run",
-            "--json",
-            json.dumps(payload),
-            "--params",
-            json.dumps({"updateMask": "displayName"}),
-            "profile",
-            "update",
-        ],
-    ):
-        with pytest.raises(SystemExit) as exit_info:
-            main()
-        assert exit_info.value.code == 0
+    with pytest.raises(SystemExit) as exit_info:
+        run_cli(
+            [
+                "--dry-run",
+                "--json",
+                json.dumps(payload),
+                "--params",
+                json.dumps({"updateMask": "displayName"}),
+                "profile",
+                "update",
+            ]
+        )
+    assert exit_info.value.code == 0
     captured = capsys.readouterr()
     assert "dry_run" in json.loads(captured.out)
 
     # profile update execution
     mock_api.update_profile = AsyncMock(return_value=mock_prof)
-    with patch.object(
-        sys,
-        "argv",
+    run_cli(
         [
-            "google-health-cli",
             "--json",
             json.dumps(payload),
             "profile",
             "update",
             "--update-mask",
             "displayName",
-        ],
-    ):
-        main()
+        ]
+    )
     mock_api.update_profile.assert_called_once()
 
     # profile update missing json
-    with (
-        patch.object(sys, "argv", ["google-health-cli", "profile", "update"]),
-        pytest.raises(SystemExit),
-    ):
-        main()
+    with pytest.raises(SystemExit):
+        run_cli(["profile", "update"])
     captured = capsys.readouterr()
     assert "Please provide raw JSON input" in captured.out
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_settings_commands(mock_load, mock_setup, capsys) -> None:
+def test_cli_settings_commands(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test settings CLI subcommands."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
     mock_api = MagicMock()
-    mock_setup.return_value = mock_api
+    mock_setup_client.return_value = mock_api
 
     # settings get
     mock_sett = MagicMock(spec=["to_dict"])
     mock_sett.to_dict.return_value = {"name": "users/me/settings", "timeZone": "UTC"}
     mock_api.get_settings = AsyncMock(return_value=mock_sett)
 
-    with patch.object(sys, "argv", ["google-health-cli", "settings", "get"]):
-        main()
+    run_cli(["settings", "get"])
     captured = capsys.readouterr()
     assert json.loads(captured.out)["timeZone"] == "UTC"
 
     # settings update with json
     mock_api.update_settings = AsyncMock(return_value=mock_sett)
     payload = {"name": "users/me/settings", "timeZone": "America/New_York"}
-    with patch.object(
-        sys,
-        "argv",
+    run_cli(
         [
-            "google-health-cli",
             "--json",
             json.dumps(payload),
             "settings",
             "update",
             "--update-mask",
             "timeZone",
-        ],
-    ):
-        main()
+        ]
+    )
     mock_api.update_settings.assert_called_once()
 
     # settings update missing json
-    with (
-        patch.object(sys, "argv", ["google-health-cli", "settings", "update"]),
-        pytest.raises(SystemExit),
-    ):
-        main()
+    with pytest.raises(SystemExit):
+        run_cli(["settings", "update"])
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_devices_commands(mock_load, mock_setup, capsys) -> None:
+def test_cli_devices_commands(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test devices CLI subcommands."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
     mock_api = MagicMock()
-    mock_setup.return_value = mock_api
+    mock_setup_client.return_value = mock_api
 
     mock_devices_api = AsyncMock()
     mock_api.paired_devices = mock_devices_api
@@ -660,8 +700,7 @@ def test_cli_devices_commands(mock_load, mock_setup, capsys) -> None:
     mock_dev_res = MagicMock(spec=["to_dict"])
     mock_dev_res.to_dict.return_value = {"pairedDevices": []}
     mock_devices_api.list.return_value = mock_dev_res
-    with patch.object(sys, "argv", ["google-health-cli", "devices", "list"]):
-        main()
+    run_cli(["devices", "list"])
     mock_devices_api.list.assert_called_once()
     capsys.readouterr()
 
@@ -669,19 +708,20 @@ def test_cli_devices_commands(mock_load, mock_setup, capsys) -> None:
     mock_dev = MagicMock(spec=["to_dict"])
     mock_dev.to_dict.return_value = {"id": "dev123"}
     mock_devices_api.get.return_value = mock_dev
-    with patch.object(sys, "argv", ["google-health-cli", "devices", "get", "dev123"]):
-        main()
+    run_cli(["devices", "get", "dev123"])
     captured = capsys.readouterr()
     assert json.loads(captured.out)["id"] == "dev123"
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_subscribers_commands(mock_load, mock_setup, capsys) -> None:
+def test_cli_subscribers_commands(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test subscribers CLI subcommands."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
     mock_api = MagicMock()
-    mock_setup.return_value = mock_api
+    mock_setup_client.return_value = mock_api
 
     mock_sub_api = AsyncMock()
     mock_api.subscribers = mock_sub_api
@@ -690,28 +730,23 @@ def test_cli_subscribers_commands(mock_load, mock_setup, capsys) -> None:
     mock_sub_api.list.return_value = MagicMock(
         spec=["to_dict"], to_dict=lambda: {"subscribers": []}
     )
-    with patch.object(sys, "argv", ["google-health-cli", "subscribers", "list"]):
-        main()
+    run_cli(["subscribers", "list"])
     mock_sub_api.list.assert_called_once()
 
     # subscribers create with flags and dry-run
-    with patch.object(
-        sys,
-        "argv",
-        [
-            "google-health-cli",
-            "--dry-run",
-            "subscribers",
-            "create",
-            "--endpoint-uri",
-            "https://example.com/webhook",
-            "--endpoint-secret",
-            "secret123",
-        ],
-    ):
-        with pytest.raises(SystemExit) as exit_info:
-            main()
-        assert exit_info.value.code == 0
+    with pytest.raises(SystemExit) as exit_info:
+        run_cli(
+            [
+                "--dry-run",
+                "subscribers",
+                "create",
+                "--endpoint-uri",
+                "https://example.com/webhook",
+                "--endpoint-secret",
+                "secret123",
+            ]
+        )
+    assert exit_info.value.code == 0
 
     # subscribers create with json
     payload = {
@@ -723,26 +758,19 @@ def test_cli_subscribers_commands(mock_load, mock_setup, capsys) -> None:
     mock_sub_api.create.return_value = MagicMock(
         spec=["to_dict"], to_dict=lambda: {"name": "sub1"}
     )
-    with patch.object(
-        sys,
-        "argv",
+    run_cli(
         [
-            "google-health-cli",
             "--json",
             json.dumps(payload),
             "subscribers",
             "create",
-        ],
-    ):
-        main()
+        ]
+    )
     mock_sub_api.create.assert_called_once()
 
     # subscribers create missing endpointUri
-    with (
-        patch.object(sys, "argv", ["google-health-cli", "subscribers", "create"]),
-        pytest.raises(SystemExit),
-    ):
-        main()
+    with pytest.raises(SystemExit):
+        run_cli(["subscribers", "create"])
 
     # subscribers patch
     mock_sub_api.patch.return_value = MagicMock(
@@ -753,61 +781,49 @@ def test_cli_subscribers_commands(mock_load, mock_setup, capsys) -> None:
         "endpointUri": "https://example.com/new",
         "endpointAuthorization": {"secret": "secret123"},
     }
-    with patch.object(
-        sys,
-        "argv",
+    run_cli(
         [
-            "google-health-cli",
             "--json",
             json.dumps(sub_payload),
             "subscribers",
             "patch",
             "projects/me/subscribers/sub1",
-        ],
-    ):
-        main()
+        ]
+    )
     mock_sub_api.patch.assert_called_once()
 
     # subscribers patch missing json
-    with (
-        patch.object(
-            sys,
-            "argv",
+    with pytest.raises(SystemExit):
+        run_cli(
             [
-                "google-health-cli",
                 "subscribers",
                 "patch",
                 "projects/me/subscribers/sub1",
-            ],
-        ),
-        pytest.raises(SystemExit),
-    ):
-        main()
+            ]
+        )
 
     # subscribers delete
     mock_sub_api.delete.return_value = MagicMock(spec=["to_dict"], to_dict=dict)
-    with patch.object(
-        sys,
-        "argv",
+    run_cli(
         [
-            "google-health-cli",
             "subscribers",
             "delete",
             "projects/me/subscribers/sub1",
             "--force",
-        ],
-    ):
-        main()
+        ]
+    )
     mock_sub_api.delete.assert_called_once()
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_subscriptions_commands(mock_load, mock_setup, capsys) -> None:
+def test_cli_subscriptions_commands(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test subscriptions CLI subcommands."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
     mock_api = MagicMock()
-    mock_setup.return_value = mock_api
+    mock_setup_client.return_value = mock_api
 
     mock_subscriptions_api = AsyncMock()
     mock_api.subscribers.subscriptions = mock_subscriptions_api
@@ -816,29 +832,22 @@ def test_cli_subscriptions_commands(mock_load, mock_setup, capsys) -> None:
     mock_subscriptions_api.list.return_value = MagicMock(
         spec=["to_dict"], to_dict=lambda: {"subscriptions": []}
     )
-    with patch.object(
-        sys,
-        "argv",
+    run_cli(
         [
-            "google-health-cli",
             "subscriptions",
             "list",
             "--parent-subscriber",
             "projects/me/subscribers/sub1",
-        ],
-    ):
-        main()
+        ]
+    )
     mock_subscriptions_api.list.assert_called_once()
 
     # subscriptions create with flags
     mock_subscriptions_api.create.return_value = MagicMock(
         spec=["to_dict"], to_dict=lambda: {"name": "sub1/subscriptions/s1"}
     )
-    with patch.object(
-        sys,
-        "argv",
+    run_cli(
         [
-            "google-health-cli",
             "subscriptions",
             "create",
             "--parent-subscriber",
@@ -847,44 +856,33 @@ def test_cli_subscriptions_commands(mock_load, mock_setup, capsys) -> None:
             "users/me",
             "--data-types",
             "steps",
-        ],
-    ):
-        main()
+        ]
+    )
     mock_subscriptions_api.create.assert_called_once()
 
     # subscriptions create with json
     payload = {"user": "users/me", "dataTypes": ["steps"]}
-    with patch.object(
-        sys,
-        "argv",
+    run_cli(
         [
-            "google-health-cli",
             "--json",
             json.dumps(payload),
             "subscriptions",
             "create",
             "--parent-subscriber",
             "projects/me/subscribers/sub1",
-        ],
-    ):
-        main()
+        ]
+    )
 
     # subscriptions create missing user
-    with (
-        patch.object(
-            sys,
-            "argv",
+    with pytest.raises(SystemExit):
+        run_cli(
             [
-                "google-health-cli",
                 "subscriptions",
                 "create",
                 "--parent-subscriber",
                 "projects/me/subscribers/sub1",
-            ],
-        ),
-        pytest.raises(SystemExit),
-    ):
-        main()
+            ]
+        )
 
     # subscriptions patch
     mock_subscriptions_api.patch.return_value = MagicMock(
@@ -895,83 +893,71 @@ def test_cli_subscriptions_commands(mock_load, mock_setup, capsys) -> None:
         "user": "users/me",
         "dataTypes": ["steps", "heart-rate"],
     }
-    with patch.object(
-        sys,
-        "argv",
+    run_cli(
         [
-            "google-health-cli",
             "--json",
             json.dumps(sub_patch_payload),
             "subscriptions",
             "patch",
             "projects/me/subscribers/sub1/subscriptions/s1",
-        ],
-    ):
-        main()
+        ]
+    )
 
     # subscriptions patch missing json
-    with (
-        patch.object(
-            sys,
-            "argv",
+    with pytest.raises(SystemExit):
+        run_cli(
             [
-                "google-health-cli",
                 "subscriptions",
                 "patch",
                 "projects/me/subscribers/sub1/subscriptions/s1",
-            ],
-        ),
-        pytest.raises(SystemExit),
-    ):
-        main()
+            ]
+        )
 
     # subscriptions delete
     mock_subscriptions_api.delete.return_value = None
-    with patch.object(
-        sys,
-        "argv",
+    run_cli(
         [
-            "google-health-cli",
             "subscriptions",
             "delete",
             "projects/me/subscribers/sub1/subscriptions/s1",
-        ],
-    ):
-        main()
+        ]
+    )
     captured = capsys.readouterr()
     assert "Deleted subscription" in captured.out
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_identity_and_irn(mock_load, mock_setup, capsys) -> None:
+def test_cli_identity_and_irn(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test identity and irn CLI subcommands."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
     mock_api = MagicMock()
-    mock_setup.return_value = mock_api
+    mock_setup_client.return_value = mock_api
 
     mock_api.get_identity = AsyncMock(
         return_value=MagicMock(spec=["to_dict"], to_dict=lambda: {"subject": "user123"})
     )
-    with patch.object(sys, "argv", ["google-health-cli", "identity", "get"]):
-        main()
+    run_cli(["identity", "get"])
     mock_api.get_identity.assert_called_once()
 
     mock_api.get_irn_profile = AsyncMock(
         return_value=MagicMock(spec=["to_dict"], to_dict=lambda: {"status": "ok"})
     )
-    with patch.object(sys, "argv", ["google-health-cli", "irn", "get"]):
-        main()
+    run_cli(["irn", "get"])
     mock_api.get_irn_profile.assert_called_once()
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_additional_datatypes(mock_load, mock_setup, capsys) -> None:
+def test_cli_additional_datatypes(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test remaining data type CLI subcommands routing."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
     mock_api = MagicMock()
-    mock_setup.return_value = mock_api
+    mock_setup_client.return_value = mock_api
 
     datatypes = [
         ("hydration_log", "hydration-log"),
@@ -1023,18 +1009,19 @@ def test_cli_additional_datatypes(mock_load, mock_setup, capsys) -> None:
         )
         subapi.list.return_value = res_mock
 
-        with patch.object(sys, "argv", ["google-health-cli", cmd_name, "list"]):
-            main()
+        run_cli([cmd_name, "list"])
         subapi.list.assert_called_once()
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_datatype_crud_and_options(mock_load, mock_setup, capsys) -> None:
+def test_cli_datatype_crud_and_options(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test datatype get, patch, delete, and rollup edge cases."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
     mock_api = MagicMock()
-    mock_setup.return_value = mock_api
+    mock_setup_client.return_value = mock_api
 
     mock_steps_subapi = AsyncMock()
     mock_api.steps = mock_steps_subapi
@@ -1048,36 +1035,34 @@ def test_cli_datatype_crud_and_options(mock_load, mock_setup, capsys) -> None:
     mock_dp.data.to_dict.return_value = {"count": 100}
     mock_steps_subapi.get.return_value = mock_dp
 
-    with patch.object(sys, "argv", ["google-health-cli", "steps", "get", "p1"]):
-        main()
+    run_cli(["steps", "get", "p1"])
     mock_steps_subapi.get.assert_called_once_with(data_point_id="p1")
 
     # patch
     mock_steps_subapi.patch.return_value = mock_dp
     payload = {"steps": {"count": 200}}
-    with patch.object(
-        sys,
-        "argv",
-        ["google-health-cli", "--json", json.dumps(payload), "steps", "patch", "p1"],
-    ):
-        main()
+    run_cli(
+        [
+            "--json",
+            json.dumps(payload),
+            "steps",
+            "patch",
+            "p1",
+        ]
+    )
     mock_steps_subapi.patch.assert_called_once()
 
     # delete
     mock_steps_subapi.delete.return_value = None
-    with patch.object(sys, "argv", ["google-health-cli", "steps", "delete", "p1"]):
-        main()
+    run_cli(["steps", "delete", "p1"])
     mock_steps_subapi.delete.assert_called_once_with("p1")
     captured = capsys.readouterr()
     assert "Deleted steps point p1" in captured.out
 
     # rollup unsupported error (sub_api has no daily_rollup method)
     del mock_steps_subapi.daily_rollup
-    with (
-        patch.object(sys, "argv", ["google-health-cli", "steps", "rollup"]),
-        pytest.raises(SystemExit),
-    ):
-        main()
+    with pytest.raises(SystemExit):
+        run_cli(["steps", "rollup"])
     captured = capsys.readouterr()
     assert "does not support daily rollups" in captured.out
 
@@ -1088,10 +1073,7 @@ def test_cli_datatype_crud_and_options(mock_load, mock_setup, capsys) -> None:
     mock_sett = MagicMock()
     mock_sett.time_zone = "America/Los_Angeles"
     mock_api.get_settings = AsyncMock(return_value=mock_sett)
-    with patch.object(
-        sys, "argv", ["google-health-cli", "steps", "rollup", "--days", "2"]
-    ):
-        main()
+    run_cli(["steps", "rollup", "--days", "2"])
     mock_steps_subapi.daily_rollup.assert_called_once()
 
     # list with --params startTime/endTime/pageSize/pageToken
@@ -1104,22 +1086,26 @@ def test_cli_datatype_crud_and_options(mock_load, mock_setup, capsys) -> None:
     mock_steps_subapi.list.return_value = MagicMock(
         spec=["data_points", "next_page_token"], data_points=[], next_page_token=None
     )
-    with patch.object(
-        sys,
-        "argv",
-        ["google-health-cli", "--params", json.dumps(params), "steps", "list"],
-    ):
-        main()
+    run_cli(
+        [
+            "--params",
+            json.dumps(params),
+            "steps",
+            "list",
+        ]
+    )
     assert mock_steps_subapi.list.called
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_execute_all_pages(mock_load, mock_setup, capsys) -> None:
+def test_cli_execute_all_pages(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test execute_all_pages streaming output format for --all flag across resource types."""
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
     mock_api = MagicMock()
-    mock_setup.return_value = mock_api
+    mock_setup_client.return_value = mock_api
 
     # 1. dataPoints list --all
     mock_dp = MagicMock()
@@ -1137,8 +1123,7 @@ def test_cli_execute_all_pages(mock_load, mock_setup, capsys) -> None:
     mock_steps_subapi.data_type.field_name = "steps"
     mock_steps_subapi.list.return_value = async_iter()
 
-    with patch.object(sys, "argv", ["google-health-cli", "steps", "list", "--all"]):
-        main()
+    run_cli(["steps", "list", "--all"])
     captured = capsys.readouterr()
     assert '"name": "p1"' in captured.out
 
@@ -1153,8 +1138,7 @@ def test_cli_execute_all_pages(mock_load, mock_setup, capsys) -> None:
     mock_dev_api = AsyncMock()
     mock_api.paired_devices = mock_dev_api
     mock_dev_api.list.return_value = async_iter_dev()
-    with patch.object(sys, "argv", ["google-health-cli", "devices", "list", "--all"]):
-        main()
+    run_cli(["devices", "list", "--all"])
     captured = capsys.readouterr()
     assert '"id": "d1"' in captured.out
 
@@ -1169,10 +1153,7 @@ def test_cli_execute_all_pages(mock_load, mock_setup, capsys) -> None:
     mock_sub_api = AsyncMock()
     mock_api.subscribers = mock_sub_api
     mock_sub_api.list.return_value = async_iter_sub()
-    with patch.object(
-        sys, "argv", ["google-health-cli", "subscribers", "list", "--all"]
-    ):
-        main()
+    run_cli(["subscribers", "list", "--all"])
     captured = capsys.readouterr()
     assert '"name": "s1"' in captured.out
 
@@ -1189,19 +1170,15 @@ def test_cli_execute_all_pages(mock_load, mock_setup, capsys) -> None:
     mock_subscriptions_api = AsyncMock()
     mock_api.subscribers.subscriptions = mock_subscriptions_api
     mock_subscriptions_api.list.return_value = async_iter_subscription()
-    with patch.object(
-        sys,
-        "argv",
+    run_cli(
         [
-            "google-health-cli",
             "subscriptions",
             "list",
             "--parent-subscriber",
             "sub1",
             "--all",
-        ],
-    ):
-        main()
+        ]
+    )
     captured = capsys.readouterr()
     assert '"name": "sub1/subscriptions/s1"' in captured.out
 
@@ -1229,79 +1206,76 @@ def test_serialize_response_reconciled_datapoints() -> None:
     assert serialize_response("plain string") == "plain string"
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_exceptions_handling(mock_load, mock_setup, capsys) -> None:
+def test_cli_exceptions_handling(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test HealthApiException and general Exception handling in async_run_cmd."""
 
-    mock_load.return_value = ("env", "fake-token")
+    mock_load_credentials.return_value = ("env", "fake-token")
 
     # HealthApiException
-    mock_setup.side_effect = HealthApiException("API Error")
-    with (
-        patch.object(sys, "argv", ["google-health-cli", "userinfo"]),
-        pytest.raises(SystemExit),
-    ):
-        main()
+    mock_setup_client.side_effect = HealthApiException("API Error")
+    with pytest.raises(SystemExit):
+        run_cli(["userinfo"])
     captured = capsys.readouterr()
     assert "API Error" in captured.out
 
     # General Exception
-    mock_setup.side_effect = Exception("Unexpected Boom")
-    with (
-        patch.object(sys, "argv", ["google-health-cli", "userinfo"]),
-        pytest.raises(SystemExit),
-    ):
-        main()
+    mock_setup_client.side_effect = Exception("Unexpected Boom")
+    with pytest.raises(SystemExit):
+        run_cli(["userinfo"])
     captured = capsys.readouterr()
     assert "Unexpected error: Unexpected Boom" in captured.out
 
 
-@patch("google_health_api.cli.commands.setup_client")
-@patch("google_health_api.cli.commands.load_credentials_or_env")
-def test_cli_invalid_json_payloads(mock_load, mock_setup, capsys) -> None:
+def test_cli_invalid_json_payloads(
+    mock_load_credentials: MagicMock,
+    mock_setup_client: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Test invalid JSON strings provided to --json or --params."""
-    mock_load.return_value = ("env", "fake-token")
-    mock_setup.return_value = MagicMock()
+    mock_load_credentials.return_value = ("env", "fake-token")
+    mock_setup_client.return_value = MagicMock()
 
     # Invalid --json
-    with (
-        patch.object(
-            sys,
-            "argv",
-            ["google-health-cli", "--json", "{invalid_json", "steps", "create"],
-        ),
-        pytest.raises(SystemExit),
-    ):
-        main()
+    with pytest.raises(SystemExit):
+        run_cli(
+            [
+                "--json",
+                "{invalid_json",
+                "steps",
+                "create",
+            ]
+        )
     captured = capsys.readouterr()
     assert "Invalid raw JSON payload" in captured.out
 
     # Invalid --params
-    with (
-        patch.object(
-            sys,
-            "argv",
-            ["google-health-cli", "--params", "{invalid_json", "steps", "list"],
-        ),
-        pytest.raises(SystemExit),
-    ):
-        main()
+    with pytest.raises(SystemExit):
+        run_cli(
+            [
+                "--params",
+                "{invalid_json",
+                "steps",
+                "list",
+            ]
+        )
     captured = capsys.readouterr()
     assert "Invalid --params JSON payload" in captured.out
 
 
-def test_unauthenticated_cli_setup(monkeypatch, capsys) -> None:
+def test_unauthenticated_cli_setup(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     """Test error when setup_client finds no auth token/credentials."""
     monkeypatch.delenv("GOOGLE_HEALTH_CLI_TOKEN", raising=False)
     monkeypatch.setattr(
         "google_health_api.cli.commands.TOKEN_FILE", "non_existent_token.json"
     )
 
-    with (
-        patch.object(sys, "argv", ["google-health-cli", "userinfo"]),
-        pytest.raises(SystemExit),
-    ):
-        main()
+    with pytest.raises(SystemExit):
+        run_cli(["userinfo"])
     captured = capsys.readouterr()
     assert "Not logged in" in captured.out
