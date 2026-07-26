@@ -1,69 +1,77 @@
 """Tests for profile CLI command."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock
 
+import aiohttp
 import pytest
 
-from tests.cli.conftest import run_cli
 
-
-def test_cli_profile_commands(
-    mock_load_credentials: MagicMock,
-    mock_setup_client: MagicMock,
+@pytest.mark.asyncio
+async def test_cli_profile_commands(
+    run_cli_against_server,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Test profile CLI subcommands."""
-    mock_load_credentials.return_value = ("env", "fake-token")
-    mock_api = MagicMock()
-    mock_setup_client.return_value = mock_api
+    profile_data = {
+        "name": "users/me/profile",
+        "age": 30,
+    }
+
+    async def get_profile_handler(
+        request: aiohttp.web.Request,
+    ) -> aiohttp.web.Response:
+        return aiohttp.web.json_response(profile_data)
+
+    async def update_profile_handler(
+        request: aiohttp.web.Request,
+    ) -> aiohttp.web.Response:
+        body = await request.json()
+        assert body["age"] == 35
+        assert request.query.get("updateMask") == "age"
+        return aiohttp.web.json_response(body)
 
     # profile get
-    mock_prof = MagicMock(spec=["to_dict"])
-    mock_prof.to_dict.return_value = {
-        "name": "users/me/profile",
-        "displayName": "Alice",
-    }
-    mock_api.get_profile = AsyncMock(return_value=mock_prof)
-
-    run_cli(["profile", "get"])
+    await run_cli_against_server(
+        ["profile", "get"],
+        [("GET", "v4/users/me/profile", get_profile_handler)],
+    )
     captured = capsys.readouterr()
-    assert json.loads(captured.out)["displayName"] == "Alice"
+    assert json.loads(captured.out)["age"] == 30
 
     # profile update with json & update-mask & dry-run
-    payload = {"name": "users/me/profile", "displayName": "Bob"}
+    payload = {"name": "users/me/profile", "age": 35}
     with pytest.raises(SystemExit) as exit_info:
-        run_cli(
+        await run_cli_against_server(
             [
                 "--dry-run",
                 "--json",
                 json.dumps(payload),
                 "--params",
-                json.dumps({"updateMask": "displayName"}),
+                json.dumps({"updateMask": "age"}),
                 "profile",
                 "update",
-            ]
+            ],
+            [],
         )
     assert exit_info.value.code == 0
     captured = capsys.readouterr()
     assert "dry_run" in json.loads(captured.out)
 
     # profile update execution
-    mock_api.update_profile = AsyncMock(return_value=mock_prof)
-    run_cli(
+    await run_cli_against_server(
         [
             "--json",
             json.dumps(payload),
             "profile",
             "update",
             "--update-mask",
-            "displayName",
-        ]
+            "age",
+        ],
+        [("PATCH", "v4/users/me/profile", update_profile_handler)],
     )
-    mock_api.update_profile.assert_called_once()
 
     # profile update missing json
     with pytest.raises(SystemExit):
-        run_cli(["profile", "update"])
+        await run_cli_against_server(["profile", "update"], [])
     captured = capsys.readouterr()
     assert "Please provide raw JSON input" in captured.out

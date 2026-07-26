@@ -1,36 +1,43 @@
 """Tests for settings CLI command."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock
 
+import aiohttp
 import pytest
 
-from tests.cli.conftest import run_cli
 
-
-def test_cli_settings_commands(
-    mock_load_credentials: MagicMock,
-    mock_setup_client: MagicMock,
+@pytest.mark.asyncio
+async def test_cli_settings_commands(
+    run_cli_against_server,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Test settings CLI subcommands."""
-    mock_load_credentials.return_value = ("env", "fake-token")
-    mock_api = MagicMock()
-    mock_setup_client.return_value = mock_api
+    settings_data = {"name": "users/me/settings", "timeZone": "UTC"}
+
+    async def get_settings_handler(
+        request: aiohttp.web.Request,
+    ) -> aiohttp.web.Response:
+        return aiohttp.web.json_response(settings_data)
+
+    async def update_settings_handler(
+        request: aiohttp.web.Request,
+    ) -> aiohttp.web.Response:
+        body = await request.json()
+        assert body["timeZone"] == "America/New_York"
+        assert request.query.get("updateMask") == "timeZone"
+        return aiohttp.web.json_response(body)
 
     # settings get
-    mock_sett = MagicMock(spec=["to_dict"])
-    mock_sett.to_dict.return_value = {"name": "users/me/settings", "timeZone": "UTC"}
-    mock_api.get_settings = AsyncMock(return_value=mock_sett)
-
-    run_cli(["settings", "get"])
+    await run_cli_against_server(
+        ["settings", "get"],
+        [("GET", "v4/users/me/settings", get_settings_handler)],
+    )
     captured = capsys.readouterr()
     assert json.loads(captured.out)["timeZone"] == "UTC"
 
     # settings update with json
-    mock_api.update_settings = AsyncMock(return_value=mock_sett)
     payload = {"name": "users/me/settings", "timeZone": "America/New_York"}
-    run_cli(
+    await run_cli_against_server(
         [
             "--json",
             json.dumps(payload),
@@ -38,10 +45,10 @@ def test_cli_settings_commands(
             "update",
             "--update-mask",
             "timeZone",
-        ]
+        ],
+        [("PATCH", "v4/users/me/settings", update_settings_handler)],
     )
-    mock_api.update_settings.assert_called_once()
 
     # settings update missing json
     with pytest.raises(SystemExit):
-        run_cli(["settings", "update"])
+        await run_cli_against_server(["settings", "update"], [])

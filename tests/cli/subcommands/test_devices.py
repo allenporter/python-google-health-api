@@ -1,38 +1,44 @@
 """Tests for devices CLI command."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock
 
+import aiohttp
 import pytest
 
-from tests.cli.conftest import run_cli
 
-
-def test_cli_devices_commands(
-    mock_load_credentials: MagicMock,
-    mock_setup_client: MagicMock,
+@pytest.mark.asyncio
+async def test_cli_devices_commands(
+    run_cli_against_server,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Test devices CLI subcommands."""
-    mock_load_credentials.return_value = ("env", "fake-token")
-    mock_api = MagicMock()
-    mock_setup_client.return_value = mock_api
+    device_data = {
+        "name": "projects/me/pairedDevices/dev123",
+        "deviceType": "WATCH",
+    }
 
-    mock_devices_api = AsyncMock()
-    mock_api.paired_devices = mock_devices_api
+    async def list_devices_handler(
+        request: aiohttp.web.Request,
+    ) -> aiohttp.web.Response:
+        return aiohttp.web.json_response({"pairedDevices": [device_data]})
 
-    # devices list
-    mock_dev_res = MagicMock(spec=["to_dict"])
-    mock_dev_res.to_dict.return_value = {"pairedDevices": []}
-    mock_devices_api.list.return_value = mock_dev_res
-    run_cli(["devices", "list"])
-    mock_devices_api.list.assert_called_once()
-    capsys.readouterr()
+    async def get_device_handler(
+        request: aiohttp.web.Request,
+    ) -> aiohttp.web.Response:
+        return aiohttp.web.json_response(device_data)
 
-    # devices get
-    mock_dev = MagicMock(spec=["to_dict"])
-    mock_dev.to_dict.return_value = {"id": "dev123"}
-    mock_devices_api.get.return_value = mock_dev
-    run_cli(["devices", "get", "dev123"])
+    # test devices list
+    await run_cli_against_server(
+        ["devices", "list"],
+        [("GET", "v4/users/me/pairedDevices", list_devices_handler)],
+    )
     captured = capsys.readouterr()
-    assert json.loads(captured.out)["id"] == "dev123"
+    assert "WATCH" in captured.out
+
+    # test devices get
+    await run_cli_against_server(
+        ["devices", "get", "dev123"],
+        [("GET", "v4/users/me/pairedDevices/dev123", get_device_handler)],
+    )
+    captured = capsys.readouterr()
+    assert json.loads(captured.out)["name"] == "projects/me/pairedDevices/dev123"

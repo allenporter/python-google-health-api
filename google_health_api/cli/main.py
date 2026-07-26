@@ -93,8 +93,8 @@ def add_standard_datapoint_commands(
         )
 
 
-def main() -> None:
-    """CLI parser setup and subcommand routing."""
+def build_parser() -> argparse.ArgumentParser:
+    """Build the command line argument parser."""
     parser = argparse.ArgumentParser(
         description="Google Health API CLI tool revamped with Agent DX principles."
     )
@@ -517,7 +517,12 @@ def main() -> None:
     subscriptions_delete.add_argument(
         "name", type=str, help="The subscription resource name"
     )
+    return parser
 
+
+def main() -> None:
+    """CLI entrypoint and subcommand routing."""
+    parser = build_parser()
     args = parser.parse_args()
 
     if args.command == "login":
