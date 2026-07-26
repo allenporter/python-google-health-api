@@ -1,9 +1,15 @@
 """Tests for pagination models and async iteration."""
 
+from dataclasses import dataclass
 from unittest.mock import AsyncMock
 
 import pytest
 
+from google_health_api.model.base import (
+    DataClassDictMixin,
+    DataPoint,
+    ReconciledDataPoint,
+)
 from google_health_api.model.pagination import (
     ListDataPointResult,
     ListReconciledDataPointsResult,
@@ -12,45 +18,57 @@ from google_health_api.model.pagination import (
 )
 
 
+@dataclass
+class DummyData(DataClassDictMixin):
+    """Dummy data class for generic typing tests."""
+
+    value: int
+
+
 @pytest.mark.asyncio
 async def test_list_data_point_result_single_page_no_token() -> None:
     """Test ListDataPointResult iteration with a single page and no next_page_token."""
-    raw_page = _ListDataPointsModel(data_points=["dp1", "dp2"], next_page_token=None)  # type: ignore[arg-type]
+    dp1 = DataPoint(data=DummyData(1))
+    dp2 = DataPoint(data=DummyData(2))
+    raw_page = _ListDataPointsModel(data_points=[dp1, dp2], next_page_token=None)
     result = ListDataPointResult(raw_page)
 
-    assert result.data_points == ["dp1", "dp2"]
+    assert result.data_points == [dp1, dp2]
     assert result.next_page_token is None
 
     pages = [page async for page in result]
     assert len(pages) == 1
-    assert pages[0].data_points == ["dp1", "dp2"]
+    assert pages[0].data_points == [dp1, dp2]
 
 
 @pytest.mark.asyncio
 async def test_list_data_point_result_single_page_no_get_next_page() -> None:
     """Test ListDataPointResult iteration when token exists but get_next_page is None."""
-    raw_page = _ListDataPointsModel(data_points=["dp1"], next_page_token="token123")  # type: ignore[arg-type]
+    dp1 = DataPoint(data=DummyData(1))
+    raw_page = _ListDataPointsModel(data_points=[dp1], next_page_token="token123")
     result = ListDataPointResult(raw_page, get_next_page=None)
 
     assert result.next_page_token == "token123"
 
     pages = [page async for page in result]
     assert len(pages) == 1
-    assert pages[0].data_points == ["dp1"]
+    assert pages[0].data_points == [dp1]
 
 
 @pytest.mark.asyncio
 async def test_list_data_point_result_multi_page() -> None:
     """Test ListDataPointResult async iteration across multiple pages."""
-    page1 = _ListDataPointsModel(
-        data_points=["dp1", "dp2"], next_page_token="token_page_2"
-    )  # type: ignore[arg-type]
-    page2 = _ListDataPointsModel(
-        data_points=["dp3", "dp4"], next_page_token="token_page_3"
-    )  # type: ignore[arg-type]
-    page3 = _ListDataPointsModel(data_points=["dp5"], next_page_token=None)  # type: ignore[arg-type]
+    dp1 = DataPoint(data=DummyData(1))
+    dp2 = DataPoint(data=DummyData(2))
+    dp3 = DataPoint(data=DummyData(3))
+    dp4 = DataPoint(data=DummyData(4))
+    dp5 = DataPoint(data=DummyData(5))
 
-    async def mock_get_next_page(token: str) -> _ListDataPointsModel:
+    page1 = _ListDataPointsModel(data_points=[dp1, dp2], next_page_token="token_page_2")
+    page2 = _ListDataPointsModel(data_points=[dp3, dp4], next_page_token="token_page_3")
+    page3 = _ListDataPointsModel(data_points=[dp5], next_page_token=None)
+
+    async def mock_get_next_page(token: str) -> _ListDataPointsModel[DummyData]:
         if token == "token_page_2":
             return page2
         if token == "token_page_3":
@@ -63,9 +81,9 @@ async def test_list_data_point_result_multi_page() -> None:
     pages = [page async for page in result]
 
     assert len(pages) == 3
-    assert pages[0].data_points == ["dp1", "dp2"]
-    assert pages[1].data_points == ["dp3", "dp4"]
-    assert pages[2].data_points == ["dp5"]
+    assert pages[0].data_points == [dp1, dp2]
+    assert pages[1].data_points == [dp3, dp4]
+    assert pages[2].data_points == [dp5]
 
     assert get_next_page_mock.call_count == 2
     get_next_page_mock.assert_any_call("token_page_2")
@@ -75,18 +93,20 @@ async def test_list_data_point_result_multi_page() -> None:
 @pytest.mark.asyncio
 async def test_list_reconciled_data_points_result_single_page_no_token() -> None:
     """Test ListReconciledDataPointsResult iteration with single page and no token."""
+    dp1 = DataPoint(data=DummyData(1))
+    rdp1 = ReconciledDataPoint(data_point=dp1)
     raw_page = _ListReconciledDataPointsModel(
-        reconciled_data_points=["rdp1"],
-        next_page_token=None,  # type: ignore[arg-type]
+        reconciled_data_points=[rdp1],
+        next_page_token=None,
     )
     result = ListReconciledDataPointsResult(raw_page)
 
-    assert result.reconciled_data_points == ["rdp1"]
+    assert result.reconciled_data_points == [rdp1]
     assert result.next_page_token is None
 
     pages = [page async for page in result]
     assert len(pages) == 1
-    assert pages[0].reconciled_data_points == ["rdp1"]
+    assert pages[0].reconciled_data_points == [rdp1]
 
 
 @pytest.mark.asyncio
@@ -94,9 +114,11 @@ async def test_list_reconciled_data_points_result_single_page_no_get_next_page()
     None
 ):
     """Test ListReconciledDataPointsResult iteration when token exists but get_next_page is None."""
+    dp1 = DataPoint(data=DummyData(1))
+    rdp1 = ReconciledDataPoint(data_point=dp1)
     raw_page = _ListReconciledDataPointsModel(
-        reconciled_data_points=["rdp1"],
-        next_page_token="token123",  # type: ignore[arg-type]
+        reconciled_data_points=[rdp1],
+        next_page_token="token123",
     )
     result = ListReconciledDataPointsResult(raw_page, get_next_page=None)
 
@@ -104,22 +126,31 @@ async def test_list_reconciled_data_points_result_single_page_no_get_next_page()
 
     pages = [page async for page in result]
     assert len(pages) == 1
-    assert pages[0].reconciled_data_points == ["rdp1"]
+    assert pages[0].reconciled_data_points == [rdp1]
 
 
 @pytest.mark.asyncio
 async def test_list_reconciled_data_points_result_multi_page() -> None:
     """Test ListReconciledDataPointsResult async iteration across multiple pages."""
+    dp1 = DataPoint(data=DummyData(1))
+    dp2 = DataPoint(data=DummyData(2))
+    dp3 = DataPoint(data=DummyData(3))
+    rdp1 = ReconciledDataPoint(data_point=dp1)
+    rdp2 = ReconciledDataPoint(data_point=dp2)
+    rdp3 = ReconciledDataPoint(data_point=dp3)
+
     page1 = _ListReconciledDataPointsModel(
-        reconciled_data_points=["rdp1"],
-        next_page_token="token_page_2",  # type: ignore[arg-type]
+        reconciled_data_points=[rdp1],
+        next_page_token="token_page_2",
     )
     page2 = _ListReconciledDataPointsModel(
-        reconciled_data_points=["rdp2", "rdp3"],
-        next_page_token=None,  # type: ignore[arg-type]
+        reconciled_data_points=[rdp2, rdp3],
+        next_page_token=None,
     )
 
-    async def mock_get_next_page(token: str) -> _ListReconciledDataPointsModel:
+    async def mock_get_next_page(
+        token: str,
+    ) -> _ListReconciledDataPointsModel[DummyData]:
         if token == "token_page_2":
             return page2
         raise ValueError(f"Unexpected token: {token}")
@@ -130,7 +161,7 @@ async def test_list_reconciled_data_points_result_multi_page() -> None:
     pages = [page async for page in result]
 
     assert len(pages) == 2
-    assert pages[0].reconciled_data_points == ["rdp1"]
-    assert pages[1].reconciled_data_points == ["rdp2", "rdp3"]
+    assert pages[0].reconciled_data_points == [rdp1]
+    assert pages[1].reconciled_data_points == [rdp2, rdp3]
 
     get_next_page_mock.assert_called_once_with("token_page_2")
