@@ -1,14 +1,25 @@
 """Tests for the Google Health CLI."""
 
 import json
+import os
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from google_health_api.cli.commands import (
+    CliHealthSession,
+    CredentialsAuth,
+    EnvAuth,
+    cmd_login,
+    fields_var,
+    load_credentials_or_env,
+    serialize_response,
+)
 from google_health_api.cli.main import main
 from google_health_api.cli.validation import validate_resource_name, validate_safe_path
 from google_health_api.client import GoogleHealthSession
+from google_health_api.exceptions import HealthApiException
 
 
 @pytest.mark.parametrize(
@@ -43,8 +54,6 @@ def test_validate_resource_name_failure(name: str, match: str) -> None:
 
 def test_validate_safe_path(tmp_path) -> None:
     """Test local path sandboxing validation rules."""
-    import os
-
     # Sandbox to current directory
     cwd = os.path.abspath(os.getcwd())
 
@@ -326,7 +335,6 @@ def test_cli_userinfo(mock_load, mock_setup, capsys) -> None:
 @pytest.mark.asyncio
 async def test_cli_health_session_fields_injection() -> None:
     """Test dynamic fields parameter injection in CliHealthSession."""
-    from google_health_api.cli.commands import CliHealthSession, fields_var
 
     auth_mock = AsyncMock()
     auth_mock.async_get_access_token = AsyncMock(return_value="fake-token")
@@ -371,7 +379,6 @@ async def test_cli_health_session_fields_injection() -> None:
 @pytest.mark.asyncio
 async def test_credentials_auth_refresh(tmp_path, monkeypatch) -> None:
     """Test CredentialsAuth refreshing expired credentials."""
-    from google_health_api.cli.commands import CredentialsAuth
 
     token_file = tmp_path / "token.json"
     monkeypatch.setattr("google_health_api.cli.commands.TOKEN_FILE", str(token_file))
@@ -393,7 +400,6 @@ async def test_credentials_auth_refresh(tmp_path, monkeypatch) -> None:
 @pytest.mark.asyncio
 async def test_env_auth() -> None:
     """Test EnvAuth token retrieval."""
-    from google_health_api.cli.commands import EnvAuth
 
     session_mock = MagicMock()
     auth = EnvAuth(session_mock, "env-secret-token")
@@ -403,7 +409,6 @@ async def test_env_auth() -> None:
 
 def test_load_credentials_or_env(tmp_path, monkeypatch) -> None:
     """Test loading credentials from env vs token file."""
-    from google_health_api.cli.commands import load_credentials_or_env
 
     # 1. Test env var set
     monkeypatch.setenv("GOOGLE_HEALTH_CLI_TOKEN", "env-tok")
@@ -436,7 +441,6 @@ def test_load_credentials_or_env(tmp_path, monkeypatch) -> None:
 
 def test_cmd_login_missing_client_secret(tmp_path, monkeypatch, capsys) -> None:
     """Test login failure when client secret file is missing."""
-    from google_health_api.cli.commands import cmd_login
 
     monkeypatch.setattr(
         "google_health_api.cli.commands.CLIENT_SECRET_FILE",
@@ -450,7 +454,6 @@ def test_cmd_login_missing_client_secret(tmp_path, monkeypatch, capsys) -> None:
 
 def test_cmd_login_not_tty(tmp_path, monkeypatch, capsys) -> None:
     """Test login failure in non-interactive environment."""
-    from google_health_api.cli.commands import cmd_login
 
     secret_file = tmp_path / "client_secret.json"
     secret_file.write_text(json.dumps({"web": {}}))
@@ -467,7 +470,6 @@ def test_cmd_login_not_tty(tmp_path, monkeypatch, capsys) -> None:
 
 def test_cmd_login_web_flow(tmp_path, monkeypatch, capsys) -> None:
     """Test login web OAuth flow."""
-    from google_health_api.cli.commands import cmd_login
 
     secret_file = tmp_path / "client_secret.json"
     secret_file.write_text(
@@ -503,7 +505,6 @@ def test_cmd_login_web_flow(tmp_path, monkeypatch, capsys) -> None:
 
 def test_cmd_login_installed_app_flow(tmp_path, monkeypatch, capsys) -> None:
     """Test login installed app flow."""
-    from google_health_api.cli.commands import cmd_login
 
     secret_file = tmp_path / "client_secret.json"
     secret_file.write_text(json.dumps({"installed": {}}))
@@ -1207,7 +1208,6 @@ def test_cli_execute_all_pages(mock_load, mock_setup, capsys) -> None:
 
 def test_serialize_response_reconciled_datapoints() -> None:
     """Test serialize_response for reconciled data points and generic objects."""
-    from google_health_api.cli.commands import serialize_response
 
     dp = MagicMock()
     dp.name = "p1"
@@ -1233,7 +1233,6 @@ def test_serialize_response_reconciled_datapoints() -> None:
 @patch("google_health_api.cli.commands.load_credentials_or_env")
 def test_cli_exceptions_handling(mock_load, mock_setup, capsys) -> None:
     """Test HealthApiException and general Exception handling in async_run_cmd."""
-    from google_health_api.exceptions import HealthApiException
 
     mock_load.return_value = ("env", "fake-token")
 
