@@ -8,7 +8,7 @@ import aiohttp
 from aiohttp.client_exceptions import ClientError
 
 from .auth import AbstractAuth
-from .const import HEALTH_API_URL
+from .const import HEALTH_API_URL, USERINFO_API_URL
 from .exceptions import (
     HealthApiException,
     HealthApiForbiddenException,
@@ -28,12 +28,14 @@ class GoogleHealthSession:
         auth: AbstractAuth,
         websession: aiohttp.ClientSession,
         host: str | None = None,
+        user_info_url: str | None = None,
     ) -> None:
         """Initialize the session."""
         self._auth = auth
         self._websession = websession
         self._host = host or HEALTH_API_URL
         self._timezone_cache: dict[str, str] = {}
+        self.user_info_url = user_info_url or USERINFO_API_URL
 
     async def request(
         self,

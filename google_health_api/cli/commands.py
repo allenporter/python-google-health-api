@@ -170,7 +170,12 @@ async def setup_client(session: aiohttp.ClientSession) -> GoogleHealthApi:
 
     api = GoogleHealthApi(auth)
     # Inject CliHealthSession
-    api._session = CliHealthSession(auth, session, host)
+    api._session = CliHealthSession(
+        auth,
+        session,
+        host,
+        user_info_url=os.environ.get("GOOGLE_HEALTH_USERINFO_URL"),
+    )
     # Update nested api classes with the new session
     api.steps._session = api._session
     api.heart_rate._session = api._session

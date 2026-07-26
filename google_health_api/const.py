@@ -1,6 +1,7 @@
 """Constants for the Google Health API."""
 
 HEALTH_API_URL = "https://health.googleapis.com"
+USERINFO_API_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
 
 class HealthApiScope:
