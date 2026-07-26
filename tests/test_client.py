@@ -193,48 +193,45 @@ async def test_raise_for_status_generic_client_error(
         await session.get("v1/test")
 
 
-async def test_error_detail_variations() -> None:
-    """Test _error_detail parsing under various status codes and JSON formats."""
-    # 1. Status < 400 -> None
-    resp_200 = AsyncMock(spec=aiohttp.ClientResponse)
-    resp_200.status = 200
-    assert await GoogleHealthSession._error_detail(resp_200) is None
+@pytest.mark.asyncio
+async def test_error_detail_status_less_than_400() -> None:
+    """Test that _error_detail returns None for success status codes (< 400)."""
+    resp = AsyncMock(spec=aiohttp.ClientResponse)
+    resp.status = 200
+    assert await GoogleHealthSession._error_detail(resp) is None
 
-    # 2. Status >= 400 but text() raises ClientError -> None
-    resp_error_text = AsyncMock(spec=aiohttp.ClientResponse)
-    resp_error_text.status = 400
-    resp_error_text.text.side_effect = ClientError("Stream closed")
-    assert await GoogleHealthSession._error_detail(resp_error_text) is None
 
-    # 3. Valid JSON with partial error fields
-    # Only status
-    resp_status_only = AsyncMock(spec=aiohttp.ClientResponse)
-    resp_status_only.status = 400
-    resp_status_only.text.return_value = '{"error": {"status": "INVALID"}}'
-    assert await GoogleHealthSession._error_detail(resp_status_only) == "INVALID"
+@pytest.mark.asyncio
+async def test_error_detail_text_raises_client_error() -> None:
+    """Test that _error_detail returns None when retrieving response text raises ClientError."""
+    resp = AsyncMock(spec=aiohttp.ClientResponse)
+    resp.status = 400
+    resp.text.side_effect = ClientError("Stream closed")
+    assert await GoogleHealthSession._error_detail(resp) is None
 
-    # Only code
-    resp_code_only = AsyncMock(spec=aiohttp.ClientResponse)
-    resp_code_only.status = 400
-    resp_code_only.text.return_value = '{"error": {"code": 404}}'
-    assert await GoogleHealthSession._error_detail(resp_code_only) == "(404)"
 
-    # Only message
-    resp_msg_only = AsyncMock(spec=aiohttp.ClientResponse)
-    resp_msg_only.status = 400
-    resp_msg_only.text.return_value = '{"error": {"message": "Resource not found"}}'
-    assert (
-        await GoogleHealthSession._error_detail(resp_msg_only) == "Resource not found"
-    )
-
-    # Empty error object -> None
-    resp_empty_error = AsyncMock(spec=aiohttp.ClientResponse)
-    resp_empty_error.status = 400
-    resp_empty_error.text.return_value = '{"error": {}}'
-    assert await GoogleHealthSession._error_detail(resp_empty_error) is None
-
-    # 4. Invalid JSON / HTML response -> None
-    resp_html = AsyncMock(spec=aiohttp.ClientResponse)
-    resp_html.status = 502
-    resp_html.text.return_value = "<html>Bad Gateway</html>"
-    assert await GoogleHealthSession._error_detail(resp_html) is None
+@pytest.mark.parametrize(
+    ("status", "payload", "expected"),
+    [
+        (400, '{"error": {"status": "INVALID"}}', "INVALID"),
+        (400, '{"error": {"code": 404}}', "(404)"),
+        (400, '{"error": {"message": "Resource not found"}}', "Resource not found"),
+        (
+            400,
+            '{"error": {"status": "INVALID", "code": 400, "message": "Bad request"}}',
+            "INVALID: (400): Bad request",
+        ),
+        (400, '{"error": {}}', None),
+        (502, "<html>Bad Gateway</html>", None),
+        (400, "not json", None),
+    ],
+)
+@pytest.mark.asyncio
+async def test_error_detail_json_variations(
+    status: int, payload: str, expected: str | None
+) -> None:
+    """Test _error_detail parsing with various JSON structures and invalid payloads."""
+    resp = AsyncMock(spec=aiohttp.ClientResponse)
+    resp.status = status
+    resp.text.return_value = payload
+    assert await GoogleHealthSession._error_detail(resp) == expected
