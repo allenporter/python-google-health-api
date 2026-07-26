@@ -10,6 +10,9 @@ from typing import Any, NoReturn
 from zoneinfo import ZoneInfo
 
 import aiohttp
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow, InstalledAppFlow
 
 from google_health_api.api import GoogleHealthApi
 from google_health_api.auth import AbstractAuth
@@ -82,8 +85,6 @@ class CredentialsAuth(AbstractAuth):
 
     async def async_get_access_token(self) -> str:
         if not self._credentials.valid:
-            from google.auth.transport.requests import Request
-
             loop = asyncio.get_running_loop()
             req = Request()
             await loop.run_in_executor(None, self._credentials.refresh, req)
@@ -118,8 +119,6 @@ def load_credentials_or_env():
 
     if not os.path.exists(TOKEN_FILE):
         return None
-
-    from google.oauth2.credentials import Credentials
 
     with open(TOKEN_FILE, "r") as f:
         data = json.load(f)
@@ -238,16 +237,12 @@ def cmd_login(args) -> None:
             status="FAILED_PRECONDITION",
         )
 
-    import json
-
     with open(CLIENT_SECRET_FILE, "r") as f:
         client_secrets_data = json.load(f)
 
     is_web = "web" in client_secrets_data
 
     if is_web:
-        from google_auth_oauthlib.flow import Flow
-
         redirect_uris = client_secrets_data["web"].get("redirect_uris", [])
         redirect_uri = redirect_uris[0] if redirect_uris else "http://localhost:8080/"
 
@@ -278,8 +273,6 @@ def cmd_login(args) -> None:
             flow.fetch_token(code=redirect_response)
         credentials = flow.credentials
     else:
-        from google_auth_oauthlib.flow import InstalledAppFlow
-
         flow = InstalledAppFlow.from_client_secrets_file(
             CLIENT_SECRET_FILE,
             scopes=SCOPES,

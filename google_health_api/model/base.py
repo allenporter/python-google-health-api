@@ -179,7 +179,7 @@ class DailyRollupDataPoint[R: DataClassDictMixin]:
         payload = rollup_cls.from_dict(payload_dict)
 
         # Import here to avoid circular dependencies
-        from .sleep import CivilDateTime
+        from .sleep import CivilDateTime  # noqa: PLC0415
 
         civil_start_dict = raw_dict.get("civilStartTime")
         civil_end_dict = raw_dict.get("civilEndTime")

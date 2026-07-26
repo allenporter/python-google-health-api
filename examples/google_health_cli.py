@@ -5,11 +5,15 @@ Supports logging in via browser, listing steps, and listing heart rate.
 
 import argparse
 import asyncio
+import json
 import os
 import sys
 from datetime import UTC, datetime, timedelta
 
 import aiohttp
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow, InstalledAppFlow
 
 from google_health_api.api import GoogleHealthApi
 from google_health_api.auth import AbstractAuth
@@ -37,10 +41,6 @@ class CredentialsAuth(AbstractAuth):
     async def async_get_access_token(self) -> str:
         """Return a valid access token, refreshing if necessary."""
         if not self._credentials.valid:
-            import asyncio
-
-            from google.auth.transport.requests import Request
-
             loop = asyncio.get_running_loop()
             req = Request()
             await loop.run_in_executor(None, self._credentials.refresh, req)
@@ -52,9 +52,6 @@ def load_credentials():
     """Load credentials from local token file."""
     if not os.path.exists(TOKEN_FILE):
         return None
-    import json
-
-    from google.oauth2.credentials import Credentials
 
     with open(TOKEN_FILE, "r") as f:
         data = json.load(f)
@@ -90,16 +87,12 @@ def cmd_login(args) -> None:
         print("   and place it in the root folder of this project.")
         sys.exit(1)
 
-    import json
-
     with open(CLIENT_SECRET_FILE, "r") as f:
         client_secrets_data = json.load(f)
 
     is_web = "web" in client_secrets_data
 
     if is_web:
-        from google_auth_oauthlib.flow import Flow
-
         redirect_uris = client_secrets_data["web"].get("redirect_uris", [])
         redirect_uri = redirect_uris[0] if redirect_uris else "http://localhost:8080/"
 
@@ -138,8 +131,6 @@ def cmd_login(args) -> None:
 
         credentials = flow.credentials
     else:
-        from google_auth_oauthlib.flow import InstalledAppFlow
-
         print("Initializing InstalledAppFlow for Desktop Application...")
         flow = InstalledAppFlow.from_client_secrets_file(
             CLIENT_SECRET_FILE,
