@@ -83,7 +83,7 @@ class SessionTimeInterval(DataClassDictMixin):
     """Represents a time interval of session data point."""
 
     start_time: str = field(metadata=field_options(alias="startTime"))
-    end_time: str = field(metadata=field_options(alias="endTime"))
+    end_time: str | None = field(metadata=field_options(alias="endTime"), default=None)
     start_utc_offset: str | None = field(
         metadata=field_options(alias="startUtcOffset"), default=None
     )
@@ -106,7 +106,7 @@ class OutOfBedSegment(DataClassDictMixin):
     """A time interval to represent an out-of-bed segment."""
 
     start_time: str = field(metadata=field_options(alias="startTime"))
-    end_time: str = field(metadata=field_options(alias="endTime"))
+    end_time: str | None = field(metadata=field_options(alias="endTime"), default=None)
     start_utc_offset: str | None = field(
         metadata=field_options(alias="startUtcOffset"), default=None
     )
@@ -162,10 +162,10 @@ class SleepStage(DataClassDictMixin):
     """A sleep stage segment."""
 
     start_time: str = field(metadata=field_options(alias="startTime"))
-    end_time: str = field(metadata=field_options(alias="endTime"))
     start_utc_offset: str = field(metadata=field_options(alias="startUtcOffset"))
     end_utc_offset: str = field(metadata=field_options(alias="endUtcOffset"))
     type: str = field(metadata=field_options(alias="type"))
+    end_time: str | None = field(metadata=field_options(alias="endTime"), default=None)
     create_time: str | None = field(
         metadata=field_options(alias="createTime"), default=None
     )
@@ -201,7 +201,7 @@ class SleepMetadata(DataClassDictMixin):
 class Sleep(DataClassDictMixin):
     """A sleep session possibly including stages."""
 
-    interval: SessionTimeInterval
+    interval: SessionTimeInterval | None = None
     create_time: str | None = field(
         metadata=field_options(alias="createTime"), default=None
     )
@@ -219,12 +219,17 @@ class Sleep(DataClassDictMixin):
     @property
     def start_time(self) -> str:
         """Return the start time of the interval."""
-        return self.interval.start_time
+        return self.interval.start_time if self.interval else ""
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> str | None:
         """Return the end time of the interval."""
-        return self.interval.end_time
+        return self.interval.end_time if self.interval else None
+
+    @property
+    def is_in_progress(self) -> bool:
+        """Return True if the sleep session is currently active (in progress)."""
+        return self.interval is not None and self.interval.end_time is None
 
     class Config(BaseConfig):
         serialize_by_alias = True
@@ -234,7 +239,7 @@ SLEEP = DataType(
     "sleep",
     "sleep",
     Sleep,
-    "sleep.interval.end_time",
+    "sleep.interval.start_time",
     read_scopes=[HealthApiScope.SLEEP_READ],
     write_scopes=[HealthApiScope.SLEEP_WRITE],
 )

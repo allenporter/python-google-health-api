@@ -90,9 +90,9 @@ class IrregularRhythmNotification(DataClassDictMixin):
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> str | None:
         """Return the end time of the interval."""
-        return self.interval.end_time
+        return self.interval.end_time if self.interval else None
 
     class Config(BaseConfig):
         serialize_by_alias = True
@@ -131,9 +131,9 @@ class Electrocardiogram(DataClassDictMixin):
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> str | None:
         """Return the end time of the interval."""
-        return self.interval.end_time
+        return self.interval.end_time if self.interval else None
 
     class Config(BaseConfig):
         serialize_by_alias = True

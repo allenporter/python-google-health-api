@@ -34,7 +34,7 @@ def serialize_datapoint(dp: DataPoint, field_name: str) -> dict[str, Any]:
     if dp.name:
         res["name"] = dp.name
     if dp.data_source:
-        res["dataSource"] = dp.data_source
+        res["dataSource"] = dp.data_source.to_dict()
     if hasattr(dp.data, "to_dict"):
         res[field_name] = dp.data.to_dict()
     else:
