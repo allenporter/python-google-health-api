@@ -10,10 +10,17 @@ from aiohttp import ClientError, ClientResponseError
 from google_health_api.auth import AbstractAuth
 from google_health_api.client import GoogleHealthSession, error_detail
 from google_health_api.exceptions import (
+    GoogleHealthApiError,
+    HealthApiConnectionException,
     HealthApiException,
     HealthApiForbiddenException,
+    HealthApiRateLimitException,
+    HealthApiScopeInsufficientException,
+    HealthApiServiceDisabledException,
     HealthAuthException,
 )
+
+from .conftest import load_fixture
 
 
 class MockAuth(AbstractAuth):
@@ -182,14 +189,16 @@ async def test_raise_for_status_generic_client_response_error(
 async def test_raise_for_status_generic_client_error(
     mock_auth: AbstractAuth, mock_websession: MagicMock
 ) -> None:
-    """Test generic aiohttp ClientError raises HealthApiException."""
+    """Test generic aiohttp ClientError raises HealthApiConnectionException."""
     mock_response = AsyncMock(spec=aiohttp.ClientResponse)
     mock_response.status = 200
     mock_response.raise_for_status.side_effect = ClientError("Connection reset")
     mock_websession.request.return_value = mock_response
 
     session = GoogleHealthSession(mock_auth, mock_websession)
-    with pytest.raises(HealthApiException, match="Error from API: Connection reset"):
+    with pytest.raises(
+        HealthApiConnectionException, match="Error from API: Connection reset"
+    ):
         await session.get("v1/test")
 
 
@@ -235,3 +244,73 @@ async def test_error_detail_json_variations(
     resp.status = status
     resp.text.return_value = payload
     assert await error_detail(resp) == expected
+
+
+@pytest.mark.parametrize(
+    ("fixture_file", "http_status", "expected_exc"),
+    [
+        (
+            "errors/service_disabled.json",
+            HTTPStatus.FORBIDDEN,
+            HealthApiServiceDisabledException,
+        ),
+        (
+            "errors/access_token_scope_insufficient.json",
+            HTTPStatus.FORBIDDEN,
+            HealthApiScopeInsufficientException,
+        ),
+        (
+            "errors/oauth_insufficient_scope.json",
+            HTTPStatus.FORBIDDEN,
+            HealthApiScopeInsufficientException,
+        ),
+        (
+            "errors/oauth_invalid_token.json",
+            HTTPStatus.UNAUTHORIZED,
+            HealthAuthException,
+        ),
+        (
+            "errors/unauthenticated.json",
+            HTTPStatus.UNAUTHORIZED,
+            HealthAuthException,
+        ),
+        (
+            "errors/resource_exhausted.json",
+            HTTPStatus.TOO_MANY_REQUESTS,
+            HealthApiRateLimitException,
+        ),
+        (
+            "errors/permission_denied.json",
+            HTTPStatus.FORBIDDEN,
+            HealthApiForbiddenException,
+        ),
+    ],
+)
+@pytest.mark.asyncio
+async def test_raise_for_status_fixtures(
+    mock_auth: AbstractAuth,
+    mock_websession: MagicMock,
+    fixture_file: str,
+    http_status: HTTPStatus,
+    expected_exc: type[GoogleHealthApiError],
+) -> None:
+    """Test specific exception raising with realistic JSON fixtures."""
+    payload = load_fixture(fixture_file)
+    mock_response = AsyncMock(spec=aiohttp.ClientResponse)
+    mock_response.status = http_status
+    mock_response.text.return_value = payload
+
+    request_info = MagicMock()
+    mock_response.raise_for_status.side_effect = ClientResponseError(
+        request_info=request_info,
+        history=(),
+        status=http_status,
+        message=http_status.phrase,
+    )
+    mock_websession.request.return_value = mock_response
+
+    session = GoogleHealthSession(mock_auth, mock_websession)
+    with pytest.raises(expected_exc) as exc_info:
+        await session.get("v1/test")
+
+    assert exc_info.value.status_code == http_status

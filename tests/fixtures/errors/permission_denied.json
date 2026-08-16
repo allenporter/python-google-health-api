@@ -1,0 +1,14 @@
+{
+  "error": {
+    "code": 403,
+    "message": "User is not authorized to access health data.",
+    "status": "PERMISSION_DENIED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "USER_PROJECT_DENIED",
+        "domain": "googleapis.com"
+      }
+    ]
+  }
+}

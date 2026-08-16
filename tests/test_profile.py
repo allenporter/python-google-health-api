@@ -8,6 +8,10 @@ import aiohttp
 import pytest
 
 from google_health_api.api import GoogleHealthApi
+from google_health_api.exceptions import (
+    HealthApiForbiddenException,
+    HealthApiServiceDisabledException,
+)
 from google_health_api.model import (
     Date,
     Profile,
@@ -371,3 +375,20 @@ async def test_get_user_info(api: GoogleHealthApi) -> None:
         mock_get.assert_called_once_with(
             "https://www.googleapis.com/oauth2/v3/userinfo"
         )
+
+
+async def test_get_user_info_service_disabled(api: GoogleHealthApi) -> None:
+    """Test get_user_info error propagation when service is disabled."""
+    with patch.object(
+        api._session,
+        "get",
+        side_effect=HealthApiServiceDisabledException(
+            "Service disabled",
+            status_code=403,
+        ),
+    ):
+        with pytest.raises(HealthApiServiceDisabledException) as exc_info:
+            await api.get_user_info()
+
+        assert isinstance(exc_info.value, HealthApiForbiddenException)
+        assert exc_info.value.status_code == 403
