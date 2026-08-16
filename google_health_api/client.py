@@ -128,10 +128,7 @@ class GoogleHealthSession:
             error_message = f"{err.message} response from API ({resp.status})"
             if error_info.detail:
                 error_message += f": {error_info.detail}"
-            raise error_info.exception_cls(
-                error_message,
-                status_code=resp.status,
-            ) from err
+            raise error_info.exception_cls(error_message) from err
         except aiohttp.ClientError as err:
             raise HealthApiConnectionException(f"Error from API: {err}") from err
         return resp

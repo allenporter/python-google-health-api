@@ -4,21 +4,7 @@ from .model.operation import Status
 
 
 class GoogleHealthApiError(Exception):
-    """Error talking to the Google Health API.
-
-    Attributes:
-        status_code: The HTTP status code if associated with an HTTP response.
-    """
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        status_code: int | None = None,
-    ) -> None:
-        """Initialize the GoogleHealthApiError."""
-        super().__init__(message)
-        self.status_code = status_code
+    """Error talking to the Google Health API."""
 
 
 class HealthApiException(GoogleHealthApiError):

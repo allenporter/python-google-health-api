@@ -382,13 +382,9 @@ async def test_get_user_info_service_disabled(api: GoogleHealthApi) -> None:
     with patch.object(
         api._session,
         "get",
-        side_effect=HealthApiServiceDisabledException(
-            "Service disabled",
-            status_code=403,
-        ),
+        side_effect=HealthApiServiceDisabledException("Service disabled"),
     ):
         with pytest.raises(HealthApiServiceDisabledException) as exc_info:
             await api.get_user_info()
 
         assert isinstance(exc_info.value, HealthApiForbiddenException)
-        assert exc_info.value.status_code == 403

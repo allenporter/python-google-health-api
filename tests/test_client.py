@@ -310,7 +310,5 @@ async def test_raise_for_status_fixtures(
     mock_websession.request.return_value = mock_response
 
     session = GoogleHealthSession(mock_auth, mock_websession)
-    with pytest.raises(expected_exc) as exc_info:
+    with pytest.raises(expected_exc):
         await session.get("v1/test")
-
-    assert exc_info.value.status_code == http_status
