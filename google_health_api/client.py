@@ -140,13 +140,15 @@ def _parse_rpc_error(
 ) -> tuple[str | None, type[GoogleHealthApiError] | None]:
     """Extract detail string and specific exception from a Google RPC error dict."""
     exc_cls: type[GoogleHealthApiError] | None = None
+    reasons: list[str] = []
     for detail in error.get("details", []):
-        if (
-            isinstance(detail, dict)
-            and (reason := detail.get("reason"))
-            and (exc_cls := RPC_REASON_EXCEPTIONS.get(reason))
-        ):
-            break
+        if isinstance(detail, dict) and (reason := detail.get("reason")):
+            reasons.append(str(reason))
+            if exc_cls is None and (matched := RPC_REASON_EXCEPTIONS.get(reason)):
+                exc_cls = matched
+
+    if reasons:
+        _LOGGER.debug("Google RPC error reasons in response: %s", reasons)
 
     parts: list[str] = []
     if status := error.get("status"):
@@ -186,6 +188,7 @@ async def parse_error_response(resp: aiohttp.ClientResponse) -> ParsedErrorInfo:
     try:
         raw_data = json.loads(await resp.text())
         if isinstance(raw_data, dict):
+            _LOGGER.debug("API error response payload (%s): %s", resp.status, raw_data)
             error_val = raw_data.get("error")
             if isinstance(error_val, dict):
                 detail, exception_cls = _parse_rpc_error(error_val)
