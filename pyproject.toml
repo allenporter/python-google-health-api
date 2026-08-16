@@ -4,7 +4,7 @@ requires = ["setuptools>=77.0"]
 
 [project]
 name = "google_health_api"
-version = "0.9.0"
+version = "0.10.0"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 description = "An asynchronous, type-safe Python client library for the Google Health API."
