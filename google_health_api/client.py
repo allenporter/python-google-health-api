@@ -13,6 +13,7 @@ from .auth import AbstractAuth
 from .const import HEALTH_API_URL, USERINFO_API_URL
 from .exceptions import (
     GoogleHealthApiError,
+    HealthApiAccountNotLinkedException,
     HealthApiConnectionException,
     HealthApiException,
     HealthApiForbiddenException,
@@ -31,6 +32,8 @@ RPC_REASON_EXCEPTIONS: dict[str, type[GoogleHealthApiError]] = {
     "ACCESS_TOKEN_SCOPE_INSUFFICIENT": HealthApiScopeInsufficientException,
     "RATE_LIMIT_EXCEEDED": HealthApiRateLimitException,
     "QUOTA_EXCEEDED": HealthApiRateLimitException,
+    "ACCOUNT_NOT_LINKED": HealthApiAccountNotLinkedException,
+    "USER_NOT_LINKED": HealthApiAccountNotLinkedException,
 }
 
 OAUTH_ERROR_EXCEPTIONS: dict[str, type[GoogleHealthApiError]] = {
@@ -154,6 +157,12 @@ def _parse_rpc_error(
         parts.append(f"({code})")
     if msg := error.get("message"):
         parts.append(str(msg))
+
+    if exc_cls is None and (
+        error.get("status") == "FAILED_PRECONDITION"
+        and "not linked" in (error.get("message") or "").lower()
+    ):
+        exc_cls = HealthApiAccountNotLinkedException
 
     return (": ".join(parts) if parts else None), exc_cls
 

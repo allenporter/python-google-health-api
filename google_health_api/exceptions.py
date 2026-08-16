@@ -39,6 +39,10 @@ class HealthApiConnectionException(HealthApiException):
     """Raised when network or connection errors occur talking to the API."""
 
 
+class HealthApiAccountNotLinkedException(HealthApiException):
+    """Raised when the user account is not linked to Google Health / Fitbit."""
+
+
 class OperationError(GoogleHealthApiError):
     """Raised when a long-running operation completes with an error status.
 
