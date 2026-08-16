@@ -2,13 +2,6 @@
   "error": {
     "code": 400,
     "message": "The account is not linked to Google Health.",
-    "status": "FAILED_PRECONDITION",
-    "details": [
-      {
-        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
-        "reason": "ACCOUNT_NOT_LINKED",
-        "domain": "googleapis.com"
-      }
-    ]
+    "status": "FAILED_PRECONDITION"
   }
 }

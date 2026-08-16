@@ -32,8 +32,6 @@ RPC_REASON_EXCEPTIONS: dict[str, type[GoogleHealthApiError]] = {
     "ACCESS_TOKEN_SCOPE_INSUFFICIENT": HealthApiScopeInsufficientException,
     "RATE_LIMIT_EXCEEDED": HealthApiRateLimitException,
     "QUOTA_EXCEEDED": HealthApiRateLimitException,
-    "ACCOUNT_NOT_LINKED": HealthApiAccountNotLinkedException,
-    "USER_NOT_LINKED": HealthApiAccountNotLinkedException,
 }
 
 OAUTH_ERROR_EXCEPTIONS: dict[str, type[GoogleHealthApiError]] = {

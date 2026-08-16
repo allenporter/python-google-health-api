@@ -318,25 +318,3 @@ async def test_raise_for_status_fixtures(
     session = GoogleHealthSession(mock_auth, mock_websession)
     with pytest.raises(expected_exc):
         await session.get("v1/test")
-
-
-async def test_raise_for_status_account_not_linked_no_details(
-    mock_auth: AbstractAuth, mock_websession: MagicMock
-) -> None:
-    """Test FAILED_PRECONDITION message without details raises HealthApiAccountNotLinkedException."""
-    mock_response = AsyncMock(spec=aiohttp.ClientResponse)
-    mock_response.status = 400
-    mock_response.text.return_value = '{"error": {"code": 400, "message": "The account is not linked to Google Health.", "status": "FAILED_PRECONDITION"}}'
-
-    request_info = MagicMock()
-    mock_response.raise_for_status.side_effect = ClientResponseError(
-        request_info=request_info,
-        history=(),
-        status=HTTPStatus.BAD_REQUEST,
-        message="Bad Request",
-    )
-    mock_websession.request.return_value = mock_response
-
-    session = GoogleHealthSession(mock_auth, mock_websession)
-    with pytest.raises(HealthApiAccountNotLinkedException):
-        await session.get("v1/test")
