@@ -1,6 +1,7 @@
 """Shared fixtures and fake authentication implementation for tests."""
 
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 
 import aiohttp
 import pytest
@@ -8,6 +9,14 @@ from aiohttp import ClientSession
 from aiohttp.web import Application
 
 from google_health_api.auth import AbstractAuth
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+
+def load_fixture(fixture_path: str) -> str:
+    """Load a fixture file relative to tests/fixtures/."""
+    return (FIXTURES_DIR / fixture_path).read_text(encoding="utf-8")
+
 
 PATH_PREFIX = "/path-prefix"
 
