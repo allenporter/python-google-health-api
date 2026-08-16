@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": 400,
+    "message": "The account is not linked to Google Health.",
+    "status": "FAILED_PRECONDITION"
+  }
+}

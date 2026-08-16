@@ -11,6 +11,7 @@ from google_health_api.auth import AbstractAuth
 from google_health_api.client import GoogleHealthSession, error_detail
 from google_health_api.exceptions import (
     GoogleHealthApiError,
+    HealthApiAccountNotLinkedException,
     HealthApiConnectionException,
     HealthApiException,
     HealthApiForbiddenException,
@@ -283,6 +284,11 @@ async def test_error_detail_json_variations(
             "errors/permission_denied.json",
             HTTPStatus.FORBIDDEN,
             HealthApiForbiddenException,
+        ),
+        (
+            "errors/account_not_linked.json",
+            HTTPStatus.BAD_REQUEST,
+            HealthApiAccountNotLinkedException,
         ),
     ],
 )
