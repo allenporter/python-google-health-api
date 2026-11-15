@@ -217,6 +217,8 @@ async def test_daily_rollup_daily_hrv(
     assert isinstance(rollup.data, HeartRateVariabilityPersonalRangeRollupValue)
     assert rollup.data.average_heart_rate_variability_milliseconds_min == 40.0
     assert rollup.data.average_heart_rate_variability_milliseconds_max == 55.0
+    assert rollup.civil_start_time is not None
+    assert rollup.civil_start_time.date is not None
     assert rollup.civil_start_time.date.year == 2026
     assert rollup.civil_start_time.date.month == 6
     assert rollup.civil_start_time.date.day == 22
