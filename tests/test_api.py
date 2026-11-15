@@ -386,6 +386,8 @@ async def test_steps_daily_rollup(
     assert len(result) == 1
     point = result[0]
     assert point.data.count_sum == 5000
+    assert point.civil_start_time is not None
+    assert point.civil_start_time.date is not None
     assert point.civil_start_time.date.year == 2026
     assert point.civil_start_time.date.month == 6
     assert point.civil_start_time.date.day == 22
@@ -433,6 +435,8 @@ async def test_weight_daily_rollup(
     assert len(result) == 1
     point = result[0]
     assert point.data.weight_grams_avg == 75000.0
+    assert point.civil_start_time is not None
+    assert point.civil_start_time.date is not None
     assert point.civil_start_time.date.year == 2026
 
     assert len(requests) == 1
@@ -1180,6 +1184,7 @@ async def test_exercise(
     assert result.data_points[0].data.exercise_type == "WALKING"
     assert result.data_points[0].data.display_name == "Afternoon Walk"
     assert result.data_points[0].data.metrics_summary.active_zone_minutes == 45
+    assert result.data_points[0].data.exercise_metadata is not None
     assert result.data_points[0].data.exercise_metadata.has_gps is True
 
     create_response.append(fake_payload)
@@ -1232,6 +1237,7 @@ async def test_electrocardiogram(
     assert len(result.data_points) == 1
     assert result.data_points[0].data.result_classification == "NORMAL_SINUS_RHYTHM"
     assert result.data_points[0].data.beats_per_minute_avg == 65
+    assert result.data_points[0].data.medical_device_info is not None
     assert (
         result.data_points[0].data.medical_device_info.device_model == "Pixel Watch 2"
     )

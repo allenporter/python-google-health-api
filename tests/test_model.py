@@ -1,7 +1,10 @@
 """Tests for Google Health API data model registry and base types."""
 
+import pytest
+
 from google_health_api import model
 from google_health_api.model import DATATYPES
+from google_health_api.model.base import DataPoint
 
 
 def test_datatype_mapping() -> None:
@@ -9,6 +12,12 @@ def test_datatype_mapping() -> None:
     assert DATATYPES.get("steps") is model.STEPS
     assert DATATYPES.get("weight") is model.WEIGHT
     assert DATATYPES.get("active-energy-burned") is model.ACTIVE_ENERGY_BURNED
+
+
+def test_datapoint_from_api_dict_rollup_only_raises() -> None:
+    """Test DataPoint.from_api_dict raises TypeError for rollup-only DataType."""
+    with pytest.raises(TypeError, match="does not support data points"):
+        DataPoint.from_api_dict(model.TOTAL_CALORIES, {"totalCalories": {}})
 
 
 def test_sleep_in_progress() -> None:

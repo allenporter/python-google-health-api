@@ -96,6 +96,9 @@ class DataPoint[T: DataClassDictMixin]:
         cls, data_type: DataType[T], raw_dict: dict[str, Any]
     ) -> "DataPoint[T]":
         """Deserialize a raw API dictionary into a type-safe DataPoint."""
+        if data_type.payload_cls is None:
+            raise TypeError(f"DataType {data_type.key} does not support data points.")
+
         payload_dict = raw_dict.get(data_type.field_name)
         if payload_dict is None:
             data_block = raw_dict.get("data", {})
