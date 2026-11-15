@@ -29,3 +29,7 @@ include = ["google_health_api*"]
 
 [tool.setuptools.package-data]
 google_health_api = ["py.typed"]
+
+[tool.coverage.run]
+core = "sysmon"
+disable_warnings = ["no-sysmon"]
