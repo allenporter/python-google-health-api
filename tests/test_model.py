@@ -9,15 +9,19 @@ from google_health_api import model
 from google_health_api.model import (
     DATATYPES,
     ActivityLevelRollupValue,
+    Bmi,
     CivilDateTime,
     Date,
+    Height,
     MobilityMetrics,
+    ObservationSampleTime,
     SedentaryPeriodRollupValue,
     SplitSummary,
     Subscriber,
     TimeInHeartRateZoneRollupValue,
     TimeInHeartRateZones,
     TimeOfDay,
+    Weight,
 )
 from google_health_api.model.base import (
     DataPoint,
@@ -267,3 +271,31 @@ def test_date_time_and_civil_datetime_helpers() -> None:
     # Partial/empty CivilDateTime
     assert CivilDateTime().to_date() is None
     assert CivilDateTime().to_datetime() is None
+
+
+def test_bmi_from_measurements() -> None:
+    """Test Bmi.from_measurements computes BMI and preserves sample time."""
+    sample_time = ObservationSampleTime(
+        physical_time=datetime(2026, 7, 18, 12, 0, tzinfo=UTC)
+    )
+    weight = Weight(weight_grams=82400.0, sample_time=sample_time)
+    height = Height(
+        height_millimeters=1850,
+        sample_time=ObservationSampleTime(
+            physical_time=datetime(2025, 12, 14, 0, 0, tzinfo=UTC)
+        ),
+    )
+
+    bmi = Bmi.from_measurements(weight, height)
+    assert bmi.bmi == 24.08
+    assert bmi.weight_grams == 82400.0
+    assert bmi.height_millimeters == 1850
+    assert bmi.sample_time == sample_time
+    assert bmi.start_time == datetime(2026, 7, 18, 12, 0, tzinfo=UTC)
+    assert bmi.end_time == datetime(2026, 7, 18, 12, 0, tzinfo=UTC)
+
+    with pytest.raises(ValueError, match="height_millimeters must be positive"):
+        Bmi.from_measurements(
+            weight,
+            Height(height_millimeters=0, sample_time=sample_time),
+        )

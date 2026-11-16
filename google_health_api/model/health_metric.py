@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from typing import Self
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
@@ -223,6 +224,21 @@ class Bmi(DataClassDictMixin):
     sample_time: ObservationSampleTime = field(
         metadata=field_options(alias="sampleTime")
     )
+
+    @classmethod
+    def from_measurements(cls, weight: Weight, height: Height) -> Self:
+        """Compute a synthetic BMI measurement from Weight and Height models."""
+        if height.height_millimeters <= 0:
+            raise ValueError("height_millimeters must be positive to compute BMI.")
+        bmi_val = (weight.weight_grams / 1000.0) / (
+            (height.height_millimeters / 1000.0) ** 2
+        )
+        return cls(
+            bmi=round(bmi_val, 2),
+            weight_grams=weight.weight_grams,
+            height_millimeters=height.height_millimeters,
+            sample_time=weight.sample_time,
+        )
 
     @property
     def start_time(self) -> datetime:
