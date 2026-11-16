@@ -4,6 +4,7 @@ import dataclasses
 import json
 import os
 import types
+from datetime import datetime, timedelta
 from typing import Any, Union, get_args, get_origin
 
 from google_health_api.model.activity import (
@@ -45,6 +46,7 @@ from google_health_api.model.base import (
     DataPoint,
     DataSource,
     Device,
+    ModelConfig,
     ReconciledDataPoint,
 )
 from google_health_api.model.device import PairedDevice
@@ -69,12 +71,14 @@ from google_health_api.model.health_metric import (
     BodyFatRollupValue,
     CoreBodyTemperature,
     CoreBodyTemperatureRollupValue,
+    DailyHeartRateVariability,
     DailyOxygenSaturation,
     DailyRestingHeartRate,
     DailyRestingHeartRateMetadata,
     HeartRate,
     HeartRateMetadata,
     HeartRateRollupValue,
+    HeartRateVariability,
     HeartRateVariabilityPersonalRangeRollupValue,
     Height,
     ObservationSampleTime,
@@ -223,6 +227,8 @@ CLASS_TO_SCHEMA = {
     WeightRollupValue: "WeightRollupValue",
     RestingHeartRatePersonalRangeRollupValue: "RestingHeartRatePersonalRangeRollupValue",
     HeartRateRollupValue: "HeartRateRollupValue",
+    HeartRateVariability: "HeartRateVariability",
+    DailyHeartRateVariability: "DailyHeartRateVariability",
     HeartRateVariabilityPersonalRangeRollupValue: "HeartRateVariabilityPersonalRangeRollupValue",
     BloodGlucose: "BloodGlucose",
     BloodGlucoseRollupValue: "BloodGlucoseRollupValue",
@@ -297,6 +303,7 @@ def test_schema_conformance() -> None:
         )
         schema_def = schemas[schema_name]
         properties = schema_def.get("properties", {})
+        has_temporal_field = False
 
         # Ensure every field in the python class exists in the schema properties
         for field in dataclasses.fields(cls):
@@ -352,12 +359,36 @@ def test_schema_conformance() -> None:
                     f"but schema property $ref is {prop_def.get('$ref')} (expected: {expected_ref})"
                 )
             else:
-                # Primitive type
+                # Primitive or stdlib temporal type
                 schema_type = prop_def.get("type")
-                if field_type is str:
+                schema_format = prop_def.get("format")
+                if field_type is datetime:
+                    has_temporal_field = True
+                    assert (
+                        schema_type == "string" and schema_format == "google-datetime"
+                    ), (
+                        f"Field '{field.name}' on {cls.__name__} is datetime, "
+                        f"but schema property is type={schema_type}, format={schema_format}"
+                    )
+                elif field_type is timedelta:
+                    has_temporal_field = True
+                    assert (
+                        schema_type == "string" and schema_format == "google-duration"
+                    ), (
+                        f"Field '{field.name}' on {cls.__name__} is timedelta, "
+                        f"but schema property is type={schema_type}, format={schema_format}"
+                    )
+                elif field_type is str:
                     assert schema_type == "string", (
                         f"Field '{field.name}' on {cls.__name__} is str, "
                         f"but schema property type is {schema_type}"
+                    )
+                    assert schema_format not in (
+                        "google-datetime",
+                        "google-duration",
+                    ), (
+                        f"Field '{field.name}' on {cls.__name__} is raw str, "
+                        f"but schema format is '{schema_format}' (expected datetime/timedelta)"
                     )
                 elif field_type is int:
                     # In discovery docs, large ints (int64) are often mapped as type: string, format: int64
@@ -375,3 +406,10 @@ def test_schema_conformance() -> None:
                         f"Field '{field.name}' on {cls.__name__} is bool, "
                         f"but schema property type is {schema_type}"
                     )
+
+        cfg = getattr(cls, "Config", None)
+        uses_model_config = cfg is not None and issubclass(cfg, ModelConfig)
+        assert uses_model_config == has_temporal_field, (
+            f"Class {cls.__name__}: uses_model_config={uses_model_config} "
+            f"must match has_temporal_field={has_temporal_field}"
+        )

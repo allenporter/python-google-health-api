@@ -254,8 +254,8 @@ async def test_list_steps(
     point = result.data_points[0]
     assert point.name == "users/me/dataTypes/steps/dataPoints/point-1"
     assert point.data.count == 500
-    assert point.data.start_time == "2026-06-22T08:00:00Z"
-    assert point.data.end_time == "2026-06-22T08:15:00Z"
+    assert point.data.start_time == datetime(2026, 6, 22, 8, 0, tzinfo=UTC)
+    assert point.data.end_time == datetime(2026, 6, 22, 8, 15, tzinfo=UTC)
     assert point.data_source is not None
     assert point.data_source.platform == "FITBIT"
 
@@ -313,7 +313,8 @@ async def test_create_steps(
     steps_data = Steps(
         count=150,
         interval=ObservationTimeInterval(
-            start_time="2026-06-22T10:00:00Z", end_time="2026-06-22T10:15:00Z"
+            start_time=datetime(2026, 6, 22, 10, 0, tzinfo=UTC),
+            end_time=datetime(2026, 6, 22, 10, 15, tzinfo=UTC),
         ),
     )
     new_point = DataPoint(
@@ -330,6 +331,8 @@ async def test_create_steps(
     assert req["method"] == "POST"
     assert req["body"]["name"] == "users/me/dataTypes/steps/dataPoints/new-point"
     assert req["body"]["steps"]["count"] == 150
+    assert req["body"]["steps"]["interval"]["startTime"] == "2026-06-22T10:00:00Z"
+    assert req["body"]["steps"]["interval"]["endTime"] == "2026-06-22T10:15:00Z"
     assert req["body"]["dataSource"]["platform"] == "GOOGLE_WEB_API"
 
 
@@ -549,7 +552,8 @@ async def test_create_steps_without_name(
     steps_data = Steps(
         count=150,
         interval=ObservationTimeInterval(
-            start_time="2026-06-22T10:00:00Z", end_time="2026-06-22T10:15:00Z"
+            start_time=datetime(2026, 6, 22, 10, 0, tzinfo=UTC),
+            end_time=datetime(2026, 6, 22, 10, 15, tzinfo=UTC),
         ),
     )
     new_point = DataPoint(
@@ -616,8 +620,8 @@ async def test_sleep_crud(
                 {
                     "startTime": "2026-06-22T22:00:00Z",
                     "endTime": "2026-06-22T23:00:00Z",
-                    "startUtcOffset": "+00:00",
-                    "endUtcOffset": "+00:00",
+                    "startUtcOffset": "0s",
+                    "endUtcOffset": "0s",
                     "type": "LIGHT",
                 }
             ],
@@ -630,7 +634,9 @@ async def test_sleep_crud(
     end = datetime(2026, 6, 23, 6, 0, 0, tzinfo=UTC)
     result = await api.sleep.list(start_time=start, end_time=end)
     assert len(result.data_points) == 1
-    assert result.data_points[0].data.start_time == "2026-06-22T22:00:00Z"
+    assert result.data_points[0].data.start_time == datetime(
+        2026, 6, 22, 22, 0, tzinfo=UTC
+    )
     assert len(requests) == 1
     assert (
         requests[0]["query"]["filter"]
@@ -640,21 +646,22 @@ async def test_sleep_crud(
     # 2. Get
     get_response.append(fake_sleep_payload)
     point = await api.sleep.get("sleep-1")
-    assert point.data.end_time == "2026-06-23T06:00:00Z"
+    assert point.data.end_time == datetime(2026, 6, 23, 6, 0, tzinfo=UTC)
     assert len(requests) == 2
 
     # 3. Create
     create_response.append(fake_sleep_payload)
     new_sleep = Sleep(
         interval=SessionTimeInterval(
-            start_time="2026-06-22T22:00:00Z", end_time="2026-06-23T06:00:00Z"
+            start_time=datetime(2026, 6, 22, 22, 0, tzinfo=UTC),
+            end_time=datetime(2026, 6, 23, 6, 0, tzinfo=UTC),
         ),
         stages=[
             SleepStage(
-                start_time="2026-06-22T22:00:00Z",
-                end_time="2026-06-22T23:00:00Z",
-                start_utc_offset="+00:00",
-                end_utc_offset="+00:00",
+                start_time=datetime(2026, 6, 22, 22, 0, tzinfo=UTC),
+                end_time=datetime(2026, 6, 22, 23, 0, tzinfo=UTC),
+                start_utc_offset=timedelta(0),
+                end_utc_offset=timedelta(0),
                 type="LIGHT",
             )
         ],
@@ -662,15 +669,17 @@ async def test_sleep_crud(
     created = await api.sleep.create(DataPoint(data=new_sleep))
     assert created.data.stages is not None
     assert created.data.stages[0].type == "LIGHT"
+    assert created.data.stages[0].start_utc_offset == timedelta(0)
     assert len(requests) == 3
     assert (
         requests[2]["body"]["sleep"]["interval"]["startTime"] == "2026-06-22T22:00:00Z"
     )
+    assert requests[2]["body"]["sleep"]["stages"][0]["startUtcOffset"] == "0s"
 
     # 4. Patch
     patch_response.append(fake_sleep_payload)
     patched = await api.sleep.patch("sleep-1", DataPoint(data=new_sleep))
-    assert patched.data.start_time == "2026-06-22T22:00:00Z"
+    assert patched.data.start_time == datetime(2026, 6, 22, 22, 0, tzinfo=UTC)
     assert len(requests) == 4
 
     # 5. Delete
@@ -715,7 +724,8 @@ async def test_distance_and_basal_energy_burned(
     new_dist = Distance(
         millimeters=5000,
         interval=ObservationTimeInterval(
-            start_time="2026-06-22T08:00:00Z", end_time="2026-06-22T08:15:00Z"
+            start_time=datetime(2026, 6, 22, 8, 0, tzinfo=UTC),
+            end_time=datetime(2026, 6, 22, 8, 15, tzinfo=UTC),
         ),
     )
     await api.distance.create(DataPoint(data=new_dist))
@@ -741,7 +751,8 @@ async def test_distance_and_basal_energy_burned(
     new_beb = BasalEnergyBurned(
         kcal=15.5,
         interval=ObservationTimeInterval(
-            start_time="2026-06-22T08:00:00Z", end_time="2026-06-22T08:15:00Z"
+            start_time=datetime(2026, 6, 22, 8, 0, tzinfo=UTC),
+            end_time=datetime(2026, 6, 22, 8, 15, tzinfo=UTC),
         ),
     )
     await api.basal_energy_burned.create(DataPoint(data=new_beb))
@@ -777,7 +788,9 @@ async def test_vo2_max_and_weight(
     create_response.append(fake_vo2_payload)
     new_vo2 = VO2Max(
         vo2_max=45.2,
-        sample_time=ObservationSampleTime(physical_time="2026-06-22T08:00:00Z"),
+        sample_time=ObservationSampleTime(
+            physical_time=datetime(2026, 6, 22, 8, 0, tzinfo=UTC)
+        ),
         measurement_method="FITBIT_RUN",
     )
     await api.vo2_max.create(DataPoint(data=new_vo2))
@@ -800,7 +813,9 @@ async def test_vo2_max_and_weight(
     create_response.append(fake_weight_payload)
     new_w = Weight(
         weight_grams=75000.0,
-        sample_time=ObservationSampleTime(physical_time="2026-06-22T08:00:00Z"),
+        sample_time=ObservationSampleTime(
+            physical_time=datetime(2026, 6, 22, 8, 0, tzinfo=UTC)
+        ),
         notes="morning weigh-in",
     )
     await api.weight.create(DataPoint(data=new_w))
@@ -822,7 +837,9 @@ async def test_vo2_max_and_weight(
     create_response.append(fake_height_payload)
     new_h = Height(
         height_millimeters=1780,
-        sample_time=ObservationSampleTime(physical_time="2026-06-22T08:00:00Z"),
+        sample_time=ObservationSampleTime(
+            physical_time=datetime(2026, 6, 22, 8, 0, tzinfo=UTC)
+        ),
     )
     await api.height.create(DataPoint(data=new_h))
     assert requests[-1]["body"]["height"]["heightMillimeters"] == 1780
@@ -862,8 +879,8 @@ async def test_floors_hydration_and_resting_hr(
     new_fl = Floors(
         count=3,
         interval=ObservationTimeInterval(
-            start_time="2026-06-22T08:00:00Z",
-            end_time="2026-06-22T08:15:00Z",
+            start_time=datetime(2026, 6, 22, 8, 0, tzinfo=UTC),
+            end_time=datetime(2026, 6, 22, 8, 15, tzinfo=UTC),
         ),
     )
     await api.floors.create(DataPoint(data=new_fl))
@@ -891,8 +908,8 @@ async def test_floors_hydration_and_resting_hr(
             milliliters=250.0, user_provided_unit="MILLILITER"
         ),
         interval=SessionTimeInterval(
-            start_time="2026-06-22T08:00:00Z",
-            end_time="2026-06-22T08:05:00Z",
+            start_time=datetime(2026, 6, 22, 8, 0, tzinfo=UTC),
+            end_time=datetime(2026, 6, 22, 8, 5, tzinfo=UTC),
         ),
     )
     await api.hydration_log.create(DataPoint(data=new_hy))
@@ -1111,7 +1128,9 @@ async def test_oxygen_saturation(
     create_response.append(fake_payload)
     new_point = OxygenSaturation(
         percentage=98.5,
-        sample_time=ObservationSampleTime(physical_time="2026-06-22T08:00:00Z"),
+        sample_time=ObservationSampleTime(
+            physical_time=datetime(2026, 6, 22, 8, 0, tzinfo=UTC)
+        ),
     )
     await api.oxygen_saturation.create(DataPoint(data=new_point))
     assert requests[-1]["body"]["oxygenSaturation"]["percentage"] == 98.5
@@ -1191,9 +1210,10 @@ async def test_exercise(
     new_point = Exercise(
         exercise_type="WALKING",
         display_name="Afternoon Walk",
+        active_duration=timedelta(minutes=45),
         interval=SessionTimeInterval(
-            start_time="2026-06-22T08:00:00Z",
-            end_time="2026-06-22T09:00:00Z",
+            start_time=datetime(2026, 6, 22, 8, 0, tzinfo=UTC),
+            end_time=datetime(2026, 6, 22, 9, 0, tzinfo=UTC),
         ),
         metrics_summary=MetricsSummary(
             active_zone_minutes=45,
@@ -1206,6 +1226,7 @@ async def test_exercise(
     )
     await api.exercise.create(DataPoint(data=new_point))
     assert requests[-1]["body"]["exercise"]["displayName"] == "Afternoon Walk"
+    assert requests[-1]["body"]["exercise"]["activeDuration"] == "2700s"
 
 
 async def test_electrocardiogram(
@@ -1249,8 +1270,8 @@ async def test_electrocardiogram(
         millivolts_scaling_factor=1000,
         beats_per_minute_avg=65,
         interval=SessionTimeInterval(
-            start_time="2026-06-22T08:00:00Z",
-            end_time="2026-06-22T08:00:00Z",
+            start_time=datetime(2026, 6, 22, 8, 0, tzinfo=UTC),
+            end_time=datetime(2026, 6, 22, 8, 0, tzinfo=UTC),
         ),
         medical_device_info=MedicalDeviceInfo(
             device_model="Pixel Watch 2",
@@ -1304,6 +1325,9 @@ async def test_irregular_rhythm_notification(
     assert len(result.data_points) == 1
     assert len(result.data_points[0].data.alert_windows) == 1
     assert result.data_points[0].data.alert_windows[0].positive is True
+    assert result.data_points[0].data.alert_windows[0].start_utc_offset == timedelta(
+        hours=-7
+    )
     assert len(result.data_points[0].data.alert_windows[0].heart_beats) == 1
     assert (
         result.data_points[0].data.alert_windows[0].heart_beats[0].beats_per_minute
@@ -1313,20 +1337,20 @@ async def test_irregular_rhythm_notification(
     create_response.append(fake_payload)
     new_point = IrregularRhythmNotification(
         interval=SessionTimeInterval(
-            start_time="2026-06-22T08:00:00Z",
-            end_time="2026-06-22T09:00:00Z",
+            start_time=datetime(2026, 6, 22, 8, 0, tzinfo=UTC),
+            end_time=datetime(2026, 6, 22, 9, 0, tzinfo=UTC),
         ),
         alert_windows=[
             AlertWindow(
-                start_time="2026-06-22T08:00:00Z",
-                start_utc_offset="-25200s",
-                end_time="2026-06-22T08:30:00Z",
-                end_utc_offset="-25200s",
+                start_time=datetime(2026, 6, 22, 8, 0, tzinfo=UTC),
+                start_utc_offset=timedelta(hours=-7),
+                end_time=datetime(2026, 6, 22, 8, 30, tzinfo=UTC),
+                end_utc_offset=timedelta(hours=-7),
                 positive=True,
                 heart_beats=[
                     HeartBeat(
-                        physical_time="2026-06-22T08:15:00Z",
-                        utc_offset="-25200s",
+                        physical_time=datetime(2026, 6, 22, 8, 15, tzinfo=UTC),
+                        utc_offset=timedelta(hours=-7),
                         beats_per_minute=80,
                     )
                 ],
@@ -1338,6 +1362,12 @@ async def test_irregular_rhythm_notification(
     )
     await api.irregular_rhythm_notification.create(DataPoint(data=new_point))
     assert len(requests[-1]["body"]["irregularRhythmNotification"]["alertWindows"]) == 1
+    assert (
+        requests[-1]["body"]["irregularRhythmNotification"]["alertWindows"][0][
+            "startUtcOffset"
+        ]
+        == "-25200s"
+    )
 
 
 async def test_daily_respiratory_rate(
@@ -1398,8 +1428,8 @@ async def test_respiratory_rate_sleep_summary(
     create_response.append(fake_payload)
     new_point = RespiratoryRateSleepSummary(
         sample_time=ObservationSampleTime(
-            physical_time="2026-06-22T08:00:00Z",
-            utc_offset="-25200s",
+            physical_time=datetime(2026, 6, 22, 8, 0, tzinfo=UTC),
+            utc_offset=timedelta(hours=-7),
         ),
         full_sleep_stats=RespiratoryRateSleepSummaryStatistics(
             breaths_per_minute=15.2,
@@ -1408,6 +1438,10 @@ async def test_respiratory_rate_sleep_summary(
         ),
     )
     await api.respiratory_rate_sleep_summary.create(DataPoint(data=new_point))
+    assert (
+        requests[-1]["body"]["respiratoryRateSleepSummary"]["sampleTime"]["utcOffset"]
+        == "-25200s"
+    )
     assert (
         requests[-1]["body"]["respiratoryRateSleepSummary"]["fullSleepStats"][
             "breathsPerMinute"

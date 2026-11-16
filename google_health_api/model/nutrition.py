@@ -1,6 +1,7 @@
 """Nutrition data models for Google Health API."""
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
@@ -8,12 +9,6 @@ from mashumaro.config import BaseConfig
 from ..const import HealthApiScope
 from .base import DataType
 from .sleep import SessionTimeInterval
-
-
-class BaseConfig(BaseConfig):
-    """Base mashumaro configuration."""
-
-    serialize_by_alias = True
 
 
 @dataclass
@@ -95,12 +90,12 @@ class NutritionLog(DataClassDictMixin):
     nutrients: list[NutrientQuantity] = field(default_factory=list)
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str | None:
+    def end_time(self) -> datetime | None:
         """Return the end time of the interval."""
         return self.interval.end_time if self.interval else None
 

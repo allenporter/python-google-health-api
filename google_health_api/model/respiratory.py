@@ -1,6 +1,7 @@
 """Respiratory data models for Google Health API."""
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
@@ -59,7 +60,7 @@ class RespiratoryRateSleepSummary(DataClassDictMixin):
     )
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the sample time of the observation."""
         return self.sample_time.physical_time
 

@@ -164,7 +164,8 @@ async def test_list_hrv(
     assert isinstance(point.data, HeartRateVariability)
     assert point.data.root_mean_square_of_successive_differences_milliseconds == 45.5
     assert point.data.standard_deviation_milliseconds == 52.1
-    assert point.data.start_time == "2026-06-22T08:00:00Z"
+    assert point.data.start_time == datetime(2026, 6, 22, 8, 0, 0, tzinfo=UTC)
+    assert point.data.end_time == datetime(2026, 6, 22, 8, 0, 0, tzinfo=UTC)
 
     assert len(requests) == 1
     assert requests[0]["method"] == "GET"
@@ -218,6 +219,7 @@ async def test_daily_rollup_daily_hrv(
     assert rollup.data.average_heart_rate_variability_milliseconds_min == 40.0
     assert rollup.data.average_heart_rate_variability_milliseconds_max == 55.0
     assert rollup.civil_start_time is not None
+    assert rollup.civil_start_time.to_date() == date(2026, 6, 22)
     assert rollup.civil_start_time.date is not None
     assert rollup.civil_start_time.date.year == 2026
     assert rollup.civil_start_time.date.month == 6

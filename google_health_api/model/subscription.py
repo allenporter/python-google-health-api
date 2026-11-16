@@ -2,10 +2,13 @@
 
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Self
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
+
+from .base import ModelConfig
 
 
 @dataclass
@@ -46,18 +49,18 @@ class Subscriber(DataClassDictMixin):
     )
     name: str | None = None
     state: str | None = None
-    create_time: str | None = field(
+    create_time: datetime | None = field(
         metadata=field_options(alias="createTime"), default=None
     )
-    update_time: str | None = field(
+    update_time: datetime | None = field(
         metadata=field_options(alias="updateTime"), default=None
     )
     subscriber_configs: list[SubscriberConfig] = field(
         metadata=field_options(alias="subscriberConfigs"), default_factory=list
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass

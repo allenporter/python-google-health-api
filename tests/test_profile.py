@@ -1,6 +1,7 @@
 """Tests for user profile, settings, and paired devices API endpoints."""
 
 from collections.abc import AsyncGenerator
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -39,6 +40,7 @@ FAKE_SETTINGS_PAYLOAD = {
     "waterUnit": "WATER_UNIT_ML",
     "weightUnit": "WEIGHT_UNIT_KILOGRAMS",
     "timeZone": "America/New_York",
+    "utcOffset": "-14400s",
 }
 
 FAKE_IRN_PROFILE_PAYLOAD = {
@@ -181,6 +183,7 @@ async def test_get_profile(
     assert profile.name == "users/me/profile"
     assert profile.age == 35
     assert profile.membership_start_date == Date(year=2026, month=6, day=22)
+    assert profile.membership_start_date.to_date() == date(2026, 6, 22)
     assert profile.user_configured_walking_stride_length_mm == 750
     assert profile.auto_walking_stride_length_mm == 762
 
@@ -247,6 +250,7 @@ async def test_get_settings(
     assert settings.water_unit == "WATER_UNIT_ML"
     assert settings.weight_unit == "WEIGHT_UNIT_KILOGRAMS"
     assert settings.time_zone == "America/New_York"
+    assert settings.utc_offset == timedelta(hours=-4)
 
     assert len(requests) == 1
     assert requests[0]["method"] == "GET"
@@ -286,7 +290,7 @@ async def test_get_irn_profile(
     assert irn_profile.name == "users/me/irnProfile"
     assert irn_profile.onboarding_status is True
     assert irn_profile.enrollment_status is True
-    assert irn_profile.update_time == "2026-06-22T08:00:00Z"
+    assert irn_profile.update_time == datetime(2026, 6, 22, 8, 0, tzinfo=UTC)
 
     assert len(requests) == 1
     assert requests[0]["method"] == "GET"
@@ -315,7 +319,7 @@ async def test_list_paired_devices(
     assert device.mac_address == "00:11:22:33:44:55"
     assert device.device_type == "TRACKER"
     assert device.features == ["STEPS", "HEART_RATE"]
-    assert device.last_sync_time == "2026-06-22T08:05:00Z"
+    assert device.last_sync_time == datetime(2026, 6, 22, 8, 5, tzinfo=UTC)
     assert device.battery_status == "High"
     assert device.battery_level == 85
     assert device.device_version == "Charge 6"

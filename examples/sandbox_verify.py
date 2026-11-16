@@ -93,14 +93,12 @@ async def verify_steps(api: GoogleHealthApi) -> None:
 
     # 3. Create, Get, and Delete a temporary data point
     print("\n3. Creating temporary step record (120 steps)...")
-    now_str = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-    future_str = (
-        (datetime.now(UTC) + timedelta(minutes=15)).isoformat().replace("+00:00", "Z")
-    )
+    now_dt = datetime.now(UTC)
+    future_dt = now_dt + timedelta(minutes=15)
 
     steps_payload = Steps(
         count=120,
-        interval=ObservationTimeInterval(start_time=now_str, end_time=future_str),
+        interval=ObservationTimeInterval(start_time=now_dt, end_time=future_dt),
     )
 
     point_id = f"sandbox-test-{uuid.uuid4()}"

@@ -1,6 +1,8 @@
 """Base classes and registry structures for Google Health API data models."""
 
+import re
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, TypeVar
 
 if TYPE_CHECKING:
@@ -9,8 +11,84 @@ if TYPE_CHECKING:
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 from mashumaro.mixins.json import DataClassJSONMixin
+from mashumaro.types import SerializationStrategy
 
 T = TypeVar("T", bound=DataClassDictMixin)
+
+_DURATION_RE = re.compile(r"(-?)(\d+)(?:\.(\d{1,9}))?s")
+
+
+class ProtobufDurationStrategy(SerializationStrategy):
+    """Mashumaro serialization strategy for google.protobuf.Duration JSON strings."""
+
+    def serialize(self, value: timedelta) -> str:
+        """Serialize a timedelta into canonical protobuf Duration JSON format."""
+        total_us = (
+            value.days * 86_400 + value.seconds
+        ) * 1_000_000 + value.microseconds
+        sign = "-" if total_us < 0 else ""
+        secs, micros = divmod(abs(total_us), 1_000_000)
+        if micros == 0:
+            return f"{sign}{secs}s"
+        if micros % 1000 == 0:
+            return f"{sign}{secs}.{micros // 1000:03d}s"
+        return f"{sign}{secs}.{micros:06d}s"
+
+    def deserialize(self, value: Any) -> timedelta:
+        """Deserialize a protobuf Duration JSON string (e.g. '3600s') into a timedelta."""
+        if (
+            not isinstance(value, str)
+            or (match := _DURATION_RE.fullmatch(value)) is None
+        ):
+            raise ValueError(f"Invalid protobuf duration: {value!r}")
+        sign_str, sec_str, frac_str = match.groups()
+        seconds = int(sec_str)
+        microseconds = 0
+        if frac_str:
+            nanos = int(frac_str.ljust(9, "0"))
+            microseconds = nanos // 1000
+        delta = timedelta(seconds=seconds, microseconds=microseconds)
+        return -delta if sign_str == "-" else delta
+
+
+class ProtobufTimestampStrategy(SerializationStrategy):
+    """Mashumaro serialization strategy for google.protobuf.Timestamp RFC 3339 strings."""
+
+    def serialize(self, value: datetime) -> str:
+        """Serialize a timezone-aware datetime into canonical Z-normalized RFC 3339 format."""
+        if value.tzinfo is None:
+            raise ValueError(f"Protobuf timestamp must be timezone-aware: {value!r}")
+        utc_val = value.astimezone(UTC)
+        prefix = utc_val.strftime("%Y-%m-%dT%H:%M:%S")
+        if utc_val.microsecond == 0:
+            return f"{prefix}Z"
+        if utc_val.microsecond % 1000 == 0:
+            return f"{prefix}.{utc_val.microsecond // 1000:03d}Z"
+        return f"{prefix}.{utc_val.microsecond:06d}Z"
+
+    def deserialize(self, value: Any) -> datetime:
+        """Deserialize an RFC 3339 protobuf Timestamp string into a UTC datetime."""
+        if not isinstance(value, str) or (
+            "T" not in value and "t" not in value and " " not in value
+        ):
+            raise ValueError(f"Invalid protobuf timestamp: {value!r}")
+        dt = datetime.fromisoformat(value)
+        if dt.tzinfo is None:
+            raise ValueError(f"Protobuf timestamp missing timezone offset: {value!r}")
+        return dt.astimezone(UTC)
+
+
+_SERIALIZATION_STRATEGY: dict[Any, Any] = {
+    timedelta: ProtobufDurationStrategy(),
+    datetime: ProtobufTimestampStrategy(),
+}
+
+
+class ModelConfig(BaseConfig):
+    """Shared Mashumaro configuration for Google Health API models."""
+
+    serialize_by_alias = True
+    serialization_strategy = _SERIALIZATION_STRATEGY
 
 
 class DataType[T: DataClassDictMixin]:

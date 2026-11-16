@@ -1,9 +1,11 @@
 """User Settings models for Google Health API."""
 
 from dataclasses import dataclass, field
+from datetime import timedelta
 
 from mashumaro import DataClassDictMixin, field_options
-from mashumaro.config import BaseConfig
+
+from .base import ModelConfig
 
 
 @dataclass
@@ -41,7 +43,7 @@ class Settings(DataClassDictMixin):
     language_locale: str | None = field(
         metadata=field_options(alias="languageLocale"), default=None
     )
-    utc_offset: str | None = field(
+    utc_offset: timedelta | None = field(
         metadata=field_options(alias="utcOffset"), default=None
     )
     swim_unit: str | None = field(
@@ -54,5 +56,5 @@ class Settings(DataClassDictMixin):
         metadata=field_options(alias="heightUnit"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
