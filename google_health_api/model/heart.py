@@ -1,12 +1,13 @@
 """Heart health data models for Google Health API."""
 
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
 from ..const import HealthApiScope
-from .base import DataType
+from .base import DataType, ModelConfig
 from .sleep import CivilDateTime, SessionTimeInterval
 
 
@@ -38,25 +39,25 @@ class MedicalDeviceInfo(DataClassDictMixin):
 class HeartBeat(DataClassDictMixin):
     """A single heart beat measurement."""
 
-    physical_time: str = field(metadata=field_options(alias="physicalTime"))
-    utc_offset: str = field(metadata=field_options(alias="utcOffset"))
+    physical_time: datetime = field(metadata=field_options(alias="physicalTime"))
+    utc_offset: timedelta = field(metadata=field_options(alias="utcOffset"))
     beats_per_minute: int = field(metadata=field_options(alias="beatsPerMinute"))
     civil_time: CivilDateTime | None = field(
         metadata=field_options(alias="civilTime"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass
 class AlertWindow(DataClassDictMixin):
     """An analysis window evaluated for AFib."""
 
-    start_time: str = field(metadata=field_options(alias="startTime"))
-    start_utc_offset: str = field(metadata=field_options(alias="startUtcOffset"))
-    end_time: str = field(metadata=field_options(alias="endTime"))
-    end_utc_offset: str = field(metadata=field_options(alias="endUtcOffset"))
+    start_time: datetime = field(metadata=field_options(alias="startTime"))
+    start_utc_offset: timedelta = field(metadata=field_options(alias="startUtcOffset"))
+    end_time: datetime = field(metadata=field_options(alias="endTime"))
+    end_utc_offset: timedelta = field(metadata=field_options(alias="endUtcOffset"))
     positive: bool | None = field(default=None)
     heart_beats: list[HeartBeat] = field(
         metadata=field_options(alias="heartBeats"), default_factory=list
@@ -68,8 +69,8 @@ class AlertWindow(DataClassDictMixin):
         metadata=field_options(alias="civilEndTime"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass
@@ -85,12 +86,12 @@ class IrregularRhythmNotification(DataClassDictMixin):
     )
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str | None:
+    def end_time(self) -> datetime | None:
         """Return the end time of the interval."""
         return self.interval.end_time if self.interval else None
 
@@ -126,12 +127,12 @@ class Electrocardiogram(DataClassDictMixin):
     )
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str | None:
+    def end_time(self) -> datetime | None:
         """Return the end time of the interval."""
         return self.interval.end_time if self.interval else None
 

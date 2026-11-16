@@ -1,9 +1,13 @@
 """User Profile and Identity models for Google Health API."""
 
+import datetime as dt
 from dataclasses import dataclass, field
+from typing import Self
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
+
+from .base import ModelConfig
 
 
 @dataclass
@@ -13,6 +17,17 @@ class Date(DataClassDictMixin):
     year: int | None = None
     month: int | None = None
     day: int | None = None
+
+    @classmethod
+    def from_date(cls, value: dt.date) -> Self:
+        """Create a Date from a standard library date object."""
+        return cls(year=value.year, month=value.month, day=value.day)
+
+    def to_date(self) -> dt.date | None:
+        """Convert to a standard library date if year, month, and day are set."""
+        if not self.year or not self.month or not self.day:
+            return None
+        return dt.date(self.year, self.month, self.day)
 
     class Config(BaseConfig):
         serialize_by_alias = True
@@ -57,12 +72,12 @@ class IrnProfile(DataClassDictMixin):
     enrollment_status: bool = field(
         metadata=field_options(alias="enrollmentStatus"), default=False
     )
-    update_time: str | None = field(
+    update_time: dt.datetime | None = field(
         metadata=field_options(alias="updateTime"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass

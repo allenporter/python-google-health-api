@@ -1,12 +1,13 @@
 """Health metric data models for Google Health API."""
 
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
 from ..const import HealthApiScope
-from .base import DataType
+from .base import DataType, ModelConfig
 from .profile import Date
 
 
@@ -14,13 +15,13 @@ from .profile import Date
 class ObservationSampleTime(DataClassDictMixin):
     """Represents a sample time of an observed data point."""
 
-    physical_time: str = field(metadata=field_options(alias="physicalTime"))
-    utc_offset: str | None = field(
+    physical_time: datetime = field(metadata=field_options(alias="physicalTime"))
+    utc_offset: timedelta | None = field(
         metadata=field_options(alias="utcOffset"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass
@@ -54,12 +55,12 @@ class HeartRate(DataClassDictMixin):
         return self.beats_per_minute
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
@@ -109,12 +110,12 @@ class VO2Max(DataClassDictMixin):
     )
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
@@ -143,12 +144,12 @@ class Weight(DataClassDictMixin):
     notes: str | None = None
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
@@ -189,12 +190,12 @@ class Height(DataClassDictMixin):
     )
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
@@ -224,12 +225,12 @@ class Bmi(DataClassDictMixin):
     )
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
@@ -272,12 +273,12 @@ class DailyRestingHeartRate(DataClassDictMixin):
     @property
     def start_time(self) -> str:
         """Return ISO format string of date."""
-        return f"{self.date.year:04d}-{self.date.month:02d}-{self.date.day:02d}"
+        return d.isoformat() if (d := self.date.to_date()) else ""
 
     @property
     def end_time(self) -> str:
         """Return ISO format string of date."""
-        return f"{self.date.year:04d}-{self.date.month:02d}-{self.date.day:02d}"
+        return d.isoformat() if (d := self.date.to_date()) else ""
 
     class Config(BaseConfig):
         serialize_by_alias = True
@@ -328,12 +329,12 @@ class HeartRateVariability(DataClassDictMixin):
     )
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
@@ -377,12 +378,12 @@ class DailyHeartRateVariability(DataClassDictMixin):
     @property
     def start_time(self) -> str:
         """Return ISO format string of date."""
-        return f"{self.date.year:04d}-{self.date.month:02d}-{self.date.day:02d}"
+        return d.isoformat() if (d := self.date.to_date()) else ""
 
     @property
     def end_time(self) -> str:
         """Return ISO format string of date."""
-        return f"{self.date.year:04d}-{self.date.month:02d}-{self.date.day:02d}"
+        return d.isoformat() if (d := self.date.to_date()) else ""
 
     class Config(BaseConfig):
         serialize_by_alias = True
@@ -439,12 +440,12 @@ class BloodGlucose(DataClassDictMixin):
     specimen: str | None = None
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
@@ -492,12 +493,12 @@ class CoreBodyTemperature(DataClassDictMixin):
     )
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
@@ -544,12 +545,12 @@ class BodyFat(DataClassDictMixin):
     )
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
@@ -590,12 +591,12 @@ class RunVO2Max(DataClassDictMixin):
     )
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
@@ -642,12 +643,12 @@ class OxygenSaturation(DataClassDictMixin):
     )
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the physical time (for compatibility)."""
         return self.sample_time.physical_time
 
@@ -684,12 +685,12 @@ class DailyOxygenSaturation(DataClassDictMixin):
     @property
     def start_time(self) -> str:
         """Return ISO format string of date."""
-        return f"{self.date.year:04d}-{self.date.month:02d}-{self.date.day:02d}"
+        return d.isoformat() if (d := self.date.to_date()) else ""
 
     @property
     def end_time(self) -> str:
         """Return ISO format string of date."""
-        return f"{self.date.year:04d}-{self.date.month:02d}-{self.date.day:02d}"
+        return d.isoformat() if (d := self.date.to_date()) else ""
 
     class Config(BaseConfig):
         serialize_by_alias = True

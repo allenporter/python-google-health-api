@@ -3,6 +3,7 @@
 import dataclasses
 import types
 import typing
+from datetime import datetime, timedelta
 from typing import Any
 
 from google_health_api.model import (
@@ -85,7 +86,9 @@ def generate_schema(cls: Any) -> dict[str, Any]:
 
     for f in dataclasses.fields(cls):
         json_name = f.name
-        if "field_options" in f.metadata:
+        if f.metadata.get("alias"):
+            json_name = f.metadata["alias"]
+        elif "field_options" in f.metadata:
             field_opts = f.metadata["field_options"]
             if hasattr(field_opts, "alias") and field_opts.alias:
                 json_name = field_opts.alias
@@ -137,6 +140,10 @@ def generate_schema(cls: Any) -> dict[str, Any]:
                 "type": get_type_name(f_type),
                 "description": f.metadata.get("description", "") if f.metadata else "",
             }
+            if actual_type is datetime:
+                field_schema["format"] = "google-datetime"
+            elif actual_type is timedelta:
+                field_schema["format"] = "google-duration"
 
         schema["properties"][json_name] = field_schema
 

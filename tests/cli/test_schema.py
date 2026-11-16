@@ -137,6 +137,11 @@ def test_get_datapoint_schema() -> None:
     assert "name" in schema["properties"]
     assert "dataSource" in schema["properties"]
     assert "steps" in schema["properties"]
+    interval_props = schema["properties"]["steps"]["properties"]["interval"][
+        "properties"
+    ]
+    assert interval_props["startTime"]["format"] == "google-datetime"
+    assert interval_props["startUtcOffset"]["format"] == "google-duration"
 
 
 def test_get_datatype_schemas() -> None:

@@ -1,12 +1,14 @@
 """Sleep data models for Google Health API."""
 
+import datetime as dt
 from dataclasses import dataclass, field
+from typing import Self
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
 from ..const import HealthApiScope
-from .base import DataType
+from .base import DataType, ModelConfig
 from .profile import Date
 
 
@@ -18,6 +20,25 @@ class TimeOfDay(DataClassDictMixin):
     minutes: int | None = None
     seconds: int | None = None
     nanos: int | None = None
+
+    @classmethod
+    def from_time(cls, value: dt.time) -> Self:
+        """Create a TimeOfDay from a standard library time object."""
+        return cls(
+            hours=value.hour,
+            minutes=value.minute,
+            seconds=value.second,
+            nanos=value.microsecond * 1000,
+        )
+
+    def to_time(self) -> dt.time:
+        """Convert to a standard library time object (omitted fields default to 0)."""
+        return dt.time(
+            hour=self.hours or 0,
+            minute=self.minutes or 0,
+            second=self.seconds or 0,
+            microsecond=(self.nanos or 0) // 1000,
+        )
 
     class Config(BaseConfig):
         serialize_by_alias = True
@@ -39,6 +60,30 @@ class CivilDateTime(DataClassDictMixin):
             and self.time.nanos is None
         ):
             self.time = None
+
+    @classmethod
+    def from_date(cls, value: dt.date) -> Self:
+        """Create a date-only CivilDateTime from a standard library date object."""
+        return cls(date=Date.from_date(value))
+
+    @classmethod
+    def from_datetime(cls, value: dt.datetime) -> Self:
+        """Create a CivilDateTime from a standard library datetime object."""
+        return cls(
+            date=Date.from_date(value.date()),
+            time=TimeOfDay.from_time(value.time()),
+        )
+
+    def to_date(self) -> dt.date | None:
+        """Return the calendar date portion as a standard library date."""
+        return self.date.to_date() if self.date else None
+
+    def to_datetime(self, tzinfo: dt.tzinfo | None = None) -> dt.datetime | None:
+        """Convert to a standard library datetime (defaults time to midnight if omitted)."""
+        if self.date is None or (d := self.date.to_date()) is None:
+            return None
+        t = self.time.to_time() if self.time else dt.time()
+        return dt.datetime.combine(d, t, tzinfo=tzinfo)
 
     class Config(BaseConfig):
         serialize_by_alias = True
@@ -82,12 +127,14 @@ class DailyRollUpDataPointsRequest(DataClassDictMixin):
 class SessionTimeInterval(DataClassDictMixin):
     """Represents a time interval of session data point."""
 
-    start_time: str = field(metadata=field_options(alias="startTime"))
-    end_time: str | None = field(metadata=field_options(alias="endTime"), default=None)
-    start_utc_offset: str | None = field(
+    start_time: dt.datetime = field(metadata=field_options(alias="startTime"))
+    end_time: dt.datetime | None = field(
+        metadata=field_options(alias="endTime"), default=None
+    )
+    start_utc_offset: dt.timedelta | None = field(
         metadata=field_options(alias="startUtcOffset"), default=None
     )
-    end_utc_offset: str | None = field(
+    end_utc_offset: dt.timedelta | None = field(
         metadata=field_options(alias="endUtcOffset"), default=None
     )
     civil_start_time: CivilDateTime | None = field(
@@ -97,25 +144,27 @@ class SessionTimeInterval(DataClassDictMixin):
         metadata=field_options(alias="civilEndTime"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass
 class OutOfBedSegment(DataClassDictMixin):
     """A time interval to represent an out-of-bed segment."""
 
-    start_time: str = field(metadata=field_options(alias="startTime"))
-    end_time: str | None = field(metadata=field_options(alias="endTime"), default=None)
-    start_utc_offset: str | None = field(
+    start_time: dt.datetime = field(metadata=field_options(alias="startTime"))
+    end_time: dt.datetime | None = field(
+        metadata=field_options(alias="endTime"), default=None
+    )
+    start_utc_offset: dt.timedelta | None = field(
         metadata=field_options(alias="startUtcOffset"), default=None
     )
-    end_utc_offset: str | None = field(
+    end_utc_offset: dt.timedelta | None = field(
         metadata=field_options(alias="endUtcOffset"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass
@@ -161,20 +210,24 @@ class SleepSummary(DataClassDictMixin):
 class SleepStage(DataClassDictMixin):
     """A sleep stage segment."""
 
-    start_time: str = field(metadata=field_options(alias="startTime"))
-    start_utc_offset: str = field(metadata=field_options(alias="startUtcOffset"))
-    end_utc_offset: str = field(metadata=field_options(alias="endUtcOffset"))
+    start_time: dt.datetime = field(metadata=field_options(alias="startTime"))
+    start_utc_offset: dt.timedelta = field(
+        metadata=field_options(alias="startUtcOffset")
+    )
+    end_utc_offset: dt.timedelta = field(metadata=field_options(alias="endUtcOffset"))
     type: str = field(metadata=field_options(alias="type"))
-    end_time: str | None = field(metadata=field_options(alias="endTime"), default=None)
-    create_time: str | None = field(
+    end_time: dt.datetime | None = field(
+        metadata=field_options(alias="endTime"), default=None
+    )
+    create_time: dt.datetime | None = field(
         metadata=field_options(alias="createTime"), default=None
     )
-    update_time: str | None = field(
+    update_time: dt.datetime | None = field(
         metadata=field_options(alias="updateTime"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass
@@ -202,14 +255,14 @@ class Sleep(DataClassDictMixin):
     """A sleep session possibly including stages."""
 
     interval: SessionTimeInterval | None = None
-    create_time: str | None = field(
+    create_time: dt.datetime | None = field(
         metadata=field_options(alias="createTime"), default=None
     )
     out_of_bed_segments: list[OutOfBedSegment] | None = field(
         metadata=field_options(alias="outOfBedSegments"), default=None
     )
     summary: SleepSummary | None = None
-    update_time: str | None = field(
+    update_time: dt.datetime | None = field(
         metadata=field_options(alias="updateTime"), default=None
     )
     stages: list[SleepStage] | None = None
@@ -217,12 +270,12 @@ class Sleep(DataClassDictMixin):
     metadata: SleepMetadata | None = None
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> dt.datetime | None:
         """Return the start time of the interval."""
-        return self.interval.start_time if self.interval else ""
+        return self.interval.start_time if self.interval else None
 
     @property
-    def end_time(self) -> str | None:
+    def end_time(self) -> dt.datetime | None:
         """Return the end time of the interval."""
         return self.interval.end_time if self.interval else None
 
@@ -231,8 +284,8 @@ class Sleep(DataClassDictMixin):
         """Return True if the sleep session is currently active (in progress)."""
         return self.interval is not None and self.interval.end_time is None
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 SLEEP = DataType(

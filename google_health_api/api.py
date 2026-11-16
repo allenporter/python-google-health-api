@@ -97,7 +97,6 @@ from .model import (
     DailyVO2Max,
     DataPoint,
     DataType,
-    Date,
     Distance,
     Electrocardiogram,
     Exercise,
@@ -432,12 +431,8 @@ class RollupDataPointSubApi(DataPointSubApi[T]):
                 f"DataType {self._data_type.key} does not support daily rollups."
             )
 
-        start_dt = CivilDateTime(
-            date=Date(year=start_date.year, month=start_date.month, day=start_date.day)
-        )
-        end_dt = CivilDateTime(
-            date=Date(year=end_date.year, month=end_date.month, day=end_date.day)
-        )
+        start_dt = CivilDateTime.from_date(start_date)
+        end_dt = CivilDateTime.from_date(end_date)
         interval = CivilTimeInterval(start=start_dt, end=end_dt)
         request_obj = DailyRollUpDataPointsRequest(
             range=interval,

@@ -1,29 +1,30 @@
 """Activity data models for Google Health API."""
 
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
 from ..const import HealthApiScope
-from .base import DataType
+from .base import DataType, ModelConfig
 
 
 @dataclass
 class ObservationTimeInterval(DataClassDictMixin):
     """Represents a time interval of an observed data point."""
 
-    start_time: str = field(metadata=field_options(alias="startTime"))
-    end_time: str = field(metadata=field_options(alias="endTime"))
-    start_utc_offset: str | None = field(
+    start_time: datetime = field(metadata=field_options(alias="startTime"))
+    end_time: datetime = field(metadata=field_options(alias="endTime"))
+    start_utc_offset: timedelta | None = field(
         metadata=field_options(alias="startUtcOffset"), default=None
     )
-    end_utc_offset: str | None = field(
+    end_utc_offset: timedelta | None = field(
         metadata=field_options(alias="endUtcOffset"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass
@@ -34,12 +35,12 @@ class Steps(DataClassDictMixin):
     interval: ObservationTimeInterval
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the end time of the interval."""
         return self.interval.end_time
 
@@ -55,12 +56,12 @@ class Distance(DataClassDictMixin):
     interval: ObservationTimeInterval
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the end time of the interval."""
         return self.interval.end_time
 
@@ -76,12 +77,12 @@ class BasalEnergyBurned(DataClassDictMixin):
     interval: ObservationTimeInterval
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the end time of the interval."""
         return self.interval.end_time
 
@@ -137,12 +138,12 @@ class ActiveEnergyBurned(DataClassDictMixin):
     interval: ObservationTimeInterval
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the end time of the interval."""
         return self.interval.end_time
 
@@ -178,12 +179,12 @@ class Floors(DataClassDictMixin):
         return self.count
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the end time of the interval."""
         return self.interval.end_time
 
@@ -263,12 +264,12 @@ class Altitude(DataClassDictMixin):
     gain_millimeters: int = field(metadata=field_options(alias="gainMillimeters"))
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the end time of the interval."""
         return self.interval.end_time
 
@@ -321,12 +322,12 @@ class ActiveMinutes(DataClassDictMixin):
     )
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the end time of the interval."""
         return self.interval.end_time
 
@@ -384,12 +385,12 @@ class ActiveZoneMinutes(DataClassDictMixin):
     active_zone_minutes: int = field(metadata=field_options(alias="activeZoneMinutes"))
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the end time of the interval."""
         return self.interval.end_time
 
@@ -433,12 +434,12 @@ class SedentaryPeriod(DataClassDictMixin):
     interval: ObservationTimeInterval
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the end time of the interval."""
         return self.interval.end_time
 
@@ -450,12 +451,12 @@ class SedentaryPeriod(DataClassDictMixin):
 class SedentaryPeriodRollupValue(DataClassDictMixin):
     """Represents the result of the rollup of the user's sedentary periods."""
 
-    duration_sum: str | None = field(
+    duration_sum: timedelta | None = field(
         metadata=field_options(alias="durationSum"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 SEDENTARY_PERIOD = DataType(
@@ -478,12 +479,12 @@ class SwimLengthsData(DataClassDictMixin):
     swim_stroke_type: str = field(metadata=field_options(alias="swimStrokeType"))
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the end time of the interval."""
         return self.interval.end_time
 
@@ -522,12 +523,12 @@ class ActivityLevel(DataClassDictMixin):
     activity_level_type: str = field(metadata=field_options(alias="activityLevelType"))
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the end time of the interval."""
         return self.interval.end_time
 
@@ -542,12 +543,12 @@ class ActivityLevelRollupByActivityLevelType(DataClassDictMixin):
     activity_level_type: str | None = field(
         metadata=field_options(alias="activityLevelType"), default=None
     )
-    total_duration: str | None = field(
+    total_duration: timedelta | None = field(
         metadata=field_options(alias="totalDuration"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass
@@ -584,12 +585,12 @@ class TimeInHeartRateZone(DataClassDictMixin):
     heart_rate_zone_type: str = field(metadata=field_options(alias="heartRateZoneType"))
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str:
+    def end_time(self) -> datetime:
         """Return the end time of the interval."""
         return self.interval.end_time
 
@@ -601,13 +602,13 @@ class TimeInHeartRateZone(DataClassDictMixin):
 class TimeInHeartRateZoneValue(DataClassDictMixin):
     """Represents the total time spent in a specific heart rate zone."""
 
-    duration: str | None = None
+    duration: timedelta | None = None
     heart_rate_zone: str | None = field(
         metadata=field_options(alias="heartRateZone"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass

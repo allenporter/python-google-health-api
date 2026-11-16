@@ -2,10 +2,13 @@
 
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Self
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
+
+from .base import ModelConfig
 
 
 @dataclass
@@ -20,7 +23,7 @@ class PairedDevice(DataClassDictMixin):
         metadata=field_options(alias="deviceType"), default=None
     )
     features: list[str] = field(default_factory=list)
-    last_sync_time: str | None = field(
+    last_sync_time: datetime | None = field(
         metadata=field_options(alias="lastSyncTime"), default=None
     )
     battery_status: str | None = field(
@@ -38,8 +41,8 @@ class PairedDevice(DataClassDictMixin):
         """Return the device ID parsed from the resource name."""
         return self.name.split("/")[-1]
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass

@@ -1,12 +1,13 @@
 """Exercise data models for Google Health API."""
 
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 
 from mashumaro import DataClassDictMixin, field_options
 from mashumaro.config import BaseConfig
 
 from ..const import HealthApiScope
-from .base import DataType
+from .base import DataType, ModelConfig
 from .sleep import SessionTimeInterval
 
 
@@ -27,28 +28,28 @@ class ExerciseMetadata(DataClassDictMixin):
 class TimeInHeartRateZones(DataClassDictMixin):
     """Time spent in each heart rate zone."""
 
-    light_time: str | None = field(
+    light_time: timedelta | None = field(
         metadata=field_options(alias="lightTime"), default=None
     )
-    moderate_time: str | None = field(
+    moderate_time: timedelta | None = field(
         metadata=field_options(alias="moderateTime"), default=None
     )
-    vigorous_time: str | None = field(
+    vigorous_time: timedelta | None = field(
         metadata=field_options(alias="vigorousTime"), default=None
     )
-    peak_time: str | None = field(
+    peak_time: timedelta | None = field(
         metadata=field_options(alias="peakTime"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass
 class MobilityMetrics(DataClassDictMixin):
     """Mobility workouts specific metrics."""
 
-    avg_ground_contact_time_duration: str | None = field(
+    avg_ground_contact_time_duration: timedelta | None = field(
         metadata=field_options(alias="avgGroundContactTimeDuration"), default=None
     )
     avg_vertical_ratio: float | None = field(
@@ -64,8 +65,8 @@ class MobilityMetrics(DataClassDictMixin):
         metadata=field_options(alias="avgVerticalOscillationMillimeters"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass
@@ -115,12 +116,12 @@ class MetricsSummary(DataClassDictMixin):
 class ExerciseEvent(DataClassDictMixin):
     """Represents instantaneous events that happen during an exercise."""
 
-    event_time: str = field(metadata=field_options(alias="eventTime"))
-    event_utc_offset: str = field(metadata=field_options(alias="eventUtcOffset"))
+    event_time: datetime = field(metadata=field_options(alias="eventTime"))
+    event_utc_offset: timedelta = field(metadata=field_options(alias="eventUtcOffset"))
     exercise_event_type: str = field(metadata=field_options(alias="exerciseEventType"))
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass
@@ -128,19 +129,19 @@ class SplitSummary(DataClassDictMixin):
     """Represents splits or laps recorded within an exercise."""
 
     split_type: str = field(metadata=field_options(alias="splitType"))
-    end_utc_offset: str = field(metadata=field_options(alias="endUtcOffset"))
-    start_time: str = field(metadata=field_options(alias="startTime"))
-    start_utc_offset: str = field(metadata=field_options(alias="startUtcOffset"))
-    end_time: str = field(metadata=field_options(alias="endTime"))
+    end_utc_offset: timedelta = field(metadata=field_options(alias="endUtcOffset"))
+    start_time: datetime = field(metadata=field_options(alias="startTime"))
+    start_utc_offset: timedelta = field(metadata=field_options(alias="startUtcOffset"))
+    end_time: datetime = field(metadata=field_options(alias="endTime"))
     metrics_summary: MetricsSummary = field(
         metadata=field_options(alias="metricsSummary")
     )
-    active_duration: str | None = field(
+    active_duration: timedelta | None = field(
         metadata=field_options(alias="activeDuration"), default=None
     )
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 @dataclass
@@ -163,23 +164,23 @@ class Exercise(DataClassDictMixin):
     exercise_metadata: ExerciseMetadata | None = field(
         metadata=field_options(alias="exerciseMetadata"), default=None
     )
-    active_duration: str | None = field(
+    active_duration: timedelta | None = field(
         metadata=field_options(alias="activeDuration"), default=None
     )
     notes: str | None = field(default=None)
 
     @property
-    def start_time(self) -> str:
+    def start_time(self) -> datetime:
         """Return the start time of the interval."""
         return self.interval.start_time
 
     @property
-    def end_time(self) -> str | None:
+    def end_time(self) -> datetime | None:
         """Return the end time of the interval."""
         return self.interval.end_time if self.interval else None
 
-    class Config(BaseConfig):
-        serialize_by_alias = True
+    class Config(ModelConfig):
+        pass
 
 
 EXERCISE = DataType(
