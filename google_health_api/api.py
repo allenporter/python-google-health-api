@@ -538,47 +538,25 @@ class BmiSubApi:
         """Return the list of scopes required to write to this API."""
         return []
 
-    async def list(
-        self,
-        start_time: datetime | None = None,
-        end_time: datetime | None = None,
-        page_size: int = 100,
-        page_token: str | None = None,
-        user: str = "me",
-    ) -> ListDataPointResult[Bmi]:
-        """List synthetic BMI data points within an optional time range.
+    @staticmethod
+    def compute(
+        weight_points: Sequence[DataPoint[Weight]],
+        height_points: Sequence[DataPoint[Height]],
+    ) -> builtins.list[DataPoint[Bmi]]:
+        """Compute synthetic BMI data points from pre-fetched weight and height points."""
+        valid_heights = [
+            h_dp for h_dp in height_points if h_dp.data.height_millimeters > 0
+        ]
+        if not weight_points or not valid_heights:
+            return []
 
-        Args:
-            start_time: Retrieve weight data points after this timestamp.
-            end_time: Retrieve weight data points before this timestamp.
-            page_size: Maximum number of weight data points to return.
-            page_token: Page token to retrieve next set of records.
-            user: User ID or literal 'me'.
-        """
-        # Fetch weight data points
-        weight_result = await self._api.weight.list(
-            start_time=start_time,
-            end_time=end_time,
-            page_size=page_size,
-            page_token=page_token,
-            user=user,
-        )
-        if not weight_result.data_points:
-            return ListDataPointResult(_ListDataPointsModel())
-
-        # Fetch height data points (since height is rarely updated, query all to cover possible records)
-        height_result = await self._api.height.list(user=user)
-        if not height_result.data_points:
-            return ListDataPointResult(_ListDataPointsModel())
-
-        # Sort heights by sample time
         heights = sorted(
-            height_result.data_points,
+            valid_heights,
             key=lambda dp: dp.data.sample_time.physical_time,
         )
 
-        bmi_points = []
-        for weight_dp in weight_result.data_points:
+        bmi_points: list[DataPoint[Bmi]] = []
+        for weight_dp in weight_points:
             w_time = weight_dp.data.sample_time.physical_time
 
             # Find the closest height record at or before the weight record
@@ -589,20 +567,7 @@ class BmiSubApi:
                 else:
                     break
 
-            w_g = weight_dp.data.weight_grams
-            h_mm = best_height_dp.data.height_millimeters
-
-            # BMI = weight_kg / height_m^2
-            bmi_val = (w_g / 1000.0) / ((h_mm / 1000.0) ** 2)
-
-            bmi_data = Bmi(
-                bmi=round(bmi_val, 2),
-                weight_grams=w_g,
-                height_millimeters=h_mm,
-                sample_time=weight_dp.data.sample_time,
-            )
-
-            # Construct DataPoint matching weight name/source but with bmi data
+            bmi_data = Bmi.from_measurements(weight_dp.data, best_height_dp.data)
             new_name = (
                 weight_dp.name.replace("weight", "bmi") if weight_dp.name else None
             )
@@ -613,6 +578,51 @@ class BmiSubApi:
                     data_source=weight_dp.data_source,
                 )
             )
+        return bmi_points
+
+    async def list(
+        self,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        page_size: int = 100,
+        page_token: str | None = None,
+        user: str = "me",
+        *,
+        weight_result: ListDataPointResult[Weight] | None = None,
+        height_result: ListDataPointResult[Height] | None = None,
+    ) -> ListDataPointResult[Bmi]:
+        """List synthetic BMI data points within an optional time range.
+
+        Args:
+            start_time: Retrieve weight data points after this timestamp.
+            end_time: Retrieve weight data points before this timestamp.
+            page_size: Maximum number of weight data points to return.
+            page_token: Page token to retrieve next set of records.
+            user: User ID or literal 'me'.
+            weight_result: Optional pre-fetched weight data points to avoid a duplicate HTTP call.
+            height_result: Optional pre-fetched height data points to avoid a duplicate HTTP call.
+        """
+        if weight_result is None:
+            weight_result = await self._api.weight.list(
+                start_time=start_time,
+                end_time=end_time,
+                page_size=page_size,
+                page_token=page_token,
+                user=user,
+            )
+        if not weight_result.data_points:
+            return ListDataPointResult(_ListDataPointsModel())
+
+        if height_result is None:
+            # Since height is rarely updated, query all to cover possible records
+            height_result = await self._api.height.list(user=user)
+        if not height_result.data_points:
+            return ListDataPointResult(_ListDataPointsModel())
+
+        bmi_points = self.compute(
+            weight_result.data_points,
+            height_result.data_points,
+        )
 
         model = _ListDataPointsModel(
             data_points=bmi_points,
@@ -626,6 +636,7 @@ class BmiSubApi:
                 page_size=page_size,
                 page_token=token,
                 user=user,
+                height_result=height_result,
             )
             return next_result._response
 

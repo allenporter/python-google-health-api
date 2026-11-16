@@ -8,7 +8,7 @@ from typing import Any
 import aiohttp
 import pytest
 
-from google_health_api.api import GoogleHealthApi
+from google_health_api.api import BmiSubApi, GoogleHealthApi
 from google_health_api.model import DataPoint, DataSource, Date, Settings
 from google_health_api.model.activity import (
     BasalEnergyBurned,
@@ -1104,6 +1104,86 @@ async def test_bmi_list(
     assert point2.data.bmi == 24.57
     assert point2.data.weight_grams == 85000.0
     assert point2.data.height_millimeters == 1860
+
+
+async def test_bmi_prefetched_and_compute(
+    api: GoogleHealthApi,
+    list_response: list[dict[str, Any]],
+    requests: list[dict[str, Any]],
+) -> None:
+    """Test BmiSubApi.compute and BmiSubApi.list with pre-fetched results (zero duplicate HTTP calls)."""
+    fake_weights_page_1 = {
+        "dataPoints": [
+            {
+                "name": "users/me/dataTypes/weight/dataPoints/w-1",
+                "dataSource": {"platform": "FITBIT"},
+                "weight": {
+                    "weightGrams": 82400.0,
+                    "sampleTime": {"physicalTime": "2026-07-18T12:00:00Z"},
+                },
+            }
+        ],
+        "nextPageToken": "w-page-2",
+    }
+    fake_weights_page_2 = {
+        "dataPoints": [
+            {
+                "name": "users/me/dataTypes/weight/dataPoints/w-2",
+                "weight": {
+                    "weightGrams": 85000.0,
+                    "sampleTime": {"physicalTime": "2026-07-19T12:00:00Z"},
+                },
+            }
+        ],
+    }
+    fake_heights = {
+        "dataPoints": [
+            {
+                "name": "users/me/dataTypes/height/dataPoints/h-1",
+                "height": {
+                    "heightMillimeters": 1850,
+                    "sampleTime": {"physicalTime": "2025-12-14T00:00:00Z"},
+                },
+            }
+        ]
+    }
+
+    # Fetch weight and height once (e.g. in a coordinator)
+    list_response.append(fake_weights_page_1)
+    list_response.append(fake_heights)
+    weight_result = await api.weight.list(page_size=1)
+    height_result = await api.height.list()
+    assert len(requests) == 2
+    requests.clear()
+
+    # 1. Pure synchronous compute helper makes 0 HTTP requests
+    computed = BmiSubApi.compute(weight_result.data_points, height_result.data_points)
+    assert len(requests) == 0
+    assert len(computed) == 1
+    assert computed[0].name == "users/me/dataTypes/bmi/dataPoints/w-1"
+    assert computed[0].data.bmi == 24.08
+    assert computed[0].data_source is not None
+    assert computed[0].data_source.platform == "FITBIT"
+    assert BmiSubApi.compute([], height_result.data_points) == []
+    assert BmiSubApi.compute(weight_result.data_points, []) == []
+
+    # 2. api.bmi.list() with pre-fetched weight_result & height_result makes 0 HTTP requests
+    bmi_result = await api.bmi.list(
+        page_size=1,
+        weight_result=weight_result,
+        height_result=height_result,
+    )
+    assert len(requests) == 0
+    assert len(bmi_result.data_points) == 1
+    assert bmi_result.data_points[0].data.bmi == 24.08
+
+    # 3. Paginating to page 2 only fetches page 2 of weight (reusing height_result -> 1 HTTP call, not 2)
+    list_response.append(fake_weights_page_2)
+    pages = [page async for page in bmi_result]
+    assert len(pages) == 2
+    assert len(requests) == 1
+    assert "weight/dataPoints" in requests[0]["url"]
+    assert pages[1].data_points[0].data.bmi == 24.84
 
 
 async def test_oxygen_saturation(
