@@ -32,7 +32,7 @@ from zoneinfo import ZoneInfo
 from mashumaro import DataClassDictMixin
 
 from .auth import AbstractAuth
-from .client import GoogleHealthSession
+from .client import DEFAULT_MAX_CONCURRENT_REQUESTS, GoogleHealthSession
 from .const import HealthApiScope
 from .exceptions import OperationError
 from .model import (
@@ -464,12 +464,7 @@ class RollupDataPointSubApi(DataPointSubApi[T]):
         If time_zone is not provided, it will fetch the user's timezone from settings.
         """
         if not time_zone:
-            time_zone = self._session._timezone_cache.get(user)
-            if not time_zone:
-                resp = await self._session.get(f"v4/users/{user}/settings")
-                raw_json = await resp.json()
-                time_zone = raw_json.get("timeZone", "UTC")
-                self._session._timezone_cache[user] = time_zone
+            time_zone = await self._session.get_timezone(user)
 
         if isinstance(time_zone, str):
             resolved_tz = ZoneInfo(time_zone)
@@ -497,12 +492,7 @@ class RollupDataPointSubApi(DataPointSubApi[T]):
         If time_zone is not provided, it will fetch the user's timezone from settings.
         """
         if not time_zone:
-            time_zone = self._session._timezone_cache.get(user)
-            if not time_zone:
-                resp = await self._session.get(f"v4/users/{user}/settings")
-                raw_json = await resp.json()
-                time_zone = raw_json.get("timeZone", "UTC")
-                self._session._timezone_cache[user] = time_zone
+            time_zone = await self._session.get_timezone(user)
 
         if isinstance(time_zone, str):
             resolved_tz = ZoneInfo(time_zone)
@@ -1268,10 +1258,14 @@ class GoogleHealthApi:
         self,
         auth: AbstractAuth,
         session: GoogleHealthSession | None = None,
+        max_concurrent_requests: int | None = DEFAULT_MAX_CONCURRENT_REQUESTS,
     ) -> None:
         """Initialize the client."""
         self._session = session or GoogleHealthSession(
-            auth, auth._websession, auth._host
+            auth,
+            auth._websession,
+            auth._host,
+            max_concurrent_requests=max_concurrent_requests,
         )
         self.steps = RollupDataPointSubApi(self._session, STEPS)
         self.heart_rate = RollupDataPointSubApi(self._session, HEART_RATE)
