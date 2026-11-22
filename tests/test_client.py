@@ -1,6 +1,8 @@
 """Tests for google_health_api/client.py."""
 
+import asyncio
 from http import HTTPStatus
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
@@ -318,3 +320,128 @@ async def test_raise_for_status_fixtures(
     session = GoogleHealthSession(mock_auth, mock_websession)
     with pytest.raises(expected_exc):
         await session.get("v1/test")
+
+
+async def test_max_concurrent_requests_semaphore(
+    mock_auth: AbstractAuth, mock_websession: MagicMock
+) -> None:
+    """Test that max_concurrent_requests bounds simultaneous in-flight RPCs."""
+    in_flight = 0
+    max_observed = 0
+
+    async def fake_request(*args: Any, **kwargs: Any) -> AsyncMock:
+        nonlocal in_flight, max_observed
+        in_flight += 1
+        max_observed = max(max_observed, in_flight)
+        await asyncio.sleep(0.01)
+        in_flight -= 1
+        resp = AsyncMock(spec=aiohttp.ClientResponse)
+        resp.status = 200
+        return resp
+
+    mock_websession.request.side_effect = fake_request
+    session = GoogleHealthSession(mock_auth, mock_websession, max_concurrent_requests=3)
+
+    await asyncio.gather(*(session.get(f"v4/test/{i}") for i in range(12)))
+    assert max_observed == 3
+
+
+async def test_max_concurrent_requests_default_is_10(
+    mock_auth: AbstractAuth, mock_websession: MagicMock
+) -> None:
+    """Test that default max_concurrent_requests caps concurrency at 10."""
+    in_flight = 0
+    max_observed = 0
+
+    async def fake_request(*args: Any, **kwargs: Any) -> AsyncMock:
+        nonlocal in_flight, max_observed
+        in_flight += 1
+        max_observed = max(max_observed, in_flight)
+        await asyncio.sleep(0.01)
+        in_flight -= 1
+        resp = AsyncMock(spec=aiohttp.ClientResponse)
+        resp.status = 200
+        return resp
+
+    mock_websession.request.side_effect = fake_request
+    session = GoogleHealthSession(mock_auth, mock_websession)
+
+    await asyncio.gather(*(session.get(f"v4/test/{i}") for i in range(25)))
+    assert max_observed == 10
+
+
+async def test_max_concurrent_requests_unbounded(
+    mock_auth: AbstractAuth, mock_websession: MagicMock
+) -> None:
+    """Test that max_concurrent_requests=None disables the semaphore."""
+    in_flight = 0
+    max_observed = 0
+    all_started = asyncio.Event()
+
+    async def fake_request(*args: Any, **kwargs: Any) -> AsyncMock:
+        nonlocal in_flight, max_observed
+        in_flight += 1
+        max_observed = max(max_observed, in_flight)
+        if in_flight == 15:
+            all_started.set()
+        await all_started.wait()
+        in_flight -= 1
+        resp = AsyncMock(spec=aiohttp.ClientResponse)
+        resp.status = 200
+        return resp
+
+    mock_websession.request.side_effect = fake_request
+    session = GoogleHealthSession(
+        mock_auth, mock_websession, max_concurrent_requests=None
+    )
+
+    await asyncio.gather(*(session.get(f"v4/test/{i}") for i in range(15)))
+    assert max_observed == 15
+
+
+@pytest.mark.parametrize("invalid_limit", [0, -1, -10])
+def test_max_concurrent_requests_invalid(
+    mock_auth: AbstractAuth, mock_websession: MagicMock, invalid_limit: int
+) -> None:
+    """Test that non-positive max_concurrent_requests raises ValueError."""
+    with pytest.raises(ValueError, match="max_concurrent_requests"):
+        GoogleHealthSession(
+            mock_auth, mock_websession, max_concurrent_requests=invalid_limit
+        )
+
+
+async def test_semaphore_released_on_error(
+    mock_auth: AbstractAuth, mock_websession: MagicMock
+) -> None:
+    """Test that the semaphore is released when a request raises an exception."""
+    mock_websession.request.side_effect = [
+        ClientError("boom"),
+        AsyncMock(spec=aiohttp.ClientResponse, status=200),
+    ]
+    session = GoogleHealthSession(mock_auth, mock_websession, max_concurrent_requests=1)
+
+    with pytest.raises(ClientError):
+        await session.get("v4/fail")
+
+    resp = await session.get("v4/succeed")
+    assert resp.status == 200
+
+
+async def test_get_timezone_coalesces_concurrent_requests(
+    mock_auth: AbstractAuth, mock_websession: MagicMock
+) -> None:
+    """Test that concurrent get_timezone calls only fetch settings once."""
+
+    async def fake_request(*args: Any, **kwargs: Any) -> AsyncMock:
+        await asyncio.sleep(0.01)
+        resp = AsyncMock(spec=aiohttp.ClientResponse)
+        resp.status = 200
+        resp.json.return_value = {"timeZone": "America/Los_Angeles"}
+        return resp
+
+    mock_websession.request.side_effect = fake_request
+    session = GoogleHealthSession(mock_auth, mock_websession)
+
+    results = await asyncio.gather(*(session.get_timezone("me") for _ in range(10)))
+    assert results == ["America/Los_Angeles"] * 10
+    assert mock_websession.request.call_count == 1

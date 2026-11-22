@@ -1,5 +1,6 @@
 """HTTP Client session wrapper for the Google Health API."""
 
+import asyncio
 import json
 import logging
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ from .exceptions import (
 
 _LOGGER = logging.getLogger(__name__)
 AUTHORIZATION_HEADER = "Authorization"
+DEFAULT_MAX_CONCURRENT_REQUESTS = 10
 
 RPC_REASON_EXCEPTIONS: dict[str, type[GoogleHealthApiError]] = {
     "SERVICE_DISABLED": HealthApiServiceDisabledException,
@@ -65,13 +67,35 @@ class GoogleHealthSession:
         websession: aiohttp.ClientSession,
         host: str | None = None,
         user_info_url: str | None = None,
+        max_concurrent_requests: int | None = DEFAULT_MAX_CONCURRENT_REQUESTS,
     ) -> None:
         """Initialize the session."""
+        if max_concurrent_requests is not None and max_concurrent_requests < 1:
+            raise ValueError("max_concurrent_requests must be >= 1 or None")
         self._auth = auth
         self._websession = websession
         self._host = host or HEALTH_API_URL
         self._timezone_cache: dict[str, str] = {}
+        self._timezone_lock = asyncio.Lock()
+        self._semaphore: asyncio.Semaphore | None = (
+            asyncio.Semaphore(max_concurrent_requests)
+            if max_concurrent_requests is not None
+            else None
+        )
         self.user_info_url = user_info_url or USERINFO_API_URL
+
+    async def get_timezone(self, user: str = "me") -> str:
+        """Return the cached timezone for a user, fetching settings once if needed."""
+        if time_zone := self._timezone_cache.get(user):
+            return time_zone
+        async with self._timezone_lock:
+            if time_zone := self._timezone_cache.get(user):
+                return time_zone
+            resp = await self.get(f"v4/users/{user}/settings")
+            raw_json = await resp.json()
+            time_zone = raw_json.get("timeZone", "UTC")
+            self._timezone_cache[user] = time_zone
+            return time_zone
 
     async def request(
         self,
@@ -81,6 +105,19 @@ class GoogleHealthSession:
         **kwargs: Any,
     ) -> aiohttp.ClientResponse:
         """Make an authenticated request."""
+        if self._semaphore is not None:
+            async with self._semaphore:
+                return await self._request(method, url, headers=headers, **kwargs)
+        return await self._request(method, url, headers=headers, **kwargs)
+
+    async def _request(
+        self,
+        method: str,
+        url: str,
+        headers: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> aiohttp.ClientResponse:
+        """Execute an authenticated HTTP request."""
         try:
             access_token = await self._auth.async_get_access_token()
         except ClientError as err:
